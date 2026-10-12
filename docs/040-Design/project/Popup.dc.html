@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Popup</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+*,*::before,*::after{box-sizing:border-box}
+a{color:#2563eb}a:hover{color:#1d4ed8}
+</style>
+</helmet>
+<div id="my-ext" data-theme="hpma-light" style="width: 320px; height: 400px; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; background: #f8f7fa; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif; color: #52525b; font-size: 14px; line-height: 20px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 36px;">
+    <span style="display: flex; align-items: baseline; gap: 6px;">
+      <span style="font-size: 15px; line-height: 22px; font-weight: 600; color: #2f2b3d;">HPMA Copilot</span>
+      <span style="font-size: 11px; line-height: 14px; color: #4b5563;">v0.3.0</span>
+    </span>
+    <a href="OptionsPacing.dc.html" aria-label="Mở Options" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path></svg>
+    </a>
+  </div>
+
+  <section aria-label="Tab BM đang bám" style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 6px; background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12);">
+    <span style="width: 32px; height: 32px; border-radius: 6px; background: #f3f4f6; color: #4b5563; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l18 0"></path><path d="M9 8l1 0"></path><path d="M9 12l1 0"></path><path d="M9 16l1 0"></path><path d="M14 8l1 0"></path><path d="M14 12l1 0"></path><path d="M14 16l1 0"></path><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16"></path></svg>
+    </span>
+    <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+      <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: #2f2b3d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tenomad Agency 03</span>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: #4b5563;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>Đang bám · Partners</span>
+    </span>
+  </section>
+
+  <section aria-label="Flow đang chạy" style="display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 6px; background: #ffffff; border: 1px solid #fed7aa;">
+    <span style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+      <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: #2f2b3d;">Gán partner vào TKQC</span>
+      <span style="display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px; border-radius: 4px; background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c; font-size: 11px; font-weight: 600;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"></path></svg>
+        Full
+      </span>
+    </span>
+    <span style="font-size: 12px; line-height: 16px; color: #4b5563;">TKQC 2/4 · bước 6/7 · bước kế sau 5s</span>
+    <span style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px;">
+      <span style="height: 4px; border-radius: 9999px; background: #22c55e;"></span>
+      <span style="height: 4px; border-radius: 9999px; background: #3b82f6;"></span>
+      <span style="height: 4px; border-radius: 9999px; background: #f1f0f2;"></span>
+      <span style="height: 4px; border-radius: 9999px; background: #d1d5db;"></span>
+    </span>
+  </section>
+
+  <div style="font-size: 12px; line-height: 16px; color: #4b5563; padding: 0 2px;">Ghi hôm nay <b style="font-weight: 600; color: #2f2b3d;">4/20</b> · Curfew 0h–6h</div>
+
+  <a href="RunFull.dc.html" style="height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 6px; background: #2563eb; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"></path><path d="M15 4v16"></path></svg>
+    Mở side panel
+  </a>
+
+  <div style="flex: 1;"></div>
+
+  <button type="button" style="height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 6px; background: #b91c1c; color: #ffffff; font-family: inherit; font-size: 14px; font-weight: 600;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+    Kill-switch · dừng mọi queue
+  </button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":320,"height":400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

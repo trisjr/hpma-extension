@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="vi">
+  <meta charset="utf-8" />
+  <title>Partner readback regression</title>
+  <body>
+    <pre id="result">Running…</pre>
+    <div id="fixture"></div>
+    <script type="module">
+      import { isAssignedAccount } from '/src/content/flows/partnerAssign.ts';
+
+      const fixture = document.querySelector('#fixture');
+      const output = document.querySelector('#result');
+      const bmId = '1451597353550362';
+      const checks = [];
+      const row = (name) =>
+        `<div role="listitem"><span>${name}</span><span>Quyền truy cập một phần</span><a href="/latest/settings/ad_accounts/?selected_asset_id=120253322039060067">View asset</a></div>`;
+      const panel = (rows, id = bmId, selected = true) =>
+        `<section><header>YumYum Network ID: <a href="?selected_partner_id=${id}">${id}</a></header><div><div role="tablist"><div role="tab" aria-selected="${selected}">Tài sản bạn đã chỉ định</div><div role="tab" aria-selected="${!selected}">Tài sản được chỉ định cho bạn</div></div></div><div role="list">${rows}</div></section>`;
+      function check(name, html, expected, tokens = ['trisjr 01']) {
+        fixture.innerHTML = html;
+        const actual = isAssignedAccount(bmId, tokens, 'vi');
+        if (actual !== expected)
+          throw new Error(`${name}: expected ${expected}, got ${actual}`);
+        checks.push(`PASS ${name}`);
+      }
+      try {
+        check(
+          'Already-open partner details confirmed',
+          panel(row('TrisJr 01')),
+          true
+        );
+        check(
+          'Wrong partner rejected',
+          panel(row('TrisJr 01'), '9999999999999999'),
+          false
+        );
+        check(
+          'Correct ID outside wrong partner details ignored',
+          `<a href="#">${bmId}</a>` +
+            panel(row('TrisJr 01'), '9999999999999999'),
+          false
+        );
+        check(
+          'Assets assigned to you cannot confirm outgoing access',
+          panel(row('TrisJr 01'), bmId, false),
+          false
+        );
+        check(
+          'Name elsewhere on page ignored',
+          '<div>TrisJr 01</div>' + panel(row('Other')),
+          false
+        );
+        check('Partial name rejected', panel(row('TrisJr 010')), false);
+        check('Missing asset rejected', panel(''), false);
+        check(
+          'Duplicate names rejected',
+          panel(row('TrisJr 01') + row('TrisJr 01')),
+          false
+        );
+        check(
+          'Non-ad-account asset ignored',
+          panel(row('TrisJr 01').replace('ad_accounts', 'pages')),
+          false
+        );
+        check(
+          'Hidden row ignored',
+          panel(`<div hidden>${row('TrisJr 01')}</div>`),
+          false
+        );
+        check(
+          'Open wizard cannot confirm a write',
+          panel(row('TrisJr 01')) +
+            '<div role="dialog">Wizard still open</div>',
+          false
+        );
+        output.textContent = checks.join('\n');
+      } catch (error) {
+        output.textContent = checks.concat(`FAIL ${error.message}`).join('\n');
+        throw error;
+      } finally {
+        fixture.replaceChildren();
+      }
+    </script>
+  </body>
+</html>

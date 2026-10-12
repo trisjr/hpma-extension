@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Component dùng chung</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+*,*::before,*::after{box-sizing:border-box}
+a{color:#2563eb}a:hover{color:#1d4ed8}
+</style>
+</helmet>
+<div style="width: 1200px; height: 1180px; padding: 48px; background: #f8f7fa; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif; color: #52525b; font-size: 14px; line-height: 20px; display: flex; flex-direction: column; gap: 24px;">
+  <header style="display: flex; flex-direction: column; gap: 4px;">
+    <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 500; color: #2f2b3d;">Component dùng chung</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 20px; color: #4b5563;">Mỗi khối là một component nhận props; các màn dưới đây chỉ lắp lại, không vẽ mới.</p>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <h2 style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 500; color: #2f2b3d;">Badge rủi ro &amp; trạng thái</h2>
+          <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #4b5563;">RiskBadge</code>
+        </div>
+        <div style="font-size: 12px; line-height: 16px; color: #4b5563;">Tầng HITL</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <span style="display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-size: 12px; font-weight: 500;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"></path></svg>
+            Không cần duyệt
+          </span>
+          <span style="display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 6px; background: #fefce8; border: 1px solid #fde68a; color: #854d0e; font-size: 12px; font-weight: 500;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"></path></svg>
+            Duyệt 1 lớp
+          </span>
+          <span style="display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 6px; background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c; font-size: 12px; font-weight: 500;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"></path></svg>
+            Duyệt 2 lớp
+          </span>
+          <span style="display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 6px; background: #f3f4f6; border: 1px solid #e5e7eb; color: #4b5563; font-size: 12px; font-weight: 500;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"></path><path d="M8 11v-4a4 4 0 1 1 8 0v4"></path></svg>
+            Chưa mở write
+          </span>
+        </div>
+        <div style="font-size: 12px; line-height: 16px; color: #4b5563;">Mode</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-size: 12px; font-weight: 500;">Dry-run · Không thay đổi BM</span>
+          <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 6px; background: #fefce8; border: 1px solid #fde68a; color: #854d0e; font-size: 12px; font-weight: 500;">Assist · Bạn bấm bước cuối</span>
+          <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 6px; background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c; font-size: 12px; font-weight: 500;">Full · Sẽ ghi thật</span>
+        </div>
+        <div style="font-size: 12px; line-height: 16px; color: #4b5563;">Kết quả</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>done</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: #fefce8; border: 1px solid #fde68a; color: #854d0e; font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #eab308;"></span>pending-approval</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #ef4444;"></span>failed</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: #f3f4f6; border: 1px solid #e5e7eb; color: #4b5563; font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #9ca3af;"></span>đã tồn tại — bỏ qua</span>
+        </div>
+      </section>
+
+      <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <h2 style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 500; color: #2f2b3d;">Mode selector</h2>
+          <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #4b5563;">ModeSelector</code>
+        </div>
+        <sc-for list="{{modeRows}}" as="row" hint-placeholder-count="4">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div role="group" aria-label="Mode lần chạy" style="display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: #f3f4f6;">
+              <sc-for list="{{row.opts}}" as="o" hint-placeholder-count="3">
+                <button type="button" aria-pressed="{{o.pressed}}" disabled="{{o.locked}}" style="flex: 1; height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: {{o.weight}}; background: {{o.bg}}; color: {{o.fg}}; border: 1px solid {{o.border}};">
+                  <sc-if value="{{o.isDry}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"></path></svg></sc-if>
+                  <sc-if value="{{o.isAssist}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13v-8.5a1.5 1.5 0 0 1 3 0v7.5"></path><path d="M11 11.5v-2a1.5 1.5 0 1 1 3 0v2.5"></path><path d="M14 10.5a1.5 1.5 0 0 1 3 0v1.5"></path><path d="M17 11.5a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7l-.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47"></path></svg></sc-if>
+                  <sc-if value="{{o.isFull}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"></path></svg></sc-if>
+                  <sc-if value="{{o.locked}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"></path><path d="M8 11v-4a4 4 0 1 1 8 0v4"></path></svg></sc-if>
+                  {{o.label}}
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{row.note}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: #4b5563;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"></path><path d="M8 11v-4a4 4 0 1 1 8 0v4"></path></svg>
+                {{row.note}}
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </section>
+
+      <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <h2 style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 500; color: #2f2b3d;">Footer · kill-switch</h2>
+          <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #4b5563;">PanelFooter</code>
+        </div>
+        <div style="height: 54px; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; display: flex; align-items: center; gap: 12px; padding: 0 8px 0 12px;">
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 12px; line-height: 16px; color: #4b5563;">Ghi hôm nay <span style="font-weight: 600; color: #2f2b3d;">3/20</span> · Curfew 0h–6h</div>
+            <div style="height: 4px; border-radius: 9999px; background: #f1f0f2; overflow: hidden;"><div style="width: 15%; height: 4px; background: #6b7280;"></div></div>
+          </div>
+          <button type="button" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 6px; background: #b91c1c; color: #ffffff; font-family: inherit; font-size: 13px; font-weight: 600;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+            Kill-switch
+          </button>
+        </div>
+        <div style="height: 54px; border: 1px solid #fecaca; border-radius: 6px; background: #fef2f2; display: flex; align-items: center; gap: 12px; padding: 0 8px 0 12px;">
+          <div style="flex: 1; min-width: 0; font-size: 12px; line-height: 16px; color: #991b1b; font-weight: 500;">Kill-switch đã bật · mọi queue đã dừng</div>
+          <button type="button" style="height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid #fca5a5; background: #ffffff; color: #b91c1c; font-family: inherit; font-size: 13px; font-weight: 600;">Mở khoá…</button>
+        </div>
+      </section>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 16px 0 0; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 16px;">
+          <h2 style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 500; color: #2f2b3d;">Stepper locate → act → verify</h2>
+          <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #4b5563;">RunStepper</code>
+        </div>
+        <ol style="list-style: none; margin: 0; padding: 0;">
+          <sc-for list="{{steps}}" as="s" hint-placeholder-count="6">
+            <li style="display: flex; gap: 10px; padding: 10px 16px; border-top: 1px solid rgba(47, 43, 61, 0.12); background: {{s.rowBg}};">
+              <span style="width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: {{s.icBg}}; color: {{s.icFg}}; border: 1.5px {{s.icLine}} {{s.icBorder}};">
+                <sc-if value="{{s.isOk}}" hint-placeholder-val="{{true}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"></path></svg></sc-if>
+                <sc-if value="{{s.isRun}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"></path></svg></sc-if>
+                <sc-if value="{{s.isWait}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6v12"></path><path d="M15 6v12"></path></svg></sc-if>
+                <sc-if value="{{s.isSkip}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 12h10"></path></svg></sc-if>
+                <sc-if value="{{s.isFail}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg></sc-if>
+                <sc-if value="{{s.isPend}}" hint-placeholder-val="{{false}}"><span style="font-size: 11px; font-weight: 600;">{{s.n}}</span></sc-if>
+              </span>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                  <span style="font-size: 13px; line-height: 18px; font-weight: 500; color: {{s.titleFg}};">{{s.title}}</span>
+                  <span style="font-size: 12px; line-height: 18px; font-weight: 600; white-space: nowrap; color: {{s.labelFg}};">{{s.label}}</span>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+                  <sc-for list="{{s.phases}}" as="ph" hint-placeholder-count="3">
+                    <span style="height: 18px; padding: 0 6px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 18px; background: {{ph.bg}}; color: {{ph.fg}};">{{ph.p}}</span>
+                  </sc-for>
+                  <sc-if value="{{s.isWrite}}" hint-placeholder-val="{{false}}">
+                    <span style="height: 18px; padding: 0 6px; border-radius: 4px; font-size: 11px; line-height: 16px; font-weight: 600; border: 1px solid #fdba74; color: #c2410c;">bước ghi</span>
+                  </sc-if>
+                </div>
+              </div>
+            </li>
+          </sc-for>
+        </ol>
+      </section>
+
+      <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <h2 style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 500; color: #2f2b3d;">Nút theo mode &amp; hành động</h2>
+          <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #4b5563;">RunButton</code>
+        </div>
+        <button type="button" style="height: 40px; border: 0; border-radius: 6px; background: #15803d; color: #ffffff; font-family: inherit; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"></path></svg>
+          Chạy thử
+        </button>
+        <button type="button" style="height: 40px; border: 0; border-radius: 6px; background: #facc15; color: #713f12; font-family: inherit; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13v-8.5a1.5 1.5 0 0 1 3 0v7.5"></path><path d="M11 11.5v-2a1.5 1.5 0 1 1 3 0v2.5"></path><path d="M14 10.5a1.5 1.5 0 0 1 3 0v1.5"></path><path d="M17 11.5a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7l-.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47"></path></svg>
+          Dẫn tôi làm
+        </button>
+        <button type="button" style="height: 40px; border: 0; border-radius: 6px; background: #c2410c; color: #ffffff; font-family: inherit; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"></path></svg>
+          Thực thi
+        </button>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 6px;">
+          <button type="button" style="height: 36px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d; font-family: inherit; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+            Dừng
+          </button>
+          <button type="button" style="height: 36px; border-radius: 6px; border: 1px solid #fdba74; background: #ffffff; color: #c2410c; font-family: inherit; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14l-4 -4l4 -4"></path><path d="M5 10h11a4 4 0 1 1 0 8h-1"></path></svg>
+            Gỡ lại (undo)
+          </button>
+        </div>
+        <button type="button" disabled style="height: 40px; border: 0; border-radius: 6px; background: #c2410c; color: #ffffff; opacity: 0.45; font-family: inherit; font-size: 15px; font-weight: 600;">Thực thi trên 3 TKQC</button>
+        <div style="font-size: 12px; line-height: 16px; color: #4b5563;">Nút bị khoá luôn đi kèm lý do bằng chữ ngay bên dưới.</div>
+      </section>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <h2 style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 500; color: #2f2b3d;">Bảng diff BM × TKQC × quyền</h2>
+          <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #4b5563;">DiffTable</code>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 6px; background: #f3f4f6; font-size: 12px; line-height: 16px;">
+          <span style="color: #4b5563;">BM đối tác</span>
+          <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #2f2b3d;">102938475612345</span>
+        </div>
+        <div style="border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; overflow: hidden;">
+          <sc-for list="{{diffRows}}" as="d" hint-placeholder-count="4">
+            <div style="display: flex; gap: 10px; padding: 10px; border-top: 1px solid rgba(47, 43, 61, 0.08); background: {{d.rowBg}};">
+              <span style="width: 22px; height: 22px; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; font-weight: 600; background: {{d.markBg}}; color: {{d.markFg}};">{{d.mark}}</span>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; gap: 8px;">
+                  <span style="font-size: 13px; line-height: 18px; font-weight: 500; color: #2f2b3d;">{{d.asset}}</span>
+                  <span style="font-size: 12px; line-height: 18px; font-weight: 600; white-space: nowrap; color: {{d.markFg}};">{{d.op}}</span>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                  <sc-for list="{{d.tasks}}" as="t" hint-placeholder-count="2">
+                    <span style="height: 20px; padding: 0 6px; border-radius: 4px; font-size: 11px; line-height: 20px; font-weight: 500; background: {{t.bg}}; color: {{t.fg}}; text-decoration: {{t.deco}};">{{t.label}}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; line-height: 16px; color: #4b5563;">
+          <span><b style="color: #15803d;">+</b> thêm</span><span><b style="color: #a16207;">~</b> thay đổi</span><span><b style="color: #b91c1c;">−</b> gỡ</span><span><b style="color: #4b5563;">=</b> đã có, bỏ qua</span>
+        </div>
+      </section>
+
+      <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <h2 style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 500; color: #2f2b3d;">Hộp confirm 2 lớp</h2>
+          <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #4b5563;">ConfirmBox</code>
+        </div>
+        <div style="border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="font-size: 12px; line-height: 14px; letter-spacing: 0.05rem; text-transform: uppercase; color: #4b5563;">Lớp 1/2 · Đọc thay đổi</div>
+          <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 18px; color: #2f2b3d;">
+            <input type="checkbox" checked style="width: 18px; height: 18px; margin: 0; accent-color: #2563eb; flex-shrink: 0;">
+            Tôi đã đọc 3 thay đổi và đúng BM đối tác
+          </label>
+        </div>
+        <div style="border: 1px solid #fed7aa; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: #fffbf5;">
+          <div style="font-size: 12px; line-height: 14px; letter-spacing: 0.05rem; text-transform: uppercase; color: #9a3412;">Lớp 2/2 · Gõ lại để xác nhận</div>
+          <label for="cmp-confirm" style="font-size: 13px; line-height: 18px; color: #2f2b3d;">Gõ <b style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600;">GAN 3 TKQC</b></label>
+          <input id="cmp-confirm" type="text" value="GAN 3 TKQC" style="height: 40px; padding: 0 12px; border-radius: 6px; border: 2px solid #c2410c; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; color: #2f2b3d; background: #ffffff;">
+          <button type="button" style="height: 40px; border: 0; border-radius: 6px; background: #c2410c; color: #ffffff; font-family: inherit; font-size: 15px; font-weight: 600;">Thực thi trên 3 TKQC</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const SEL = {
+      dry: { bg: '#f0fdf4', fg: '#15803d', border: '#86efac' },
+      assist: { bg: '#fefce8', fg: '#854d0e', border: '#fde047' },
+      full: { bg: '#fff7ed', fg: '#c2410c', border: '#fdba74' }
+    };
+    const mk = (selected, fullLocked) => ['dry', 'assist', 'full'].map((m) => {
+      const on = m === selected;
+      const locked = m === 'full' && fullLocked;
+      return {
+        label: m === 'dry' ? 'Dry-run' : m === 'assist' ? 'Assist' : 'Full',
+        isDry: m === 'dry',
+        isAssist: m === 'assist',
+        isFull: m === 'full' && !locked,
+        locked: locked,
+        pressed: on ? 'true' : 'false',
+        bg: on ? SEL[m].bg : 'transparent',
+        fg: locked ? '#9ca3af' : on ? SEL[m].fg : '#4b5563',
+        border: on ? SEL[m].border : 'transparent',
+        weight: on ? 600 : 500
+      };
+    });
+    const modeRows = [
+      { opts: mk('dry', false), note: '' },
+      { opts: mk('assist', false), note: '' },
+      { opts: mk('full', false), note: '' },
+      { opts: mk('dry', true), note: 'Full khoá: cần chạy Assist 2 lần nữa trên BM này' }
+    ];
+
+    const ST = {
+      ok: { icBg: '#dcfce7', icFg: '#15803d', icBorder: '#dcfce7', icLine: 'solid', label: 'ok', labelFg: '#15803d', titleFg: '#2f2b3d', rowBg: '#ffffff' },
+      run: { icBg: '#eff6ff', icFg: '#2563eb', icBorder: '#93c5fd', icLine: 'solid', label: 'đang chạy', labelFg: '#2563eb', titleFg: '#2f2b3d', rowBg: '#f8fbff' },
+      wait: { icBg: '#fef9c3', icFg: '#854d0e', icBorder: '#facc15', icLine: 'solid', label: 'chờ bạn', labelFg: '#854d0e', titleFg: '#2f2b3d', rowBg: '#fefce8' },
+      skip: { icBg: '#ffffff', icFg: '#6b7280', icBorder: '#9ca3af', icLine: 'dashed', label: 'skipped (dry-run)', labelFg: '#4b5563', titleFg: '#4b5563', rowBg: '#ffffff' },
+      fail: { icBg: '#fee2e2', icFg: '#b91c1c', icBorder: '#fecaca', icLine: 'solid', label: 'fail', labelFg: '#b91c1c', titleFg: '#2f2b3d', rowBg: '#fef2f2' },
+      pend: { icBg: '#ffffff', icFg: '#4b5563', icBorder: '#d1d5db', icLine: 'solid', label: 'chờ', labelFg: '#4b5563', titleFg: '#4b5563', rowBg: '#ffffff' }
+    };
+    const PH = {
+      done: { bg: '#f0fdf4', fg: '#15803d' },
+      run: { bg: '#eff6ff', fg: '#1d4ed8' },
+      wait: { bg: '#fefce8', fg: '#854d0e' },
+      skip: { bg: '#f3f4f6', fg: '#4b5563' },
+      fail: { bg: '#fef2f2', fg: '#b91c1c' },
+      idle: { bg: '#f3f4f6', fg: '#4b5563' }
+    };
+    const step = (n, title, st, ph, write) => Object.assign({ n: n, title: title, isWrite: !!write }, ST[st], {
+      isOk: st === 'ok', isRun: st === 'run', isWait: st === 'wait', isSkip: st === 'skip', isFail: st === 'fail', isPend: st === 'pend',
+      phases: ['locate', 'act', 'verify'].map((p, i) => Object.assign({ p: p }, PH[ph[i]]))
+    });
+    const steps = [
+      step(1, 'Mở Tài khoản quảng cáo', 'ok', ['done', 'done', 'done']),
+      step(2, 'Nhập BM ID đối tác', 'run', ['done', 'run', 'idle']),
+      step(3, 'Bấm Assign trong tab BM', 'wait', ['done', 'wait', 'idle'], true),
+      step(4, 'Bấm Assign', 'skip', ['done', 'skip', 'skip'], true),
+      step(5, 'Verify readback', 'fail', ['done', 'done', 'fail']),
+      step(6, 'Sang TKQC tiếp theo', 'pend', ['idle', 'idle', 'idle'])
+    ];
+
+    const T = {
+      add: { bg: '#dcfce7', fg: '#166534', deco: 'none' },
+      del: { bg: '#fee2e2', fg: '#991b1b', deco: 'line-through' },
+      keep: { bg: '#f3f4f6', fg: '#4b5563', deco: 'none' }
+    };
+    const task = (label, kind) => Object.assign({ label: label }, T[kind]);
+    const diffRows = [
+      { mark: '+', op: 'Thêm', asset: 'HPMA – Shop Lan 01', rowBg: '#f7fef9', markBg: '#dcfce7', markFg: '#15803d', tasks: [task('+ Chạy quảng cáo', 'add'), task('+ Phân tích', 'add')] },
+      { mark: '~', op: 'Thay đổi', asset: 'HPMA – Shop Lan 02', rowBg: '#fffef5', markBg: '#fef9c3', markFg: '#a16207', tasks: [task('Phân tích', 'keep'), task('+ Chạy quảng cáo', 'add')] },
+      { mark: '−', op: 'Gỡ', asset: 'Tenomad – Spa Hoa', rowBg: '#fffafa', markBg: '#fee2e2', markFg: '#b91c1c', tasks: [task('Quản lý', 'del')] },
+      { mark: '=', op: 'Bỏ qua', asset: 'Tenomad – Nha khoa An', rowBg: '#ffffff', markBg: '#f3f4f6', markFg: '#4b5563', tasks: [task('Chạy quảng cáo · Phân tích đã có', 'keep')] }
+    ];
+    return { modeRows: modeRows, steps: steps, diffRows: diffRows };
+  }
+}
+</script>
+</body>
+</html>

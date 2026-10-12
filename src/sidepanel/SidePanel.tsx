@@ -1,101 +1,218 @@
-import { JSX, useCallback, useEffect, useState } from 'react';
-import browser from 'webextension-polyfill';
+import { JSX, useState } from 'react';
+import type { FlowDef } from '@/shared/flows';
 
-import { isPongMessage } from '@/shared/messaging';
+import { FLOWS } from '@/shared/flows';
+import useAdAccounts from '@/shared/hooks/useAdAccounts';
+import useConnection from '@/shared/hooks/useConnection';
+import useLanguage from '@/shared/hooks/useLanguage';
+import usePartnerDraft from '@/shared/hooks/usePartnerDraft';
+import useRunEngine from '@/shared/hooks/useRunEngine';
+import useRunSimulator from '@/shared/hooks/useRunSimulator';
+import { useDevtestSettings } from '@/shared/hooks/useSettings';
+import useTheme from '@/shared/hooks/useTheme';
+import useWriteBudget from '@/shared/hooks/useWriteBudget';
+import { translate } from '@/shared/i18n';
+import { buildDiff, isRunActive, isRunFinished } from '@/shared/run';
+import type { PanelTab } from './components/TabNav';
+import type { RunMode } from './components/riskStyles';
 
-type ConnectionState =
-  | { status: 'checking' }
-  | { status: 'connected' }
-  | { status: 'unreachable' };
+import ComingSoon from './components/ComingSoon';
+import FlowsScreen from './components/FlowsScreen';
+import PanelFooter from './components/PanelFooter';
+import PanelHeader from './components/PanelHeader';
+import PartnerAssignWizard from './components/partner/PartnerAssignWizard';
+import DiffScreen from './components/run/DiffScreen';
+import ResultScreen from './components/run/ResultScreen';
+import RunEmpty from './components/run/RunEmpty';
+import RunScreen from './components/run/RunScreen';
 
-const PING_RETRY_DELAYS_MS = [0, 300, 900];
-
-async function pingActiveTabOnce(): Promise<ConnectionState> {
-  const [tab] = await browser.tabs.query({
-    active: true,
-    currentWindow: true,
-  });
-  if (tab?.id === undefined) {
-    return { status: 'unreachable' };
-  }
-  // Tab không có content script (ngoài BM, hoặc BM mở trước khi cài/reload ext)
-  // làm sendMessage reject → coi là chưa kết nối, không phải lỗi chương trình.
-  const reply: unknown = await browser.tabs
-    .sendMessage(tab.id, { kind: 'ping' })
-    .catch(() => undefined);
-  return isPongMessage(reply)
-    ? { status: 'connected' }
-    : { status: 'unreachable' };
-}
-
-// `tabs.onUpdated` complete có thể tới trước khi content script (nạp qua
-// dynamic import ở document_idle) kịp đăng ký listener → retry ngắn.
-async function pingActiveTab(attempt = 0): Promise<ConnectionState> {
-  const delay = PING_RETRY_DELAYS_MS[attempt];
-  if (delay > 0) {
-    await new Promise((resolve) => {
-      setTimeout(resolve, delay);
-    });
-  }
-  const result = await pingActiveTabOnce();
-  if (
-    result.status === 'connected' ||
-    attempt + 1 >= PING_RETRY_DELAYS_MS.length
-  ) {
-    return result;
-  }
-  return pingActiveTab(attempt + 1);
-}
+// Full chỉ mở sau cổng probe ≥ 95% + dry-run pass (PRD §4.1b, M3).
+const FULL_LOCKED = true;
+const PARTNER_FLOW_ID = 'partner-assign';
 
 export default function SidePanel(): JSX.Element {
-  const [connection, setConnection] = useState<ConnectionState>({
-    status: 'checking',
-  });
+  const theme = useTheme();
+  const { lang, toggleLang } = useLanguage();
+  const { connection, tabId, refresh } = useConnection();
+  const { used, limit } = useWriteBudget();
+  const draft = usePartnerDraft();
+  const source = useAdAccounts();
+  const devtest = useDevtestSettings();
+  // Simulator chỉ khi devtest bật và cờ useSimulator bật; còn lại là engine thật.
+  const useSim =
+    devtest.ready && devtest.value.devtest && devtest.value.useSimulator;
+  const engineMode = !useSim;
+  // Gọi cả hai hook (đúng thứ tự hook), bên không được chọn nằm im.
+  const engine = useRunEngine(tabId, devtest.ready && !useSim);
+  const sim = useRunSimulator(useSim);
+  const controller = useSim ? sim : engine;
+  const [mode, setMode] = useState<RunMode>('dry');
+  const [tab, setTab] = useState<PanelTab>('flows');
+  const [openFlow, setOpenFlow] = useState<FlowDef | undefined>();
+  const [diffOpen, setDiffOpen] = useState(false);
 
-  const refresh = useCallback(async () => {
-    setConnection(await pingActiveTab());
-  }, []);
+  const { run } = controller;
+  // Full chưa mở khoá thì không bao giờ chạy Full (engine sẽ kiểm lại).
+  const runnableMode = mode === 'assist' ? 'assist' : 'dry';
 
-  useEffect(() => {
-    refresh();
-    const onUpdated = (
-      _tabId: number,
-      changeInfo: browser.Tabs.OnUpdatedChangeInfoType
-    ): void => {
-      if (changeInfo.status === 'complete') refresh();
-    };
-    browser.tabs.onActivated.addListener(refresh);
-    browser.tabs.onUpdated.addListener(onUpdated);
-    return () => {
-      browser.tabs.onActivated.removeListener(refresh);
-      browser.tabs.onUpdated.removeListener(onUpdated);
-    };
-  }, [refresh]);
+  const goToFlows = (): void => {
+    setOpenFlow(undefined);
+    setDiffOpen(false);
+    setTab('flows');
+  };
+
+  const changeTab = (next: PanelTab): void => {
+    setDiffOpen(false);
+    if (next === 'flows') setOpenFlow(undefined);
+    setTab(next);
+  };
+
+  const openDiff = (): void => {
+    setDiffOpen(true);
+    setTab('run');
+  };
+
+  // Từ wizard thì Diff quay về wizard; từ một run thì quay về run.
+  const closeDiff = (): void => {
+    setDiffOpen(false);
+    if (!run) setTab('flows');
+  };
+
+  const startRun = (): void => {
+    controller.start({
+      mode: runnableMode,
+      config: draft.config,
+      diff: buildDiff(draft.config, source.accounts, engineMode),
+    });
+    setDiffOpen(false);
+    setTab('run');
+  };
+
+  const finishRun = (): void => {
+    controller.clear();
+    draft.clearDraft();
+    goToFlows();
+  };
+
+  const reconfigure = (accountIds: string[]): void => {
+    controller.clear();
+    draft.setConfig({ ...draft.config, accountIds });
+    draft.setStep(2);
+    setOpenFlow(FLOWS.find((flow) => flow.id === PARTNER_FLOW_ID));
+    setDiffOpen(false);
+    setTab('flows');
+  };
+
+  const renderRunTab = (): JSX.Element => {
+    if (diffOpen) {
+      return (
+        <DiffScreen
+          lang={lang}
+          rows={buildDiff(draft.config, source.accounts, engineMode)}
+          partnerBmId={draft.config.partnerBmId}
+          budgetLeft={Math.max(0, limit - used)}
+          fullLocked={FULL_LOCKED}
+          onBack={closeDiff}
+        />
+      );
+    }
+    if (run && isRunActive(run)) {
+      return (
+        <RunScreen
+          lang={lang}
+          run={run}
+          onStop={controller.stop}
+          onConfirmAssign={controller.confirmAssist}
+          onResync={controller.resync}
+          onOpenDiff={openDiff}
+        />
+      );
+    }
+    if (run && isRunFinished(run)) {
+      return (
+        <ResultScreen
+          lang={lang}
+          run={run}
+          onDone={finishRun}
+          onReconfigure={reconfigure}
+        />
+      );
+    }
+    return <RunEmpty lang={lang} onGoToFlows={goToFlows} />;
+  };
+
+  const renderScreen = (): JSX.Element => {
+    if (tab === 'run') return renderRunTab();
+    if (openFlow) {
+      return (
+        <ComingSoon
+          lang={lang}
+          title={openFlow.name[lang]}
+          onBack={goToFlows}
+        />
+      );
+    }
+    if (tab === 'flows') {
+      return <FlowsScreen lang={lang} onOpenFlow={setOpenFlow} />;
+    }
+    const tabTitle = `${tab.charAt(0).toUpperCase()}${tab.slice(1)}`;
+    return <ComingSoon lang={lang} title={tabTitle} onBack={goToFlows} />;
+  };
+
+  const notice =
+    connection.status === 'unreachable' ? (
+      <div role='status' className='alert alert-warning text-[13px]'>
+        <span>{translate(lang, 'notice.unreachable')}</span>
+        <button
+          type='button'
+          className='btn btn-outline btn-sm shrink-0 whitespace-nowrap'
+          onClick={refresh}
+        >
+          {translate(lang, 'notice.retry')}
+        </button>
+      </div>
+    ) : null;
+
+  const showWizard = tab === 'flows' && openFlow?.id === PARTNER_FLOW_ID;
 
   return (
-    <div id='my-ext' className='container p-4' data-theme='light'>
-      <h1 className='text-lg font-bold'>HPMA Copilot</h1>
-      {connection.status === 'checking' && (
-        <p className='mt-2 text-sm'>Đang kiểm tra tab hiện tại…</p>
-      )}
-      {connection.status === 'connected' && (
-        <div role='status' className='alert alert-success mt-2 text-sm'>
-          Đã kết nối với tab Business Manager.
-        </div>
-      )}
-      {connection.status === 'unreachable' && (
-        <div role='status' className='alert alert-warning mt-2 text-sm'>
-          Chưa kết nối. Mở tab business.facebook.com rồi tải lại tab đó (tab mở
-          trước khi cài hoặc reload extension chưa có content script).
-        </div>
-      )}
-      <button
-        type='button'
-        className='btn btn-outline btn-sm mt-3'
-        onClick={refresh}
-      >
-        Kiểm tra lại
-      </button>
+    // PostCSS prefix `#my-ext ` chỉ khớp phần tử con, không khớp chính root →
+    // class layout phải nằm ở div con, không đặt trên root.
+    <div id='my-ext' data-theme={theme}>
+      <div className='fixed inset-0 flex flex-col overflow-hidden bg-base-200 text-sm text-base-content'>
+        <PanelHeader
+          lang={lang}
+          connection={connection}
+          mode={mode}
+          fullLocked={FULL_LOCKED}
+          modeLocked={isRunActive(run)}
+          tab={tab}
+          onToggleLang={toggleLang}
+          onModeChange={setMode}
+          onTabChange={changeTab}
+        />
+        {showWizard ? (
+          <PartnerAssignWizard
+            lang={lang}
+            connection={connection}
+            mode={mode}
+            fullLocked={FULL_LOCKED}
+            engineMode={engineMode}
+            banner={notice}
+            draft={draft}
+            source={source}
+            onExit={goToFlows}
+            onOpenDiff={openDiff}
+            onRun={startRun}
+          />
+        ) : (
+          <main className='flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto p-4'>
+            {notice}
+            {renderScreen()}
+          </main>
+        )}
+        <PanelFooter lang={lang} />
+      </div>
     </div>
   );
 }

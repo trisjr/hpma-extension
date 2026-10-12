@@ -1,0 +1,479 @@
+/**
+ * run.ts — hợp đồng RunState giữa UI và engine + bộ máy mô phỏng thuần
+ * (SPEC-UI-003). Chưa có engine thật: `advance` là hàm thuần dùng cho simulator,
+ * không gửi message nào tới content script và không chạm DOM trang BM.
+ */
+import type { MessageKey } from '@/shared/i18n';
+import type {
+  AdAccount,
+  PartnerAssignConfig,
+  PartnerTask,
+} from '@/shared/partnerAssign';
+
+export const STEP_COUNT = 7;
+export const WRITE_STEP = 6;
+export const VERIFY_STEP = 7;
+
+export const STEP_TITLE_KEYS: readonly MessageKey[] = [
+  'run.step.1',
+  'run.step.2',
+  'run.step.3',
+  'run.step.4',
+  'run.step.5',
+  'run.step.6',
+  'run.step.7',
+];
+
+export type RunMode = 'dry' | 'assist';
+export type RunPhase = 'locate' | 'act' | 'verify';
+export const RUN_PHASES: readonly RunPhase[] = ['locate', 'act', 'verify'];
+export type PhaseState = 'idle' | 'run' | 'done' | 'skip' | 'fail';
+export type StepState =
+  | 'pending'
+  | 'running'
+  | 'ok'
+  | 'waiting'
+  | 'skipped'
+  | 'failed';
+
+export type RunStep = {
+  index: number;
+  titleKey: MessageKey;
+  state: StepState;
+  phases: Record<RunPhase, PhaseState>;
+  isWrite: boolean;
+};
+
+export type TargetOutcome =
+  | 'queued'
+  | 'running'
+  | 'done'
+  | 'skipped-existing'
+  | 'failed'
+  | 'pending-approval'
+  // Đã (hoặc có thể đã) ghi nhưng không đọc lại được: không bao giờ retry.
+  | 'unverified';
+
+export type RunTarget = {
+  accountId: string;
+  name: string;
+  // 'skip': TKQC đã đủ quyền (idempotent), engine không thao tác.
+  plan: 'run' | 'skip';
+  outcome: TargetOutcome;
+  // Mã lỗi riêng của target (engine), vd. ERR_TARGET_NOT_FOUND.
+  code?: string;
+};
+
+// Mã lỗi của engine thật (SPEC-ENG-001 §7). Simulator dùng thêm vài mã cũ.
+export type EngineErrorCode =
+  | 'ERR_BUSY'
+  | 'ERR_INVALID_CONFIG'
+  | 'ERR_UNSUPPORTED_MODE'
+  | 'ERR_CURFEW'
+  | 'ERR_BUDGET'
+  | 'ERR_EMERGENCY'
+  | 'ERR_RATE_LIMITED'
+  | 'ERR_WRONG_SURFACE'
+  | 'ERR_UNEXPECTED_DIALOG'
+  | 'ERR_LOCATE_TIMEOUT'
+  | 'ERR_LOCATE_AMBIGUOUS'
+  | 'ERR_STEP_TIMEOUT'
+  | 'ERR_TYPE_MISMATCH'
+  | 'ERR_PERMISSION_MISMATCH'
+  | 'ERR_TARGET_NOT_FOUND'
+  | 'ERR_TARGET_AMBIGUOUS'
+  | 'ERR_NO_TARGETS'
+  | 'ERR_VERIFY_UNREADABLE'
+  | 'ERR_CHECKPOINT'
+  | 'ERR_LOGGED_OUT'
+  | 'ERR_TAB_RELOADED'
+  | 'ERR_INTERNAL';
+
+export type RunStatus =
+  | 'running'
+  | 'waiting-user'
+  | 'paused'
+  | 'done'
+  | 'pending-approval'
+  | 'failed'
+  | 'stopped';
+
+export type RunScenario = 'done' | 'pending' | 'failed' | 'disconnect';
+export const RUN_SCENARIOS: readonly RunScenario[] = [
+  'done',
+  'pending',
+  'failed',
+  'disconnect',
+];
+
+// `detail` chỉ có khi Devtest logDetail ≠ off (khoá locator, ngôn ngữ trang).
+export type RunError = { code: string; stepIndex: number; detail?: string };
+
+// 'disconnect': mất tab BM (panel re-sync). 'hidden': tab BM bị ẩn, engine tự chạy tiếp.
+export type PauseReason = 'disconnect' | 'hidden';
+
+export type RunBatch = { index: number; total: number };
+
+export type RunState = {
+  runId: string;
+  mode: RunMode;
+  status: RunStatus;
+  // true: do simulator sinh ra (chip "Mô phỏng"); false: engine thật.
+  simulated: boolean;
+  pauseReason?: PauseReason;
+  // Mẻ hiện tại (≤ BATCH_SIZE TKQC mỗi mẻ); simulator luôn 1/1.
+  batch: RunBatch;
+  // Engine không ghi được audit (storage lỗi): UI nêu rõ.
+  auditFailed: boolean;
+  scenario: RunScenario;
+  startedAt: number;
+  endedAt?: number;
+  partnerBmId: string;
+  tasks: PartnerTask[];
+  targets: RunTarget[];
+  currentTarget: number;
+  steps: RunStep[];
+  // stepIndex: bước đang xử lý (1..7); sub 0 = chưa bắt đầu, 1 = đang chạy.
+  stepIndex: number;
+  sub: 0 | 1;
+  disconnectDone: boolean;
+  error?: RunError;
+};
+
+const ACTIVE_STATUSES: readonly RunStatus[] = [
+  'running',
+  'waiting-user',
+  'paused',
+];
+
+export function isRunActive(run: RunState | undefined): boolean {
+  return run !== undefined && ACTIVE_STATUSES.includes(run.status);
+}
+
+export function isRunFinished(run: RunState | undefined): boolean {
+  return run !== undefined && !ACTIVE_STATUSES.includes(run.status);
+}
+
+// ---- Diff -----------------------------------------------------------------
+
+// 'unknown': chế độ engine, chưa đọc được partner hiện có (FR-08).
+export type DiffOp = 'add' | 'change' | 'skip' | 'unknown';
+
+export type DiffRow = {
+  account: AdAccount;
+  op: DiffOp;
+  existing: PartnerTask[];
+  adding: PartnerTask[];
+};
+
+// TODO(FR-08): "đã có partner" phải lấy từ flow đọc kiểm kê. Đến lúc đó đây là
+// dữ liệu mẫu theo artboard Diff (Spa Hoa/Shop Lan 02/Nha khoa An).
+const SAMPLE_EXISTING_TASKS: Record<string, PartnerTask[]> = {
+  act_238100451187: ['ANALYZE'],
+  act_771203349902: ['ADVERTISE', 'ANALYZE', 'MANAGE'],
+};
+
+// `engine`: accountIds là chuỗi user dán (tên hoặc ID), "đã có" chưa đọc được.
+export function buildDiff(
+  config: PartnerAssignConfig,
+  accounts: AdAccount[],
+  engine = false
+): DiffRow[] {
+  return config.accountIds.map((id) => {
+    const account = accounts.find((item) => item.id === id) ?? {
+      id,
+      name: id,
+      status: 'active' as const,
+    };
+    if (engine) {
+      return {
+        account: { id, name: id, status: 'active' as const },
+        op: 'unknown' as DiffOp,
+        existing: [],
+        adding: config.tasks,
+      };
+    }
+    const existing = SAMPLE_EXISTING_TASKS[id] ?? [];
+    const adding = config.tasks.filter((task) => !existing.includes(task));
+    let op: DiffOp = 'change';
+    if (existing.length === 0) op = 'add';
+    else if (adding.length === 0) op = 'skip';
+    return { account, op, existing, adding };
+  });
+}
+
+// ---- Run state machine ----------------------------------------------------
+
+export function newRunId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(3));
+  return `run_${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+export function pendingSteps(): RunStep[] {
+  return STEP_TITLE_KEYS.map((titleKey, i) => ({
+    index: i + 1,
+    titleKey,
+    state: 'pending',
+    phases: { locate: 'idle', act: 'idle', verify: 'idle' },
+    isWrite: i + 1 === WRITE_STEP,
+  }));
+}
+
+export function createRun(params: {
+  mode: RunMode;
+  scenario: RunScenario;
+  config: PartnerAssignConfig;
+  diff: DiffRow[];
+  now: number;
+}): RunState {
+  const { mode, scenario, config, diff, now } = params;
+  return {
+    runId: newRunId(),
+    mode,
+    status: 'running',
+    simulated: true,
+    batch: { index: 1, total: 1 },
+    auditFailed: false,
+    scenario,
+    startedAt: now,
+    partnerBmId: config.partnerBmId,
+    tasks: config.tasks,
+    targets: diff.map((row) => ({
+      accountId: row.account.id,
+      name: row.account.name,
+      plan: row.op === 'skip' ? 'skip' : 'run',
+      outcome: 'queued',
+    })),
+    currentTarget: 0,
+    steps: pendingSteps(),
+    stepIndex: 1,
+    sub: 0,
+    disconnectDone: false,
+  };
+}
+
+export function patchStep(
+  run: RunState,
+  index: number,
+  patch: Partial<RunStep>
+): RunStep[] {
+  return run.steps.map((step) =>
+    step.index === index ? { ...step, ...patch } : step
+  );
+}
+
+export function patchTarget(
+  run: RunState,
+  index: number,
+  outcome: TargetOutcome
+): RunTarget[] {
+  return run.targets.map((target, i) =>
+    i === index ? { ...target, outcome } : target
+  );
+}
+
+// Kịch bản "failed" làm hỏng TKQC thứ hai cần chạy (hoặc TKQC đầu nếu chỉ có một).
+function failTargetIndex(run: RunState): number {
+  const runnable = run.targets
+    .map((target, i) => ({ target, i }))
+    .filter(({ target }) => target.plan === 'run');
+  return (runnable[1] ?? runnable[0])?.i ?? -1;
+}
+
+function failStepIndex(mode: RunMode): number {
+  return mode === 'assist' ? WRITE_STEP : 4;
+}
+
+export function finish(
+  run: RunState,
+  status: RunStatus,
+  now: number
+): RunState {
+  return { ...run, status, endedAt: now };
+}
+
+// Chuyển sang TKQC kế tiếp hoặc kết thúc run.
+function nextTarget(run: RunState, now: number): RunState {
+  const next = run.currentTarget + 1;
+  if (next >= run.targets.length) return finish(run, 'done', now);
+  return {
+    ...run,
+    currentTarget: next,
+    steps: pendingSteps(),
+    stepIndex: 1,
+    sub: 0,
+  };
+}
+
+function startStep(run: RunState, now: number): RunState {
+  const { stepIndex, mode, currentTarget } = run;
+  const target = run.targets[currentTarget];
+  const running: RunStep[] = patchStep(run, stepIndex, {
+    state: 'running',
+    phases: { locate: 'done', act: 'run', verify: 'idle' },
+  });
+
+  if (
+    run.scenario === 'disconnect' &&
+    !run.disconnectDone &&
+    currentTarget === 0 &&
+    stepIndex === 4
+  ) {
+    return {
+      ...run,
+      status: 'paused',
+      pauseReason: 'disconnect',
+      disconnectDone: true,
+    };
+  }
+
+  if (
+    run.scenario === 'failed' &&
+    currentTarget === failTargetIndex(run) &&
+    stepIndex === failStepIndex(mode)
+  ) {
+    const code = mode === 'assist' ? 'ERR_ACT_REJECTED' : 'ERR_LOCATE_TIMEOUT';
+    return finish(
+      {
+        ...run,
+        targets: patchTarget(run, currentTarget, 'failed'),
+        steps: patchStep(run, stepIndex, {
+          state: 'failed',
+          phases: { locate: 'done', act: 'fail', verify: 'idle' },
+        }),
+        error: { code, stepIndex },
+      },
+      'failed',
+      now
+    );
+  }
+
+  if (stepIndex === WRITE_STEP) {
+    if (mode === 'dry') {
+      // Dry-run không bao giờ thực thi bước ghi (FR-03).
+      return {
+        ...run,
+        steps: patchStep(run, stepIndex, {
+          state: 'skipped',
+          phases: { locate: 'idle', act: 'skip', verify: 'skip' },
+        }),
+        stepIndex: stepIndex + 1,
+        sub: 0,
+        targets: patchTarget(run, currentTarget, 'running'),
+      };
+    }
+    return {
+      ...run,
+      status: 'waiting-user',
+      steps: patchStep(run, stepIndex, {
+        state: 'waiting',
+        phases: { locate: 'done', act: 'idle', verify: 'idle' },
+      }),
+    };
+  }
+
+  if (stepIndex === VERIFY_STEP && mode === 'dry') {
+    const closed: RunState = {
+      ...run,
+      steps: patchStep(run, stepIndex, {
+        state: 'skipped',
+        phases: { locate: 'skip', act: 'skip', verify: 'skip' },
+      }),
+      targets: patchTarget(run, currentTarget, 'done'),
+    };
+    return nextTarget(closed, now);
+  }
+
+  return {
+    ...run,
+    steps: running,
+    sub: 1,
+    targets:
+      target.outcome === 'queued'
+        ? patchTarget(run, currentTarget, 'running')
+        : run.targets,
+  };
+}
+
+function completeStep(run: RunState, now: number): RunState {
+  const done: RunState = {
+    ...run,
+    steps: patchStep(run, run.stepIndex, {
+      state: 'ok',
+      phases: { locate: 'done', act: 'done', verify: 'done' },
+    }),
+  };
+  if (run.stepIndex >= VERIFY_STEP) {
+    return nextTarget(
+      { ...done, targets: patchTarget(done, run.currentTarget, 'done') },
+      now
+    );
+  }
+  return { ...done, stepIndex: run.stepIndex + 1, sub: 0 };
+}
+
+// Một nhịp của simulator. Chỉ có tác dụng khi status = 'running'.
+export function advance(run: RunState, now: number): RunState {
+  if (run.status !== 'running') return run;
+  const target = run.targets[run.currentTarget];
+  if (target.plan === 'skip') {
+    return nextTarget(
+      {
+        ...run,
+        targets: patchTarget(run, run.currentTarget, 'skipped-existing'),
+      },
+      now
+    );
+  }
+  return run.sub === 0 ? startStep(run, now) : completeStep(run, now);
+}
+
+// User xác nhận đã tự bấm Assign trong tab BM (Assist).
+export function confirmAssist(run: RunState, now: number): RunState {
+  if (run.status !== 'waiting-user') return run;
+  const confirmed: RunState = {
+    ...run,
+    status: 'running',
+    steps: patchStep(run, WRITE_STEP, {
+      state: 'ok',
+      phases: { locate: 'done', act: 'done', verify: 'done' },
+    }),
+    stepIndex: VERIFY_STEP,
+    sub: 0,
+  };
+  if (run.scenario === 'pending') {
+    // BM yêu cầu admin thứ 2 duyệt: không replay, kết thúc ngay (FR-04).
+    return finish(
+      {
+        ...confirmed,
+        targets: patchTarget(confirmed, run.currentTarget, 'pending-approval'),
+      },
+      'pending-approval',
+      now
+    );
+  }
+  return confirmed;
+}
+
+export function resyncRun(run: RunState): RunState {
+  return run.status === 'paused' ? { ...run, status: 'running' } : run;
+}
+
+export function stopRun(run: RunState, now: number): RunState {
+  if (!isRunActive(run)) return run;
+  return finish(run, 'stopped', now);
+}
+
+export function isRunState(value: unknown): value is RunState {
+  if (typeof value !== 'object' || value === null) return false;
+  const run = value as Partial<RunState>;
+  return (
+    typeof run.runId === 'string' &&
+    typeof run.status === 'string' &&
+    (run.mode === 'dry' || run.mode === 'assist') &&
+    Array.isArray(run.targets) &&
+    Array.isArray(run.steps) &&
+    Array.isArray(run.tasks) &&
+    typeof run.startedAt === 'number'
+  );
+}

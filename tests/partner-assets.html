@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="vi">
+  <meta charset="utf-8" />
+  <title>Partner asset selection regression</title>
+  <body>
+    <pre id="result">Running…</pre>
+    <div id="fixture"></div>
+    <!-- Serve with Vite, then open /tests/partner-assets.html. No BM access needed. -->
+    <script type="module">
+      import {
+        findAssetCheckbox,
+        resolveOnce,
+      } from '/src/content/engine/locator.ts';
+      import SELECTORS from '/src/content/engine/selectors.ts';
+      import partnerAssignFlow from '/src/content/flows/partnerAssign.ts';
+
+      const fixture = document.querySelector('#fixture');
+      const output = document.querySelector('#result');
+      const checks = [];
+      const assert = (value, message) => {
+        if (!value) throw new Error(message);
+      };
+      function locatorCheck(name, tabs, expected, lang = 'vi') {
+        fixture.innerHTML = `<div role="dialog">${tabs}</div>`;
+        const result = resolveOnce(SELECTORS.assetTypeAdAccounts, lang);
+        assert((result.ok ? result.el.id : result.reason) === expected, name);
+        checks.push(`PASS ${name}`);
+      }
+      function assetCheck(name, query, names, expected, lang = 'vi') {
+        fixture.innerHTML = `<div role="dialog">${names.map((name, i) => `<label><input id="asset-${i}" type="checkbox">${name}</label>`).join('')}</div>`;
+        const match = findAssetCheckbox(query, fixture.firstElementChild, lang);
+        assert(
+          (match.kind === 'found' ? match.checkbox.id : match.kind) ===
+            expected,
+          name
+        );
+        checks.push(`PASS ${name}`);
+      }
+      try {
+        locatorCheck(
+          'Plain nested label',
+          '<div><span id="tab">Tài khoản quảng cáo</span></div>',
+          'tab'
+        );
+        locatorCheck(
+          'English tab',
+          '<div role="tab" id="tab">Ad accounts</div>',
+          'tab',
+          'en'
+        );
+        locatorCheck(
+          'Hidden duplicate',
+          '<div hidden>Tài khoản quảng cáo</div><div id="tab">Tài khoản quảng cáo</div>',
+          'tab'
+        );
+        locatorCheck(
+          'Ambiguous tabs',
+          '<div>Tài khoản quảng cáo</div><div>Tài khoản quảng cáo</div>',
+          'ambiguous'
+        );
+        locatorCheck('Missing tab', '<div>Trang Facebook</div>', 'none');
+        assetCheck(
+          'ID picks first asset, skips Select all',
+          '1432650704915908',
+          ['Chọn tất cả', 'TrisJr 01', 'Other'],
+          'asset-1'
+        );
+        assetCheck(
+          'act_ ID and English Select all',
+          'act_1432650704915908',
+          ['Select all', 'TrisJr 01'],
+          'asset-1',
+          'en'
+        );
+        assetCheck(
+          'Name picks exact result, not first partial',
+          'Shop',
+          ['Chọn tất cả', 'Shop Extra', 'Shop'],
+          'asset-2'
+        );
+        assetCheck('Partial name rejected', 'Shop', ['Shop Extra'], 'none');
+        assetCheck(
+          'Duplicate exact names rejected',
+          'Shop',
+          ['Shop', 'Shop'],
+          'ambiguous'
+        );
+        assetCheck(
+          'Empty search result',
+          '1432650704915908',
+          ['Chọn tất cả'],
+          'none'
+        );
+
+        fixture.innerHTML = `<div role="dialog"><div id="tab"><span>Tài khoản quảng cáo</span></div><input type="search" aria-label="Tìm kiếm theo tên hoặc ID"><div id="assets"><label><input type="checkbox">Dev Tool</label></div></div>`;
+        const targets = ['1432650704915908', 'Shop'].map((accountId) => ({
+          accountId,
+          outcome: 'pending',
+        }));
+        const selectedNames = [];
+        let timer;
+        fixture
+          .querySelector('input[type="search"]')
+          .addEventListener('input', (event) => {
+            clearTimeout(timer);
+            const query = event.target.value;
+            timer = setTimeout(() => {
+              const names =
+                query === '1432650704915908'
+                  ? ['Chọn tất cả', 'TrisJr 01']
+                  : query === 'Shop'
+                    ? ['Chọn tất cả', 'Shop Extra', 'Shop']
+                    : ['Chọn tất cả'];
+              fixture.querySelector('#assets').innerHTML = names
+                .map((name) => `<label><input type="checkbox">${name}</label>`)
+                .join('');
+              fixture
+                .querySelectorAll('#assets input')
+                .forEach((input) =>
+                  input.addEventListener('change', () =>
+                    selectedNames.push(input.parentElement.textContent)
+                  )
+                );
+            }, 600);
+          });
+        let switched = false;
+        fixture.querySelector('#tab').addEventListener('click', () => {
+          switched = true;
+        });
+        const stop = new Error('step 4 complete');
+        const ctx = {
+          signal: new AbortController().signal,
+          lang: 'vi',
+          mode: 'assist',
+          batchSize: 10,
+          config: { queries: targets.map((target) => target.accountId) },
+          gate: async () => {},
+          pause: async () => {},
+          beginBatch: () => {},
+          state: () => ({ targets }),
+          setTarget: (index, outcome, code) =>
+            Object.assign(targets[index], { outcome, code }),
+          step: async (index, body) => {
+            if (index < 4) return;
+            if (index > 4) throw stop;
+            return body({ acted: () => {} });
+          },
+        };
+        try {
+          await partnerAssignFlow(ctx);
+          throw new Error('Expected step 5 boundary');
+        } catch (error) {
+          if (error !== stop) throw error;
+        }
+        assert(switched, 'Ad accounts tab was not clicked');
+        assert(
+          targets.every((target) => target.outcome === 'running'),
+          'Targets were not selected'
+        );
+        assert(
+          selectedNames.join(',') === 'TrisJr 01,Shop',
+          'Selected stale result, partial name, or Select all'
+        );
+        assert(
+          fixture.querySelector('#assets label:last-child input').checked,
+          'Account checkbox was not checked'
+        );
+        checks.push(
+          'PASS Search replaces previous query, waits for results, selects ID then exact name'
+        );
+        output.textContent = checks.join('\n');
+      } catch (error) {
+        output.textContent = checks.concat(`FAIL ${error.message}`).join('\n');
+        throw error;
+      } finally {
+        fixture.replaceChildren();
+      }
+    </script>
+  </body>
+</html>

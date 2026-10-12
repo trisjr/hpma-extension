@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Options — Pacing &amp; limit</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+*,*::before,*::after{box-sizing:border-box}
+a{color:#2563eb}a:hover{color:#1d4ed8}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+</style>
+</helmet>
+<div id="my-ext" data-theme="hpma-light" style="min-height: 100vh; background: #f8f7fa; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif; color: #52525b; font-size: 15px; line-height: 22px;">
+  <header style="background: #ffffff; border-bottom: 1px solid rgba(47, 43, 61, 0.12);">
+    <div style="max-width: 960px; margin: 0 auto; padding: 16px 24px 0; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+        <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 500; color: #2f2b3d;">Cài đặt HPMA Copilot</h1>
+        <span style="font-size: 13px; line-height: 18px; color: #4b5563;">v0.3.0 · áp dụng cho mọi BM trên trình duyệt này</span>
+      </div>
+      <nav aria-label="Mục cài đặt" style="display: flex; gap: 4px; overflow-x: auto;">
+        <a href="OptionsPacing.dc.html" aria-current="page" style="height: 42px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 600; color: #2563eb; text-decoration: none; border-bottom: 2px solid #3b82f6; white-space: nowrap;">Pacing &amp; limit</a>
+        <a href="OptionsAudit.dc.html" style="height: 42px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: #4b5563; text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap;">Audit log</a>
+        <a href="OptionsDevtest.dc.html" style="height: 42px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: #4b5563; text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap;">Devtest</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 960px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+    <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <h2 style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 500; color: #2f2b3d;">Độ trễ giữa các bước</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #4b5563;">Giữ nhịp như người thao tác. Không thể đặt thấp hơn ngưỡng an toàn.</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="delay-base" style="font-size: 14px; line-height: 20px; font-weight: 500; color: #2f2b3d;">Delay nền</label>
+          <div style="display: flex; align-items: center; height: 40px; border-radius: 6px; background: #ffffff; border: {{delayBorder}};">
+            <input id="delay-base" type="number" min="3" step="0.5" value="{{delay}}" onChange="{{onDelay}}" aria-invalid="{{delayInvalid}}" aria-describedby="delay-msg" style="flex: 1; min-width: 0; height: 36px; padding: 0 12px; border: 0; outline: none; background: transparent; font-family: inherit; font-size: 15px; color: #2f2b3d;">
+            <span style="padding: 0 12px; font-size: 13px; color: #4b5563;">giây</span>
+          </div>
+          <span id="delay-msg" style="font-size: 12px; line-height: 16px; color: {{delayMsgFg}};">{{delayMsg}}</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="jitter" style="font-size: 14px; line-height: 20px; font-weight: 500; color: #2f2b3d;">Jitter</label>
+          <div style="display: flex; align-items: center; height: 40px; border-radius: 6px; background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.22);">
+            <input id="jitter" type="number" min="20" value="40" style="flex: 1; min-width: 0; height: 36px; padding: 0 12px; border: 0; outline: none; background: transparent; font-family: inherit; font-size: 15px; color: #2f2b3d;">
+            <span style="padding: 0 12px; font-size: 13px; color: #4b5563;">± %</span>
+          </div>
+          <span style="font-size: 12px; line-height: 16px; color: #4b5563;">Ngẫu nhiên quanh delay nền · tối thiểu 20%</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="delay-write" style="font-size: 14px; line-height: 20px; font-weight: 500; color: #2f2b3d;">Thêm trước bước ghi</label>
+          <div style="display: flex; align-items: center; height: 40px; border-radius: 6px; background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.22);">
+            <input id="delay-write" type="number" min="2" value="2" style="flex: 1; min-width: 0; height: 36px; padding: 0 12px; border: 0; outline: none; background: transparent; font-family: inherit; font-size: 15px; color: #2f2b3d;">
+            <span style="padding: 0 12px; font-size: 13px; color: #4b5563;">giây</span>
+          </div>
+          <span style="font-size: 12px; line-height: 16px; color: #4b5563;">Cộng thêm trước Assign, Remove, Save</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: #ecfeff; border: 1px solid #a5f3fc; font-size: 13px; line-height: 18px; color: #155e75;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0 -18z"></path><path d="M12 9h.01"></path><path d="M11 12h1v4h1"></path></svg>
+        <span>{{preview}}</span>
+      </div>
+    </section>
+
+    <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <h2 style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 500; color: #2f2b3d;">Giới hạn ghi mỗi ngày theo loại BM</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #4b5563;">Đếm mọi bước ghi thành công, kể cả pending-approval. Đọc và Dry-run không tính.</p>
+      </div>
+      <div style="overflow-x: auto; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px;">
+        <table style="width: 100%; min-width: 600px; border-collapse: collapse; font-size: 14px; line-height: 20px;">
+          <thead>
+            <tr style="background: #eaeaec; text-align: left;">
+              <th scope="col" style="height: 44px; padding: 0 16px; font-size: 13px; font-weight: 600; color: #2f2b3d;">Loại BM</th>
+              <th scope="col" style="padding: 0 16px; font-size: 13px; font-weight: 600; color: #2f2b3d;">Nhận diện</th>
+              <th scope="col" style="padding: 0 16px; font-size: 13px; font-weight: 600; color: #2f2b3d;">Lượt ghi / ngày</th>
+              <th scope="col" style="padding: 0 16px; font-size: 13px; font-weight: 600; color: #2f2b3d;">Mẻ tối đa</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-top: 1px solid rgba(47, 43, 61, 0.12);">
+              <th scope="row" style="height: 56px; padding: 0 16px; text-align: left; font-weight: 500; color: #2f2b3d;">BM mới</th>
+              <td style="padding: 0 16px; color: #4b5563;">Tạo dưới 30 ngày</td>
+              <td style="padding: 0 16px;"><input type="number" aria-label="Lượt ghi mỗi ngày, BM mới" value="10" style="width: 96px; height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 14px; color: #2f2b3d;"></td>
+              <td style="padding: 0 16px;"><input type="number" aria-label="Mẻ tối đa, BM mới" value="5" style="width: 96px; height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 14px; color: #2f2b3d;"></td>
+            </tr>
+            <tr style="border-top: 1px solid rgba(47, 43, 61, 0.12);">
+              <th scope="row" style="height: 56px; padding: 0 16px; text-align: left; font-weight: 500; color: #2f2b3d;">BM thường</th>
+              <td style="padding: 0 16px; color: #4b5563;">Mặc định</td>
+              <td style="padding: 0 16px;"><input type="number" aria-label="Lượt ghi mỗi ngày, BM thường" value="20" style="width: 96px; height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 14px; color: #2f2b3d;"></td>
+              <td style="padding: 0 16px;"><input type="number" aria-label="Mẻ tối đa, BM thường" value="10" style="width: 96px; height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 14px; color: #2f2b3d;"></td>
+            </tr>
+            <tr style="border-top: 1px solid rgba(47, 43, 61, 0.12);">
+              <th scope="row" style="height: 56px; padding: 0 16px; text-align: left; font-weight: 500; color: #2f2b3d;">BM đã xác minh</th>
+              <td style="padding: 0 16px; color: #4b5563;">Có xác minh doanh nghiệp</td>
+              <td style="padding: 0 16px;"><input type="number" aria-label="Lượt ghi mỗi ngày, BM đã xác minh" value="60" style="width: 96px; height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 14px; color: #2f2b3d;"></td>
+              <td style="padding: 0 16px;"><input type="number" aria-label="Mẻ tối đa, BM đã xác minh" value="10" style="width: 96px; height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 14px; color: #2f2b3d;"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <h2 style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 500; color: #2f2b3d;">Curfew</h2>
+          <p style="margin: 0; font-size: 14px; line-height: 20px; color: #4b5563;">Trong khung giờ này chỉ chạy flow đọc và Dry-run.</p>
+        </div>
+        <label style="display: inline-flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; font-size: 14px; font-weight: 500; color: #2f2b3d;">
+          <input type="checkbox" role="switch" checked="{{curfewOn}}" onChange="{{toggleCurfew}}" style="position: absolute; width: 1px; height: 1px; opacity: 0;">
+          <span aria-hidden="true" style="width: 40px; height: 22px; border-radius: 9999px; padding: 2px; display: flex; background: {{trackBg}}; justify-content: {{knobSide}};"><span style="width: 18px; height: 18px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(47, 43, 61, 0.3);"></span></span>
+          {{curfewLabel}}
+        </label>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; opacity: {{curfewOpacity}};">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="cf-from" style="font-size: 14px; line-height: 20px; font-weight: 500; color: #2f2b3d;">Từ</label>
+          <input id="cf-from" type="time" value="00:00" style="height: 40px; padding: 0 12px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 15px; color: #2f2b3d;">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="cf-to" style="font-size: 14px; line-height: 20px; font-weight: 500; color: #2f2b3d;">Đến</label>
+          <input id="cf-to" type="time" value="06:00" style="height: 40px; padding: 0 12px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 15px; color: #2f2b3d;">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="cf-tz" style="font-size: 14px; line-height: 20px; font-weight: 500; color: #2f2b3d;">Múi giờ</label>
+          <select id="cf-tz" style="height: 40px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; font-family: inherit; font-size: 15px; color: #2f2b3d;">
+            <option>Asia/Ho_Chi_Minh (GMT+7)</option>
+            <option>Asia/Bangkok (GMT+7)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 24px;">
+      <button type="button" style="height: 40px; padding: 0 16px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d; font-family: inherit; font-size: 15px; font-weight: 600;">Khôi phục mặc định</button>
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <span style="font-size: 13px; line-height: 18px; color: {{saveHintFg}};">{{saveHint}}</span>
+        <button type="button" disabled="{{saveDisabled}}" style="height: 40px; padding: 0 20px; border: 0; border-radius: 6px; background: #2563eb; color: #ffffff; font-family: inherit; font-size: 15px; font-weight: 600; opacity: {{saveOpacity}};">Lưu thay đổi</button>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = Object.assign({ delay: '2', curfew: true }, this.state || {});
+    const n = parseFloat(String(st.delay).replace(',', '.'));
+    const valid = !isNaN(n) && n >= 3;
+    const fmt = (x) => x.toFixed(1).replace('.', ',');
+    return {
+      delay: st.delay,
+      onDelay: (e) => this.setState({ delay: e.target.value }),
+      delayInvalid: valid ? 'false' : 'true',
+      delayBorder: valid ? '1px solid rgba(47, 43, 61, 0.22)' : '2px solid #dc2626',
+      delayMsg: valid ? 'Ngưỡng an toàn: tối thiểu 3 giây' : 'Không được dưới 3 giây (ngưỡng an toàn).',
+      delayMsgFg: valid ? '#4b5563' : '#b91c1c',
+      preview: valid
+        ? 'Với cấu hình này, mỗi bước cách nhau ' + fmt(n * 0.6) + '–' + fmt(n * 1.4) + ' giây; bước ghi thêm 2 giây.'
+        : 'Chưa xem trước được nhịp chạy khi delay nền dưới ngưỡng an toàn.',
+      curfewOn: !!st.curfew,
+      toggleCurfew: () => this.setState({ curfew: !st.curfew }),
+      trackBg: st.curfew ? '#2563eb' : '#d1d5db',
+      knobSide: st.curfew ? 'flex-end' : 'flex-start',
+      curfewLabel: st.curfew ? 'Đang bật' : 'Đang tắt',
+      curfewOpacity: st.curfew ? 1 : 0.5,
+      saveDisabled: !valid,
+      saveOpacity: valid ? 1 : 0.45,
+      saveHint: valid ? 'Có thay đổi chưa lưu' : 'Sửa 1 lỗi để lưu',
+      saveHintFg: valid ? '#4b5563' : '#b91c1c'
+    };
+  }
+}
+</script>
+</body>
+</html>

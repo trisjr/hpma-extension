@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Options — Devtest</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+*,*::before,*::after{box-sizing:border-box}
+a{color:#2563eb}a:hover{color:#1d4ed8}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+</style>
+</helmet>
+<div id="my-ext" data-theme="hpma-light" style="min-height: 100vh; background: #f8f7fa; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif; color: #52525b; font-size: 15px; line-height: 22px;">
+  <header style="background: #ffffff; border-bottom: 1px solid rgba(47, 43, 61, 0.12);">
+    <div style="max-width: 960px; margin: 0 auto; padding: 16px 24px 0; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+        <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 500; color: #2f2b3d;">Cài đặt HPMA Copilot</h1>
+        <span style="font-size: 13px; line-height: 18px; color: #4b5563;">v0.3.0 · áp dụng cho mọi BM trên trình duyệt này</span>
+      </div>
+      <nav aria-label="Mục cài đặt" style="display: flex; gap: 4px; overflow-x: auto;">
+        <a href="OptionsPacing.dc.html" style="height: 42px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: #4b5563; text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap;">Pacing &amp; limit</a>
+        <a href="OptionsAudit.dc.html" style="height: 42px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: #4b5563; text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap;">Audit log</a>
+        <a href="OptionsDevtest.dc.html" aria-current="page" style="height: 42px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 600; color: #2563eb; text-decoration: none; border-bottom: 2px solid #3b82f6; white-space: nowrap;">Devtest</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 960px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <h2 style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 500; color: #2f2b3d;">Devtest</h2>
+      <p style="margin: 0; font-size: 14px; line-height: 20px; color: #4b5563;">Dành cho dev và operator nâng cao. Cờ ở đây không mở khoá Full, không hạ ngưỡng probe hay giới hạn an toàn.</p>
+    </div>
+
+    <section style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; overflow: hidden;">
+      <sc-for list="{{flags}}" as="f" hint-placeholder-count="3">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 24px; border-top: 1px solid rgba(47, 43, 61, 0.08); flex-wrap: wrap;">
+          <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+            <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span style="font-size: 15px; line-height: 22px; font-weight: 500; color: #2f2b3d;">{{f.label}}</span>
+              <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #4b5563;">{{f.key}}</code>
+            </span>
+            <span style="font-size: 13px; line-height: 18px; color: #4b5563;">{{f.desc}}</span>
+          </div>
+          <label style="display: inline-flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; font-size: 14px; font-weight: 500; color: #2f2b3d;">
+            <input type="checkbox" role="switch" aria-label="{{f.label}}" checked="{{f.on}}" onChange="{{f.toggle}}" style="position: absolute; width: 1px; height: 1px; opacity: 0;">
+            <span aria-hidden="true" style="width: 40px; height: 22px; border-radius: 9999px; padding: 2px; display: flex; background: {{f.track}}; justify-content: {{f.side}};"><span style="width: 18px; height: 18px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(47, 43, 61, 0.3);"></span></span>
+            <span style="min-width: 56px;">{{f.state}}</span>
+          </label>
+        </div>
+      </sc-for>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 24px; border-top: 1px solid rgba(47, 43, 61, 0.08); flex-wrap: wrap;">
+        <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <label for="log-detail" style="font-size: 15px; line-height: 22px; font-weight: 500; color: #2f2b3d;">Mức chi tiết log</label>
+            <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #4b5563;">logDetail</code>
+          </span>
+          <span style="font-size: 13px; line-height: 18px; color: #4b5563;">off: chỉ audit · basic: thêm step và selector · verbose: thêm nội dung field</span>
+        </div>
+        <select id="log-detail" value="{{logDetail}}" onChange="{{onLogDetail}}" style="width: 180px; height: 40px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; font-family: inherit; font-size: 15px; color: #2f2b3d;">
+          <option value="off">off</option>
+          <option value="basic">basic</option>
+          <option value="verbose">verbose</option>
+        </select>
+      </div>
+      <sc-if value="{{isVerbose}}" hint-placeholder-val="{{true}}">
+        <div role="alert" style="margin: 0 24px 20px; display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: #fff7ed; border: 1px solid #fdba74;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c2410c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 9v4"></path><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"></path><path d="M12 16h.01"></path></svg>
+          <span style="font-size: 13px; line-height: 18px; color: #9a3412;">verbose ghi cả tên TKQC và BM ID vào log cục bộ, có thể lọt vào file export. Tắt khi debug xong.</span>
+        </div>
+      </sc-if>
+    </section>
+
+    <section style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 6px; background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px;"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"></path></svg>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 14px; line-height: 20px; font-weight: 500; color: #2f2b3d;">Luôn bật, không tắt được</span>
+        <span style="font-size: 13px; line-height: 18px; color: #4b5563;">Kill-switch · audit log · từ chối vùng đỏ · emergency stop khi gặp checkpoint, CAPTCHA, temp-block.</span>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = Object.assign({ devtest: true, probeTab: true, snapshot: false, logDetail: 'verbose' }, this.state || {});
+    const FLAGS = [
+      { k: 'devtest', label: 'Bật devtest', key: 'devtest', desc: 'Hiện công cụ debug trong side panel và ghi thời gian từng bước.' },
+      { k: 'probeTab', label: 'Hiện tab Probe', key: 'ui.probeTab', desc: 'Cho operator xem hit-rate selector ngay trong side panel.' },
+      { k: 'snapshot', label: 'Lưu DOM snapshot khi selector trượt', key: 'probe.snapshotOnMiss', desc: 'Chỉ lưu cục bộ, tự xoá sau 24 giờ. Không gửi đi đâu.' }
+    ];
+    const flags = FLAGS.map((f) => {
+      const on = !!st[f.k];
+      return {
+        label: f.label, key: f.key, desc: f.desc, on: on,
+        state: on ? 'Bật' : 'Tắt',
+        track: on ? '#2563eb' : '#d1d5db',
+        side: on ? 'flex-end' : 'flex-start',
+        toggle: () => this.setState({ [f.k]: !on })
+      };
+    });
+    return {
+      flags: flags,
+      logDetail: st.logDetail,
+      onLogDetail: (e) => this.setState({ logDetail: e.target.value }),
+      isVerbose: st.logDetail === 'verbose'
+    };
+  }
+}
+</script>
+</body>
+</html>

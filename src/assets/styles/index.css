@@ -1,64 +1,83 @@
 @import 'tailwindcss';
-@plugin "daisyui";
-
-@font-face {
-  font-weight: 900;
-  src: url('../fonts/Inter-Black.ttf');
-  font-family: 'Inter';
+@plugin "daisyui" {
+  themes:
+    light --default,
+    dark --prefersdark;
 }
 
-@font-face {
-  font-weight: 800;
-  src: url('../fonts/Inter-ExtraBold.ttf');
-  font-family: 'Inter';
+/* HPMA design system tokens (HPMA Copilot UI artifact, ds/hpma) mapped onto DaisyUI 5 */
+@plugin "daisyui/theme" {
+  name: 'light';
+  default: true;
+  color-scheme: light;
+  --color-base-100: #fff;
+  --color-base-200: #f8f7fa;
+  --color-base-300: #e5e7eb;
+  --color-base-content: #2f2b3d;
+  --color-primary: #3b82f6;
+  --color-primary-content: #fff;
+  --color-secondary: #808390;
+  --color-secondary-content: #fff;
+  --color-accent: #675dd8;
+  --color-accent-content: #fff;
+  --color-neutral: #2f2b3d;
+  --color-neutral-content: #f8f7fa;
+  --color-info: #06b6d4;
+  --color-info-content: #fff;
+  --color-success: #22c55e;
+  --color-success-content: #fff;
+  --color-warning: #eab308;
+  --color-warning-content: #fff;
+  --color-error: #ef4444;
+  --color-error-content: #fff;
+  --radius-selector: 0.375rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.375rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
-@font-face {
-  font-weight: 700;
-  src: url('../fonts/Inter-Bold.ttf');
-  font-family: 'Inter';
-}
-
-@font-face {
-  font-weight: 600;
-  src: url('../fonts/Inter-SemiBold.ttf');
-  font-family: 'Inter';
-}
-
-@font-face {
-  font-weight: 500;
-  src: url('../fonts/Inter-Medium.ttf');
-  font-family: 'Inter';
-}
-
-@font-face {
-  font-weight: 400;
-  src: url('../fonts/Inter-Regular.ttf');
-  font-family: 'Inter';
-}
-
-@font-face {
-  font-weight: 300;
-  src: url('../fonts/Inter-Light.ttf');
-  font-family: 'Inter';
-}
-
-@font-face {
-  font-weight: 200;
-  src: url('../fonts/Inter-ExtraLight.ttf');
-  font-family: 'Inter';
-}
-
-@font-face {
-  font-weight: 100;
-  src: url('../fonts/Inter-Thin.ttf');
-  font-family: 'Inter';
+@plugin "daisyui/theme" {
+  name: 'dark';
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #2f3349;
+  --color-base-200: #25293c;
+  --color-base-300: #4a5072;
+  --color-base-content: #e1def5;
+  --color-primary: #3b82f6;
+  --color-primary-content: #fff;
+  --color-secondary: #808390;
+  --color-secondary-content: #fff;
+  --color-accent: #675dd8;
+  --color-accent-content: #fff;
+  --color-neutral: #4a5072;
+  --color-neutral-content: #e1def5;
+  --color-info: #00bad1;
+  --color-info-content: #fff;
+  --color-success: #28c76f;
+  --color-success-content: #fff;
+  --color-warning: #ff9f43;
+  --color-warning-content: #fff;
+  --color-error: #ff4c51;
+  --color-error-content: #fff;
+  --radius-selector: 0.375rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.375rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 :host {
   all: initial;
   font-weight: 500 !important;
   font-size: 16px !important;
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Montserrat', sans-serif !important;
   letter-spacing: normal;
 }

@@ -6,9 +6,9 @@ const isDev = process.env.NODE_ENV === 'development';
 
 // Pivot DOM automation (docs/050-Research/21 §6): siết phạm vi về đúng origin
 // Business Manager, tối thiểu quyền — chỉ `storage`; không `<all_urls>`,
-// không `tabs`/`host_permissions` (Chrome: tabs.sendMessage chạy được nhờ
-// content_scripts matches; Firefox có thể đòi cấp host permission — chưa kiểm
-// chứng, xem .claude/rules/extension-apis.md). Khóa side panel theo browser nằm ở `vite.config.ts`.
+// không `tabs` (Chrome: tabs.sendMessage chạy được nhờ content_scripts matches).
+// `host_permissions` chỉ khai cho Firefox trong `vite.config.ts` (cùng origin BM).
+// Khóa side panel theo browser cũng nằm ở `vite.config.ts`.
 const BM_ORIGIN = 'https://business.facebook.com/*';
 
 // Quyền dùng chung hai browser; `vite.config.ts` nối thêm quyền riêng từng bên.

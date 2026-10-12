@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Options — Audit log</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+*,*::before,*::after{box-sizing:border-box}
+a{color:#2563eb}a:hover{color:#1d4ed8}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+</style>
+</helmet>
+<div id="my-ext" data-theme="hpma-light" style="min-height: 100vh; background: #f8f7fa; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif; color: #52525b; font-size: 15px; line-height: 22px;">
+  <header style="background: #ffffff; border-bottom: 1px solid rgba(47, 43, 61, 0.12);">
+    <div style="max-width: 960px; margin: 0 auto; padding: 16px 24px 0; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+        <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 500; color: #2f2b3d;">Cài đặt HPMA Copilot</h1>
+        <span style="font-size: 13px; line-height: 18px; color: #4b5563;">v0.3.0 · áp dụng cho mọi BM trên trình duyệt này</span>
+      </div>
+      <nav aria-label="Mục cài đặt" style="display: flex; gap: 4px; overflow-x: auto;">
+        <a href="OptionsPacing.dc.html" style="height: 42px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: #4b5563; text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap;">Pacing &amp; limit</a>
+        <a href="OptionsAudit.dc.html" aria-current="page" style="height: 42px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 600; color: #2563eb; text-decoration: none; border-bottom: 2px solid #3b82f6; white-space: nowrap;">Audit log</a>
+        <a href="OptionsDevtest.dc.html" style="height: 42px; display: flex; align-items: center; padding: 0 16px; font-size: 14px; font-weight: 500; color: #4b5563; text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap;">Devtest</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 960px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <h2 style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 500; color: #2f2b3d;">Audit log</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #4b5563;">Mỗi bước ghi, kể cả Dry-run, đều có một dòng. Lưu cục bộ 90 ngày.</p>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" style="height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d; font-family: inherit; font-size: 14px; font-weight: 600;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path><path d="M7 11l5 5l5 -5"></path><path d="M12 4v12"></path></svg>
+          Export CSV
+        </button>
+        <button type="button" style="height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d; font-family: inherit; font-size: 14px; font-weight: 600;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path><path d="M7 11l5 5l5 -5"></path><path d="M12 4v12"></path></svg>
+          Export JSONL
+        </button>
+      </div>
+    </div>
+
+    <section aria-label="Bộ lọc" style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label for="f-from" style="font-size: 13px; line-height: 18px; font-weight: 500; color: #2f2b3d;">Từ ngày</label>
+        <input id="f-from" type="date" value="2026-10-05" style="height: 40px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 14px; color: #2f2b3d;">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label for="f-to" style="font-size: 13px; line-height: 18px; font-weight: 500; color: #2f2b3d;">Đến ngày</label>
+        <input id="f-to" type="date" value="2026-10-12" style="height: 40px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 14px; color: #2f2b3d;">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label for="f-flow" style="font-size: 13px; line-height: 18px; font-weight: 500; color: #2f2b3d;">Flow</label>
+        <select id="f-flow" style="height: 40px; padding: 0 8px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; font-family: inherit; font-size: 14px; color: #2f2b3d;">
+          <option>Tất cả flow</option>
+          <option>Gán partner</option>
+          <option>Gỡ partner</option>
+          <option>Đổi tên TKQC</option>
+        </select>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label for="f-result" style="font-size: 13px; line-height: 18px; font-weight: 500; color: #2f2b3d;">Kết quả</label>
+        <select id="f-result" value="{{result}}" onChange="{{onResult}}" style="height: 40px; padding: 0 8px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; font-family: inherit; font-size: 14px; color: #2f2b3d;">
+          <option value="all">Tất cả kết quả</option>
+          <option value="done">done</option>
+          <option value="pending">pending-approval</option>
+          <option value="failed">failed</option>
+          <option value="skip">bỏ qua</option>
+          <option value="dry">không ghi (dry-run)</option>
+        </select>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <label for="f-q" style="font-size: 13px; line-height: 18px; font-weight: 500; color: #2f2b3d;">Tìm</label>
+        <input id="f-q" type="search" placeholder="runId, TKQC, BM" style="height: 40px; padding: 0 10px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); font-family: inherit; font-size: 14px; color: #2f2b3d;">
+      </div>
+    </section>
+
+    <section aria-label="Bảng audit log" style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; overflow: hidden;">
+      <div style="overflow-x: auto;">
+        <div style="min-width: 904px; font-size: 14px; line-height: 20px;">
+          <div style="display: grid; grid-template-columns: 100px 120px 96px minmax(160px, 1fr) 72px 150px 104px 100px; align-items: center; min-height: 44px; background: #eaeaec; font-size: 13px; font-weight: 600; color: #2f2b3d;">
+            <span style="padding: 0 12px;">Thời gian</span>
+            <span style="padding: 0 12px;">Flow</span>
+            <span style="padding: 0 12px;">BM</span>
+            <span style="padding: 0 12px;">Target</span>
+            <span style="padding: 0 12px;">Mode</span>
+            <span style="padding: 0 12px;">Kết quả</span>
+            <span style="padding: 0 12px;">runId</span>
+            <span style="padding: 0 12px;">Người chạy</span>
+          </div>
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+            <div style="display: grid; grid-template-columns: 100px 120px 96px minmax(160px, 1fr) 72px 150px 104px 100px; align-items: center; min-height: 48px; padding: 6px 0; border-top: 1px solid rgba(47, 43, 61, 0.12);">
+              <span style="padding: 0 12px; color: #4b5563; white-space: nowrap; font-variant-numeric: tabular-nums;">{{r.time}}</span>
+              <span style="padding: 0 12px; color: #2f2b3d;">{{r.flow}}</span>
+              <span style="padding: 0 12px; color: #4b5563;">{{r.bm}}</span>
+              <span style="padding: 0 12px; color: #2f2b3d;">{{r.target}}</span>
+              <span style="padding: 0 12px; font-size: 13px; font-weight: 600; white-space: nowrap; color: {{r.modeFg}};">{{r.mode}}</span>
+              <span style="padding: 0 12px;"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 500; white-space: nowrap; background: {{r.bg}}; border: 1px solid {{r.border}}; color: {{r.fg}};"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{r.dot}};"></span>{{r.result}}</span></span>
+              <span style="padding: 0 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #2f2b3d; white-space: nowrap;">{{r.run}}</span>
+              <span style="padding: 0 12px; color: #4b5563; white-space: nowrap;">{{r.who}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 24px; text-align: center; font-size: 14px; color: #4b5563;">Không có dòng nào khớp bộ lọc.</div>
+      </sc-if>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid rgba(47, 43, 61, 0.12);">
+        <span style="font-size: 13px; line-height: 18px; color: #4b5563;">{{countText}}</span>
+        <nav aria-label="Phân trang" style="display: flex; gap: 4px;">
+          <button type="button" aria-label="Trang đầu" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: #f3f4f6; color: #4b5563;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 7l-5 5l5 5"></path><path d="M17 7l-5 5l5 5"></path></svg></button>
+          <button type="button" aria-current="page" style="min-width: 36px; height: 36px; border: 0; border-radius: 6px; background: #2563eb; color: #ffffff; font-family: inherit; font-size: 14px; font-weight: 600;">1</button>
+          <button type="button" style="min-width: 36px; height: 36px; border: 0; border-radius: 6px; background: #eff6ff; color: #1d4ed8; font-family: inherit; font-size: 14px; font-weight: 500;">2</button>
+          <button type="button" style="min-width: 36px; height: 36px; border: 0; border-radius: 6px; background: #eff6ff; color: #1d4ed8; font-family: inherit; font-size: 14px; font-weight: 500;">3</button>
+          <button type="button" aria-label="Trang cuối" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: #f3f4f6; color: #4b5563;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l5 5l-5 5"></path><path d="M13 7l5 5l-5 5"></path></svg></button>
+        </nav>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const RES = {
+      done: { result: 'done', bg: '#f0fdf4', border: '#bbf7d0', fg: '#15803d', dot: '#22c55e' },
+      pending: { result: 'pending-approval', bg: '#fefce8', border: '#fde68a', fg: '#854d0e', dot: '#eab308' },
+      failed: { result: 'failed', bg: '#fef2f2', border: '#fecaca', fg: '#b91c1c', dot: '#ef4444' },
+      skip: { result: 'bỏ qua', bg: '#f3f4f6', border: '#e5e7eb', fg: '#4b5563', dot: '#9ca3af' },
+      dry: { result: 'không ghi', bg: '#f3f4f6', border: '#e5e7eb', fg: '#4b5563', dot: '#22c55e' }
+    };
+    const MODE = { Full: '#c2410c', Assist: '#854d0e', 'Dry-run': '#15803d', 'Đọc': '#4b5563' };
+    const RAW = [
+      ['12/10 14:22', 'Gán partner', 'Agency 03', 'Tenomad – Spa Hoa', 'Full', 'done', 'run_9b27e5', 'ops.an'],
+      ['12/10 14:21', 'Gán partner', 'Agency 03', 'HPMA – Shop Lan 02', 'Full', 'done', 'run_9b27e5', 'ops.an'],
+      ['12/10 14:21', 'Gán partner', 'Agency 03', 'HPMA – Shop Lan 01', 'Full', 'done', 'run_9b27e5', 'ops.an'],
+      ['12/10 14:20', 'Gán partner', 'Agency 03', 'Tenomad – Nha khoa An', 'Full', 'skip', 'run_9b27e5', 'ops.an'],
+      ['12/10 14:03', 'Gán partner', 'Agency 03', '4 TKQC', 'Dry-run', 'dry', 'run_7f3a92', 'ops.an'],
+      ['12/10 11:40', 'Đổi tên TKQC', 'Agency 01', 'Thời trang Mai 11', 'Assist', 'done', 'run_5c11ab', 'ops.minh'],
+      ['12/10 10:12', 'Gán partner', 'Agency 01', '10 TKQC · mẻ 1/4', 'Full', 'done', 'run_3e90f1', 'owner.trang'],
+      ['12/10 09:58', 'Gỡ partner', 'Agency 02', 'Spa Hồng 02', 'Full', 'pending', 'run_2a7c44', 'owner.trang'],
+      ['11/10 17:31', 'Đổi tên TKQC', 'Agency 02', 'Spa Hồng 05', 'Assist', 'failed', 'run_19bd02', 'ops.minh'],
+      ['11/10 16:05', 'Kiểm kê tài sản', 'Agency 03', 'Toàn BM', 'Đọc', 'done', 'run_0f4e77', 'ops.an']
+    ];
+    const all = RAW.map((r) => Object.assign({ time: r[0], flow: r[1], bm: r[2], target: r[3], mode: r[4], modeFg: MODE[r[4]], key: r[5], run: r[6], who: r[7] }, RES[r[5]]));
+    const result = (this.state && this.state.result) || 'all';
+    const rows = result === 'all' ? all : all.filter((r) => r.key === result);
+    return {
+      result: result,
+      onResult: (e) => this.setState({ result: e.target.value }),
+      rows: rows,
+      empty: rows.length === 0,
+      countText: result === 'all' ? '1–10 trong 248 dòng' : rows.length + ' dòng khớp trên trang này'
+    };
+  }
+}
+</script>
+</body>
+</html>

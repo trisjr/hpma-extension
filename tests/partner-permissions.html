@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="vi">
+  <meta charset="utf-8" />
+  <title>Partner permission regression</title>
+  <body>
+    <pre id="result">Running…</pre>
+    <div id="fixture"></div>
+    <!-- Serve with Vite, then open /tests/partner-permissions.html. No BM writes. -->
+    <script type="module">
+      import partnerAssignFlow from '/src/content/flows/partnerAssign.ts';
+
+      const fixture = document.querySelector('#fixture');
+      const output = document.querySelector('#result');
+      const checks = [];
+      const stop = new Error('Reached write boundary');
+      const toggle = (id, label) =>
+        `<label><input id="${id}" type="checkbox" role="switch" aria-checked="false" aria-label="${label}">${label}</label>`;
+      async function check(name, tasks, expected, setup = () => {}, errorCode) {
+        fixture.innerHTML = `<div role="dialog">
+          <h4>Quyền truy cập một phần</h4>
+          ${toggle('campaigns', 'Quản lý chiến dịch (quảng cáo)')}
+          ${toggle('performance', 'Xem hiệu quả')}
+          ${toggle('creative', 'Quản lý mẫu mô phỏng trong Creative Hub')}
+          <h4>Quyền truy cập đầy đủ</h4>
+          ${toggle('manage', 'Quản lý tài khoản quảng cáo')}
+          <button id="assign">Chỉ định tài sản</button>
+        </div>`;
+        let wrote = false;
+        fixture.querySelector('#assign').onclick = () => {
+          wrote = true;
+        };
+        fixture
+          .querySelectorAll('input')
+          .forEach(
+            (input) =>
+              (input.onchange = () =>
+                input.setAttribute('aria-checked', String(input.checked)))
+          );
+        ['campaigns', 'manage'].forEach((id) => {
+          fixture
+            .querySelector(`#${id}`)
+            .addEventListener('change', (event) => {
+              const implied =
+                id === 'manage'
+                  ? ['campaigns', 'performance', 'creative']
+                  : ['performance', 'creative'];
+              implied.forEach((key) => {
+                const input = fixture.querySelector(`#${key}`);
+                input.checked = event.target.checked;
+                input.disabled = event.target.checked;
+                input.setAttribute('aria-checked', String(input.checked));
+              });
+            });
+        });
+        setup();
+        const ctx = {
+          signal: new AbortController().signal,
+          lang: 'vi',
+          mode: 'assist',
+          batchSize: 10,
+          config: { tasks, queries: ['Account'] },
+          gate: async () => {},
+          pause: async () => {},
+          beginBatch: () => {},
+          step: async (index, body) => {
+            if (index < 4) return;
+            if (index === 4) return [{ index: 0, tokens: ['account'] }];
+            if (index > 5) throw stop;
+            return body({ acted: () => {} });
+          },
+        };
+        try {
+          await partnerAssignFlow(ctx);
+          throw new Error('Flow did not stop');
+        } catch (error) {
+          if (errorCode ? error.code !== errorCode : error !== stop)
+            throw error;
+        }
+        const actual = Array.from(fixture.querySelectorAll('input'))
+          .filter((input) => input.checked)
+          .map((input) => input.id)
+          .join(',');
+        if (actual !== expected || wrote)
+          throw new Error(`${name}: checked=${actual}, wrote=${wrote}`);
+        checks.push(`PASS ${name}`);
+      }
+      try {
+        await check(
+          'Heading is not a partial-access button',
+          ['ANALYZE'],
+          'performance'
+        );
+        await check(
+          'Campaigns includes disabled Performance and Creative Hub',
+          ['ADVERTISE', 'ANALYZE'],
+          'campaigns,performance,creative'
+        );
+        await check(
+          'Full control includes all switches',
+          ['MANAGE'],
+          'campaigns,performance,creative,manage'
+        );
+        await check(
+          'Unknown enabled permission still rejected',
+          ['ADVERTISE', 'ANALYZE'],
+          'campaigns,performance,creative,unknown',
+          () => {
+            fixture
+              .querySelector('[role="dialog"]')
+              .insertAdjacentHTML(
+                'beforeend',
+                toggle('unknown', 'Unexpected permission')
+              );
+            fixture.querySelector('#unknown').checked = true;
+          },
+          'ERR_PERMISSION_MISMATCH'
+        );
+        await check(
+          'Extra Creative Hub permission rejected',
+          ['ANALYZE'],
+          'performance,creative',
+          () => {
+            fixture.querySelector('#creative').checked = true;
+          },
+          'ERR_PERMISSION_MISMATCH'
+        );
+        await check(
+          'Missing full-control switch prevents verification',
+          ['ANALYZE'],
+          'performance',
+          () => {
+            fixture.querySelector('#manage').remove();
+          },
+          'ERR_PERMISSION_MISMATCH'
+        );
+        await check(
+          'Legacy partial selector still works',
+          ['ANALYZE'],
+          'partial,performance',
+          () => {
+            fixture.querySelector('h4').outerHTML = toggle(
+              'partial',
+              'Quyền truy cập một phần'
+            );
+            // The legacy selector enables the group; it is not itself a permission switch.
+            fixture.querySelector('#partial').setAttribute('role', 'radio');
+          }
+        );
+        output.textContent = checks.join('\n');
+      } catch (error) {
+        output.textContent = checks.concat(`FAIL ${error.message}`).join('\n');
+        throw error;
+      } finally {
+        fixture.replaceChildren();
+      }
+    </script>
+  </body>
+</html>

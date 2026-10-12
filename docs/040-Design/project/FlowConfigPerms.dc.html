@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Gán partner · Bước 3/4 — Quyền</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+*,*::before,*::after{box-sizing:border-box}
+a{color:#2563eb}a:hover{color:#1d4ed8}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+</style>
+</helmet>
+<div id="my-ext" data-theme="hpma-light" style="width: 360px; height: 1000px; display: flex; flex-direction: column; overflow: hidden; background: #f8f7fa; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif; color: #52525b; font-size: 14px; line-height: 20px;">
+
+  <header style="flex-shrink: 0; background: #ffffff; border-bottom: 1px solid rgba(47, 43, 61, 0.12);">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px 6px 16px;">
+      <span style="width: 32px; height: 32px; border-radius: 6px; background: #f3f4f6; color: #4b5563; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l18 0"></path><path d="M9 8l1 0"></path><path d="M9 12l1 0"></path><path d="M9 16l1 0"></path><path d="M14 8l1 0"></path><path d="M14 12l1 0"></path><path d="M14 16l1 0"></path><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16"></path></svg>
+      </span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <span style="font-size: 14px; line-height: 20px; font-weight: 600; color: #2f2b3d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tenomad Agency 03</span>
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: #4b5563;">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e; flex-shrink: 0;"></span>
+          Đang bám · Partners
+          <span style="display: inline-flex; align-items: center; gap: 2px; color: #15803d; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"></path></svg>hỗ trợ</span>
+        </span>
+      </div>
+      <button type="button" aria-label="Ngôn ngữ: Tiếng Việt. Bấm để đổi sang English" style="height: 36px; min-width: 40px; padding: 0 8px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d; font-family: inherit; font-size: 12px; font-weight: 600; flex-shrink: 0;">VI</button>
+    </div>
+    <div style="padding: 4px 16px 10px;">
+      <div role="group" aria-label="Mode lần chạy" style="display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: #f3f4f6;">
+        <sc-for list="{{modes}}" as="o" hint-placeholder-count="3">
+          <button type="button" aria-pressed="{{o.pressed}}" disabled="{{o.locked}}" onClick="{{o.pick}}" style="flex: 1; height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 6px; font-family: inherit; font-size: 13px; cursor: pointer; font-weight: {{o.weight}}; background: {{o.bg}}; color: {{o.fg}}; border: 1px solid {{o.border}};">
+            <sc-if value="{{o.isDry}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"></path></svg></sc-if>
+            <sc-if value="{{o.isAssist}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13v-8.5a1.5 1.5 0 0 1 3 0v7.5"></path><path d="M11 11.5v-2a1.5 1.5 0 1 1 3 0v2.5"></path><path d="M14 10.5a1.5 1.5 0 0 1 3 0v1.5"></path><path d="M17 11.5a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7l-.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47"></path></svg></sc-if>
+            <sc-if value="{{o.isFull}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"></path></svg></sc-if>
+            <sc-if value="{{o.locked}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"></path><path d="M8 11v-4a4 4 0 1 1 8 0v4"></path></svg></sc-if>
+            {{o.label}}
+          </button>
+        </sc-for>
+      </div>
+    </div>
+    <nav aria-label="Màn hình" style="display: flex; padding: 0 8px; border-top: 1px solid rgba(47, 43, 61, 0.12);">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <a href="{{t.href}}" aria-current="{{t.current}}" style="flex: 1; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: {{t.weight}}; color: {{t.fg}}; text-decoration: none; border-bottom: 2px solid {{t.line}};">{{t.label}}</a>
+      </sc-for>
+    </nav>
+  </header>
+
+  <main style="flex: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <a href="Flows.dc.html" style="align-self: flex-start; height: 36px; display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 500; color: #2563eb; text-decoration: none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"></path></svg>
+        Flows
+      </a>
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+        <h1 style="margin: 0; font-size: 18px; line-height: 28px; font-weight: 500; color: #2f2b3d;">Gán partner vào TKQC</h1>
+        <span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; margin-top: 3px; padding: 0 7px; border-radius: 6px; background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c; font-size: 12px; font-weight: 500; white-space: nowrap;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3"></path></svg>
+          Duyệt 2 lớp
+        </span>
+      </div>
+    </div>
+
+    <nav aria-label="Các bước cấu hình" style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-size: 12px; line-height: 14px; letter-spacing: 0.05rem; text-transform: uppercase; font-weight: 500; color: #4b5563;">Bước 3/4</span>
+      <ol style="list-style: none; margin: 0; padding: 0; display: flex; gap: 4px;">
+        <li style="flex: 1; min-width: 0;">
+          <a href="FlowConfig.dc.html" aria-label="Bước 1, Đối tác: đã xong. Mở lại để sửa" style="min-height: 36px; display: flex; flex-direction: column; gap: 6px; text-decoration: none;">
+            <span style="height: 4px; border-radius: 9999px; background: #2563eb;"></span>
+            <span style="display: flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 500; color: #2563eb;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"></path></svg>Đối tác</span>
+          </a>
+        </li>
+        <li style="flex: 1; min-width: 0;">
+          <a href="FlowConfigAccounts.dc.html" aria-label="Bước 2, TKQC: đã xong. Mở lại để sửa" style="min-height: 36px; display: flex; flex-direction: column; gap: 6px; text-decoration: none;">
+            <span style="height: 4px; border-radius: 9999px; background: #2563eb;"></span>
+            <span style="display: flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 500; color: #2563eb;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"></path></svg>TKQC</span>
+          </a>
+        </li>
+        <li aria-current="step" style="flex: 1; min-width: 0; min-height: 36px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="height: 4px; border-radius: 9999px; background: #2563eb;"></span>
+          <span style="font-size: 12px; line-height: 16px; font-weight: 600; color: #2f2b3d;">3 · Quyền</span>
+        </li>
+        <li style="flex: 1; min-width: 0; min-height: 36px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="height: 4px; border-radius: 9999px; background: #e5e7eb;"></span>
+          <span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #4b5563;">4 · Chạy</span>
+        </li>
+      </ol>
+    </nav>
+
+    <div style="display: flex; flex-direction: column; border-radius: 6px; background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12);">
+      <div style="display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 4px 4px 4px 12px;">
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+          <span style="font-size: 12px; line-height: 16px; color: #4b5563;">BM đối tác</span>
+          <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 18px; color: #2f2b3d;">104857362918475</span>
+        </span>
+        <a href="FlowConfig.dc.html" aria-label="Sửa BM đối tác" style="height: 36px; padding: 0 10px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 500; color: #2563eb; text-decoration: none;">Sửa</a>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 4px 4px 4px 12px; border-top: 1px solid rgba(47, 43, 61, 0.08);">
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+          <span style="font-size: 12px; line-height: 16px; color: #4b5563;">TKQC</span>
+          <span style="font-size: 13px; line-height: 18px; color: #2f2b3d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><b style="font-weight: 600;">4</b> · Shop Lan 01, Shop Lan 02, Spa Hoa, Nha khoa An</span>
+        </span>
+        <a href="FlowConfigAccounts.dc.html" aria-label="Sửa danh sách TKQC" style="height: 36px; padding: 0 10px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 500; color: #2563eb; text-decoration: none;">Sửa</a>
+      </div>
+    </div>
+
+    <section style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 500; color: #2f2b3d;">Quyền cấp cho partner</h2>
+        <p style="margin: 0; font-size: 13px; line-height: 18px; color: #4b5563;">Áp dụng giống nhau cho cả 4 TKQC đã chọn.</p>
+      </div>
+      <div style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; display: flex; flex-direction: column;">
+        <sc-for list="{{perms}}" as="p" hint-placeholder-count="3">
+          <label style="display: flex; align-items: flex-start; gap: 10px; min-height: 48px; padding: 12px; border-top: {{p.divider}}; cursor: pointer;">
+            <input type="checkbox" checked="{{p.on}}" onChange="{{p.toggle}}" style="width: 18px; height: 18px; margin: 1px 0 0; flex-shrink: 0; accent-color: #2563eb;">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;">
+              <span style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-size: 13px; line-height: 18px; font-weight: 500; color: #2f2b3d;">{{p.label}}</span>
+                <code style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #4b5563;">{{p.code}}</code>
+                <sc-if value="{{p.high}}" hint-placeholder-val="{{false}}"><span style="height: 18px; padding: 0 6px; border-radius: 4px; font-size: 11px; line-height: 16px; font-weight: 600; border: 1px solid #fdba74; color: #c2410c;">quyền cao</span></sc-if>
+              </span>
+              <span style="font-size: 12px; line-height: 16px; color: #4b5563;">{{p.desc}}</span>
+            </span>
+          </label>
+        </sc-for>
+      </div>
+      <sc-if value="{{manageOn}}" hint-placeholder-val="{{true}}">
+        <div role="alert" style="padding: 10px 12px; border-radius: 6px; background: #fff7ed; border: 1px solid #fdba74; display: flex; gap: 10px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c2410c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><path d="M12 9v4"></path><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"></path><path d="M12 16h.01"></path></svg>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: #9a3412;">Bạn đang cấp quyền Quản lý</span>
+            <span style="font-size: 12px; line-height: 16px; color: #9a3412;">BM đối tác sẽ toàn quyền trên TKQC: thêm, xoá người dùng và đổi thanh toán. Chỉ cấp khi có hợp đồng.</span>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+  </main>
+
+  <div style="flex-shrink: 0; background: #ffffff; border-top: 1px solid rgba(47, 43, 61, 0.12); padding: 8px 16px 12px; display: flex; flex-direction: column; gap: 8px;">
+    <div style="font-size: 12px; line-height: 16px; text-align: center; color: {{hintFg}};">{{hint}}</div>
+    <div style="display: flex; gap: 8px;">
+      <a href="FlowConfigAccounts.dc.html" style="height: 44px; padding: 0 14px; display: flex; align-items: center; justify-content: center; gap: 4px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d; text-decoration: none; font-size: 14px; font-weight: 600;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"></path><path d="M5 12l6 6"></path><path d="M5 12l6 -6"></path></svg>
+        Quay lại
+      </a>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <sc-if value="{{canNext}}" hint-placeholder-val="{{true}}">
+          <a href="FlowConfigReview.dc.html" style="height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 6px; background: #2563eb; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600;">
+            Tiếp · Xem lại &amp; chạy
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l14 0"></path><path d="M13 18l6 -6"></path><path d="M13 6l6 6"></path></svg>
+          </a>
+        </sc-if>
+        <sc-if value="{{cannotNext}}" hint-placeholder-val="{{false}}">
+          <button type="button" disabled style="height: 44px; border: 0; border-radius: 6px; background: #2563eb; color: #ffffff; font-family: inherit; font-size: 14px; font-weight: 600; opacity: 0.45; cursor: not-allowed;">Tiếp · Xem lại &amp; chạy</button>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <footer style="flex-shrink: 0; height: 54px; background: #ffffff; border-top: 1px solid rgba(47, 43, 61, 0.12); display: flex; align-items: center; gap: 12px; padding: 0 12px 0 16px;">
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+      <div style="font-size: 12px; line-height: 16px; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Ghi hôm nay <span style="font-weight: 600; color: #2f2b3d;">3/20</span> · Curfew 0h–6h</div>
+      <div style="height: 4px; border-radius: 9999px; background: #f1f0f2; overflow: hidden;"><div style="width: 15%; height: 4px; background: #6b7280;"></div></div>
+    </div>
+    <button type="button" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 6px; background: #b91c1c; color: #ffffff; font-family: inherit; font-size: 13px; font-weight: 600; flex-shrink: 0;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+      Kill-switch
+    </button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = Object.assign({
+      mode: 'dry',
+      perm: { ADVERTISE: true, ANALYZE: true, MANAGE: true }
+    }, this.state || {});
+    const mode = st.mode === 'full' ? 'dry' : st.mode;
+    const TAB = 'flows';
+
+    const SEL = {
+      dry: { bg: '#f0fdf4', fg: '#15803d', border: '#86efac' },
+      assist: { bg: '#fefce8', fg: '#854d0e', border: '#fde047' },
+      full: { bg: '#fff7ed', fg: '#c2410c', border: '#fdba74' }
+    };
+    const modes = ['dry', 'assist', 'full'].map((m) => {
+      const on = m === mode;
+      const locked = m === 'full';
+      return {
+        label: m === 'dry' ? 'Dry-run' : m === 'assist' ? 'Assist' : 'Full',
+        isDry: m === 'dry', isAssist: m === 'assist', isFull: false, locked: locked,
+        pressed: on ? 'true' : 'false', pick: () => this.setState({ mode: m }),
+        bg: on ? SEL[m].bg : 'transparent',
+        fg: locked ? '#9ca3af' : on ? SEL[m].fg : '#4b5563',
+        border: on ? SEL[m].border : 'transparent',
+        weight: on ? 600 : 500
+      };
+    });
+    const tabs = [['flows', 'Flows', 'Flows.dc.html'], ['run', 'Run', 'RunDryRun.dc.html'], ['log', 'Log', 'Log.dc.html'], ['probe', 'Probe', 'Probe.dc.html']].map((t) => ({
+      label: t[1], href: t[2], current: t[0] === TAB ? 'page' : 'false',
+      weight: t[0] === TAB ? 600 : 500, fg: t[0] === TAB ? '#2563eb' : '#4b5563', line: t[0] === TAB ? '#3b82f6' : 'transparent'
+    }));
+
+    const PERM = [
+      { code: 'ADVERTISE', label: 'Chạy quảng cáo', desc: 'Tạo và sửa quảng cáo trên TKQC' },
+      { code: 'ANALYZE', label: 'Phân tích', desc: 'Xem hiệu quả và báo cáo' },
+      { code: 'MANAGE', label: 'Quản lý', desc: 'Toàn quyền TKQC, gồm người dùng và thanh toán', high: true }
+    ];
+    const perms = PERM.map((p, i) => ({
+      code: p.code, label: p.label, desc: p.desc, high: !!p.high, on: !!st.perm[p.code],
+      divider: i === 0 ? '0' : '1px solid rgba(47, 43, 61, 0.08)',
+      toggle: () => this.setState({ perm: Object.assign({}, st.perm, { [p.code]: !st.perm[p.code] }) })
+    }));
+    const permCount = perms.filter((p) => p.on).length;
+    const canNext = permCount > 0;
+
+    return {
+      modes: modes, tabs: tabs,
+      perms: perms, manageOn: !!st.perm.MANAGE,
+      canNext: canNext, cannotNext: !canNext,
+      hint: !canNext
+        ? 'Chọn ít nhất 1 quyền để tiếp tục'
+        : permCount + ' quyền' + (st.perm.MANAGE ? ' · có quyền cao' : '') + ' · tiếp theo chọn mode',
+      hintFg: canNext ? '#4b5563' : '#b91c1c'
+    };
+  }
+}
+</script>
+</body>
+</html>

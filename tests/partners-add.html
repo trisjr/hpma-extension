@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="vi">
+  <meta charset="utf-8" />
+  <title>Partners Add locator regression</title>
+  <body>
+    <pre id="result">Running…</pre>
+    <div id="fixture"></div>
+    <!-- Serve with Vite, then open /tests/partners-add.html. No BM access needed. -->
+    <script type="module">
+      import { resolveOnce } from '/src/content/engine/locator.ts';
+      import SELECTORS from '/src/content/engine/selectors.ts';
+
+      const fixture = document.querySelector('#fixture');
+      const output = document.querySelector('#result');
+      const button = (id, label = 'Thêm') =>
+        `<span><div id="${id}" role="button" aria-haspopup="menu">${label}</div></span>`;
+      const header = (id, label) =>
+        `<div><div><input aria-label="Search"></div>${button(id, label)}</div>`;
+      const checks = [];
+      function check(name, html, expected, lang = 'vi') {
+        fixture.innerHTML = html;
+        const result = resolveOnce(SELECTORS.partnersAdd, lang);
+        const actual = result.ok ? result.el.id : result.reason;
+        if (actual !== expected) {
+          throw new Error(`${name}: expected ${expected}, got ${actual}`);
+        }
+        checks.push(`PASS ${name}`);
+      }
+      try {
+        check(
+          'No main: header and empty-state Add',
+          header('header') +
+            `<div><h3>No Partners added yet</h3>${button('empty')}</div>`,
+          'header'
+        );
+        check(
+          'English duplicate Add',
+          header('header', 'Add') + `<div>${button('empty', 'Add')}</div>`,
+          'header',
+          'en'
+        );
+        check(
+          'Existing main scope',
+          button('outside') + `<main role="main">${button('inside')}</main>`,
+          'inside'
+        );
+        check(
+          'Single Add without header structure',
+          button('single'),
+          'single'
+        );
+        check(
+          'Hidden header ignored',
+          `<div hidden>${header('hidden')}</div>${button('visible')}`,
+          'visible'
+        );
+        check(
+          'Two header candidates remain ambiguous',
+          header('one') + header('two'),
+          'ambiguous'
+        );
+        check(
+          'Unrecognized duplicate layout remains ambiguous',
+          button('one') + button('two'),
+          'ambiguous'
+        );
+        check('Missing Add', '', 'none');
+        output.textContent = checks.join('\n');
+      } catch (error) {
+        output.textContent = checks.concat(`FAIL ${error.message}`).join('\n');
+        throw error;
+      } finally {
+        fixture.replaceChildren();
+      }
+    </script>
+  </body>
+</html>

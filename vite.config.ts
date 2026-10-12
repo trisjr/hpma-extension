@@ -50,9 +50,24 @@ const chromeSpecificManifest = {
 };
 
 const firefoxSpecificManifest = {
+  // Firefox MV3 coi match của content script là quyền host user có thể không cấp/thu hồi:
+  // khai tường minh (cùng origin, không rộng hơn) để tabs.sendMessage tới tab BM hoạt động.
+  // Chrome không cần nên không đặt ở manifest dùng chung.
+  host_permissions: ['https://business.facebook.com/*'],
+  browser_specific_settings: {
+    gecko: {
+      // ID cố định: nếu không, mỗi lần nạp add-on tạm thời là một storage mới và mất khoá khẩn cấp/audit.
+      id: 'hpma-copilot@tenomad',
+      strict_min_version: '127.0',
+      data_collection_permissions: { required: ['none'] },
+    },
+  },
   options_ui: {
     page: 'src/options/index.html',
     browser_style: false,
+    // Mở trong tab riêng: khung nhúng của about:addons quá hẹp cho layout 960px
+    // và có thể chặn tải file export (<a download>).
+    open_in_tab: true,
   },
   background: {
     scripts: ['src/background/index.ts'],

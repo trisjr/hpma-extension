@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Side panel — Vùng đỏ bị từ chối</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+*,*::before,*::after{box-sizing:border-box}
+a{color:#2563eb}a:hover{color:#1d4ed8}
+</style>
+</helmet>
+<div id="my-ext" data-theme="hpma-light" style="width: 360px; height: 1000px; display: flex; flex-direction: column; overflow: hidden; background: #f8f7fa; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif; color: #52525b; font-size: 14px; line-height: 20px;">
+
+  <header style="flex-shrink: 0; background: #ffffff; border-bottom: 1px solid rgba(47, 43, 61, 0.12);">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px 6px 16px;">
+      <span style="width: 32px; height: 32px; border-radius: 6px; background: #f3f4f6; color: #4b5563; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l18 0"></path><path d="M9 8l1 0"></path><path d="M9 12l1 0"></path><path d="M9 16l1 0"></path><path d="M14 8l1 0"></path><path d="M14 12l1 0"></path><path d="M14 16l1 0"></path><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16"></path></svg>
+      </span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <span style="font-size: 14px; line-height: 20px; font-weight: 600; color: #2f2b3d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tenomad Agency 03</span>
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: #4b5563;">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: #ef4444; flex-shrink: 0;"></span>
+          Đang bám · Thanh toán
+          <span style="display: inline-flex; align-items: center; gap: 3px; color: #b91c1c; font-weight: 600;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0 -18z"></path><path d="M5.7 5.7l12.6 12.6"></path></svg>vùng đỏ</span>
+        </span>
+      </div>
+      <button type="button" aria-label="Ngôn ngữ: Tiếng Việt. Bấm để đổi sang English" style="height: 36px; min-width: 40px; padding: 0 8px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d; font-family: inherit; font-size: 12px; font-weight: 600; flex-shrink: 0;">VI</button>
+    </div>
+    <div style="padding: 4px 16px 10px;">
+      <div role="group" aria-label="Mode lần chạy" style="display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: #f3f4f6; opacity: 0.6;">
+        <sc-for list="{{modes}}" as="o" hint-placeholder-count="3">
+          <button type="button" aria-pressed="{{o.pressed}}" disabled style="flex: 1; height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 6px; font-family: inherit; font-size: 13px; cursor: not-allowed; font-weight: {{o.weight}}; background: {{o.bg}}; color: {{o.fg}}; border: 1px solid {{o.border}};">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"></path><path d="M8 11v-4a4 4 0 1 1 8 0v4"></path></svg>
+            {{o.label}}
+          </button>
+        </sc-for>
+      </div>
+    </div>
+    <nav aria-label="Màn hình" style="display: flex; padding: 0 8px; border-top: 1px solid rgba(47, 43, 61, 0.12);">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <a href="{{t.href}}" aria-current="{{t.current}}" style="flex: 1; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: {{t.weight}}; color: {{t.fg}}; text-decoration: none; border-bottom: 2px solid {{t.line}};">{{t.label}}</a>
+      </sc-for>
+    </nav>
+  </header>
+
+  <main style="flex: 1; min-height: 0; overflow: hidden; padding: 24px 16px 16px; display: flex; flex-direction: column; gap: 16px;">
+    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 12px;">
+      <span style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0 -18z"></path><path d="M5.7 5.7l12.6 12.6"></path></svg>
+      </span>
+      <h1 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 500; color: #2f2b3d;">Extension không thực hiện thao tác này</h1>
+      <p style="margin: 0; font-size: 13px; line-height: 19px; color: #2f2b3d;">Tab BM đang ở trang <b style="font-weight: 600;">Thanh toán</b>. Đây là vùng đỏ: mọi thay đổi phải do người có thẩm quyền tự làm và tự chịu trách nhiệm.</p>
+    </div>
+
+    <section aria-label="Các vùng đỏ" style="display: flex; flex-direction: column; gap: 6px;">
+      <span style="font-size: 12px; line-height: 14px; letter-spacing: 0.05rem; text-transform: uppercase; color: #4b5563;">Vùng đỏ extension luôn từ chối</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+        <sc-for list="{{zones}}" as="z" hint-placeholder-count="4">
+          <span style="display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 500; background: {{z.bg}}; border: 1px solid {{z.border}}; color: {{z.fg}};">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"></path><path d="M8 11v-4a4 4 0 1 1 8 0v4"></path></svg>
+            {{z.label}}
+          </span>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="manual-title" style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+      <h2 id="manual-title" style="margin: 0 0 4px; font-size: 13px; line-height: 18px; font-weight: 500; color: #2f2b3d;">Checklist làm tay</h2>
+      <sc-for list="{{checklist}}" as="c" hint-placeholder-count="4">
+        <label style="display: flex; align-items: flex-start; gap: 10px; min-height: 36px; padding: 6px 0; font-size: 13px; line-height: 18px; color: #2f2b3d; cursor: pointer;">
+          <input type="checkbox" style="width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: #2563eb;">
+          {{c}}
+        </label>
+      </sc-for>
+    </section>
+
+    <a href="#" style="height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d; text-decoration: none; font-size: 14px; font-weight: 600;">
+      Mở Cài đặt thanh toán trong tab BM
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6"></path><path d="M11 13l9 -9"></path><path d="M15 4h5v5"></path></svg>
+    </a>
+    <p style="margin: 0; font-size: 12px; line-height: 16px; color: #4b5563; text-align: center;">Panel tự mở lại các flow khi tab BM rời trang này.</p>
+  </main>
+
+  <footer style="flex-shrink: 0; height: 54px; background: #ffffff; border-top: 1px solid rgba(47, 43, 61, 0.12); display: flex; align-items: center; gap: 12px; padding: 0 12px 0 16px;">
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+      <div style="font-size: 12px; line-height: 16px; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Ghi hôm nay <span style="font-weight: 600; color: #2f2b3d;">3/20</span> · Curfew 0h–6h</div>
+      <div style="height: 4px; border-radius: 9999px; background: #f1f0f2; overflow: hidden;"><div style="width: 15%; height: 4px; background: #6b7280;"></div></div>
+    </div>
+    <button type="button" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 6px; background: #b91c1c; color: #ffffff; font-family: inherit; font-size: 13px; font-weight: 600; flex-shrink: 0;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+      Kill-switch
+    </button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const TAB = 'flows';
+    const modes = ['Dry-run', 'Assist', 'Full'].map((l) => ({
+      label: l, pressed: 'false', bg: 'transparent', fg: '#4b5563', border: 'transparent', weight: 500
+    }));
+    const tabs = [['flows', 'Flows', 'Flows.dc.html'], ['run', 'Run', 'RunDryRun.dc.html'], ['log', 'Log', 'Log.dc.html'], ['probe', 'Probe', 'Probe.dc.html']].map((t) => ({
+      label: t[1], href: t[2], current: t[0] === TAB ? 'page' : 'false',
+      weight: t[0] === TAB ? 600 : 500, fg: t[0] === TAB ? '#2563eb' : '#4b5563', line: t[0] === TAB ? '#3b82f6' : 'transparent'
+    }));
+    const ON = { bg: '#fef2f2', border: '#fecaca', fg: '#b91c1c' };
+    const OFF = { bg: '#ffffff', border: 'rgba(47, 43, 61, 0.12)', fg: '#4b5563' };
+    const zones = [
+      Object.assign({ label: 'Thanh toán' }, ON),
+      Object.assign({ label: 'Kháng nghị (appeal)' }, OFF),
+      Object.assign({ label: 'Xác minh doanh nghiệp' }, OFF),
+      Object.assign({ label: 'Claim ownership' }, OFF)
+    ];
+    const checklist = [
+      'Đăng nhập bằng tài khoản admin có quyền thanh toán của BM.',
+      'Kiểm tra đúng BM và TKQC trước khi sửa.',
+      'Thực hiện thay đổi, chụp lại màn hình kết quả.',
+      'Ghi mã ticket và ảnh vào hồ sơ để giải trình.'
+    ];
+    return { modes: modes, tabs: tabs, zones: zones, checklist: checklist };
+  }
+}
+</script>
+</body>
+</html>

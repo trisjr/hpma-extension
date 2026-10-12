@@ -1,0 +1,383 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-12T09:30:00Z" },
+  "title": "HPMA Copilot UI",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1200,
+      "h": 1080,
+      "title": "Hướng thiết kế"
+    },
+    "Components.dc.html": {
+      "x": 1280,
+      "y": 0,
+      "w": 1200,
+      "h": 1180,
+      "title": "Component dùng chung"
+    },
+
+    "Flows.dc.html": {
+      "x": 0,
+      "y": 1600,
+      "w": 360,
+      "h": 1180,
+      "title": "1 · Flows",
+      "is_interactive": true
+    },
+    "FlowConfig.dc.html": {
+      "x": 440,
+      "y": 1600,
+      "w": 360,
+      "h": 1000,
+      "title": "2.1 · Gán partner — Đối tác",
+      "is_interactive": true
+    },
+    "FlowConfigAccounts.dc.html": {
+      "x": 880,
+      "y": 1600,
+      "w": 360,
+      "h": 1000,
+      "title": "2.2 · Gán partner — Chọn TKQC",
+      "is_interactive": true
+    },
+    "FlowConfigPerms.dc.html": {
+      "x": 1320,
+      "y": 1600,
+      "w": 360,
+      "h": 1000,
+      "title": "2.3 · Gán partner — Quyền",
+      "is_interactive": true
+    },
+    "FlowConfigReview.dc.html": {
+      "x": 1760,
+      "y": 1600,
+      "w": 360,
+      "h": 1080,
+      "title": "2.4 · Gán partner — Mode & xem lại",
+      "is_interactive": true
+    },
+    "RunDryRun.dc.html": {
+      "x": 2200,
+      "y": 1600,
+      "w": 360,
+      "h": 1000,
+      "title": "3a · Run — Dry-run",
+      "is_interactive": true
+    },
+    "RunAssist.dc.html": {
+      "x": 2640,
+      "y": 1600,
+      "w": 360,
+      "h": 1060,
+      "title": "3b · Run — Assist",
+      "is_interactive": true
+    },
+    "RunFull.dc.html": {
+      "x": 3080,
+      "y": 1600,
+      "w": 360,
+      "h": 1000,
+      "title": "3c · Run — Full",
+      "is_interactive": true
+    },
+    "Diff.dc.html": {
+      "x": 3520,
+      "y": 1600,
+      "w": 360,
+      "h": 1000,
+      "title": "4 · Diff / Preview",
+      "is_interactive": true
+    },
+    "Diff320.dc.html": {
+      "x": 3960,
+      "y": 1600,
+      "w": 320,
+      "h": 1060,
+      "title": "4 · Diff — 320px",
+      "is_interactive": true
+    },
+
+    "ConfirmStep1.dc.html": {
+      "x": 0,
+      "y": 3460,
+      "w": 360,
+      "h": 1000,
+      "title": "5a · Confirm lớp 1",
+      "is_interactive": true
+    },
+    "ConfirmStep2.dc.html": {
+      "x": 440,
+      "y": 3460,
+      "w": 360,
+      "h": 1000,
+      "title": "5b · Confirm lớp 2",
+      "is_interactive": true
+    },
+    "ConfirmBatch.dc.html": {
+      "x": 880,
+      "y": 3460,
+      "w": 360,
+      "h": 1080,
+      "title": "5c · Confirm batch — Mẻ 2/4",
+      "is_interactive": true
+    },
+    "ResultDone.dc.html": {
+      "x": 1320,
+      "y": 3460,
+      "w": 360,
+      "h": 1060,
+      "title": "6a · Kết quả — done",
+      "is_interactive": true
+    },
+    "ResultPending.dc.html": {
+      "x": 1760,
+      "y": 3460,
+      "w": 360,
+      "h": 1000,
+      "title": "6b · Kết quả — pending-approval",
+      "is_interactive": true
+    },
+    "ResultFailed.dc.html": {
+      "x": 2200,
+      "y": 3460,
+      "w": 360,
+      "h": 1060,
+      "title": "6c · Kết quả — failed",
+      "is_interactive": true
+    },
+
+    "Log.dc.html": {
+      "x": 0,
+      "y": 4960,
+      "w": 360,
+      "h": 1000,
+      "title": "7 · Log",
+      "is_interactive": true
+    },
+    "Probe.dc.html": {
+      "x": 440,
+      "y": 4960,
+      "w": 360,
+      "h": 1060,
+      "title": "8 · Probe",
+      "is_interactive": true
+    },
+    "StateRedZone.dc.html": {
+      "x": 880,
+      "y": 4960,
+      "w": 360,
+      "h": 1000,
+      "title": "9a · Vùng đỏ bị từ chối",
+      "is_interactive": true
+    },
+    "StateEmergency.dc.html": {
+      "x": 1320,
+      "y": 4960,
+      "w": 360,
+      "h": 1000,
+      "title": "9b · Emergency stop"
+    },
+    "StateLimit.dc.html": {
+      "x": 1760,
+      "y": 4960,
+      "w": 360,
+      "h": 1000,
+      "title": "9c · Hết quota ghi",
+      "is_interactive": true
+    },
+    "StateCurfew.dc.html": {
+      "x": 2200,
+      "y": 4960,
+      "w": 360,
+      "h": 1000,
+      "title": "9d · Curfew",
+      "is_interactive": true
+    },
+    "StateSelectorBroken.dc.html": {
+      "x": 2640,
+      "y": 4960,
+      "w": 360,
+      "h": 1000,
+      "title": "9e · Selector hỏng",
+      "is_interactive": true
+    },
+    "StateEmpty.dc.html": {
+      "x": 3080,
+      "y": 4960,
+      "w": 360,
+      "h": 1000,
+      "title": "9f · Empty state",
+      "is_interactive": true
+    },
+    "StateDisconnected.dc.html": {
+      "x": 3520,
+      "y": 4960,
+      "w": 360,
+      "h": 1000,
+      "title": "9g · Mất kết nối tab",
+      "is_interactive": true
+    },
+    "StateOutOfScope.dc.html": {
+      "x": 3960,
+      "y": 4960,
+      "w": 360,
+      "h": 1000,
+      "title": "9h · Ngoài vùng hỗ trợ (login/2FA)",
+      "is_interactive": true
+    },
+
+    "Popup.dc.html": {
+      "x": 0,
+      "y": 6440,
+      "w": 320,
+      "h": 400,
+      "title": "10 · Popup",
+      "is_interactive": true
+    },
+    "OptionsPacing.dc.html": {
+      "x": 400,
+      "y": 6440,
+      "w": 1280,
+      "h": 980,
+      "title": "11a · Options — Pacing & limit",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "OptionsAudit.dc.html": {
+      "x": 1760,
+      "y": 6440,
+      "w": 1280,
+      "h": 980,
+      "title": "11b · Options — Audit log",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "OptionsDevtest.dc.html": {
+      "x": 3120,
+      "y": 6440,
+      "w": 1280,
+      "h": 820,
+      "title": "11c · Options — Devtest",
+      "expand": "fill",
+      "is_interactive": true
+    },
+
+    "FlowsDark.dc.html": {
+      "x": 0,
+      "y": 7840,
+      "w": 360,
+      "h": 1180,
+      "title": "Dark · Flows",
+      "is_interactive": true
+    },
+    "RunFullDark.dc.html": {
+      "x": 440,
+      "y": 7840,
+      "w": 360,
+      "h": 1000,
+      "title": "Dark · Run — Full",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Components.dc.html",
+    "Flows.dc.html",
+    "FlowConfig.dc.html",
+    "FlowConfigAccounts.dc.html",
+    "FlowConfigPerms.dc.html",
+    "FlowConfigReview.dc.html",
+    "RunDryRun.dc.html",
+    "RunAssist.dc.html",
+    "RunFull.dc.html",
+    "Diff.dc.html",
+    "Diff320.dc.html",
+    "ConfirmStep1.dc.html",
+    "ConfirmStep2.dc.html",
+    "ConfirmBatch.dc.html",
+    "ResultDone.dc.html",
+    "ResultPending.dc.html",
+    "ResultFailed.dc.html",
+    "Log.dc.html",
+    "Probe.dc.html",
+    "StateRedZone.dc.html",
+    "StateEmergency.dc.html",
+    "StateLimit.dc.html",
+    "StateCurfew.dc.html",
+    "StateSelectorBroken.dc.html",
+    "StateEmpty.dc.html",
+    "StateDisconnected.dc.html",
+    "StateOutOfScope.dc.html",
+    "Popup.dc.html",
+    "OptionsPacing.dc.html",
+    "OptionsAudit.dc.html",
+    "OptionsDevtest.dc.html",
+    "FlowsDark.dc.html",
+    "RunFullDark.dc.html"
+  ],
+  "notes": {
+    "rowA": {
+      "x": 0,
+      "y": -300,
+      "text": "Hướng thiết kế · HPMA Copilot",
+      "kind": "title1",
+      "maxW": 2480
+    },
+    "rowB": {
+      "x": 0,
+      "y": 1300,
+      "text": "1–4 · Flows → Config 4 bước → Run (3 mode) → Diff",
+      "kind": "title1",
+      "maxW": 4280
+    },
+    "assistQ": {
+      "x": 4360,
+      "y": 1600,
+      "w": 320,
+      "maxH": 420,
+      "fill": "orange",
+      "text": "Câu hỏi mở — Assist: không có UI trong trang BM nên panel chỉ dẫn bằng text và chờ tín hiệu DOM (hộp thoại Assign đóng → verify). Cần chốt: có cho phép panel focus tab BM (browser.tabs.update) để đưa user tới đúng tab không?"
+    },
+    "rowC": {
+      "x": 0,
+      "y": 3160,
+      "text": "5–6 · Xác nhận 2 lớp & kết quả",
+      "kind": "title1",
+      "maxW": 2560
+    },
+    "rowD": {
+      "x": 0,
+      "y": 4660,
+      "text": "7–9 · Log, Probe & trạng thái đặc biệt",
+      "kind": "title1",
+      "maxW": 4320
+    },
+    "rowE": {
+      "x": 0,
+      "y": 6140,
+      "text": "10–11 · Popup & Options",
+      "kind": "title1",
+      "maxW": 4400
+    },
+    "rowF": {
+      "x": 0,
+      "y": 7540,
+      "text": "Dark theme",
+      "kind": "title1",
+      "maxW": 800
+    }
+  },
+  "designSystems": [
+    {
+      "title": "HPMA",
+      "namespace": "hpma",
+      "artifact": "https://claude.ai/code/artifact/5f0e1a9b-6fc3-4b5c-b65b-b884d78a399f",
+      "version": "1791806322-0a2b",
+      "copiedAt": "2026-10-12T09:30:00Z"
+    }
+  ]
+}

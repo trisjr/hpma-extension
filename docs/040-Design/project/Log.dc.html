@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Side panel — Log</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+*,*::before,*::after{box-sizing:border-box}
+a{color:#2563eb}a:hover{color:#1d4ed8}
+</style>
+</helmet>
+<div id="my-ext" data-theme="hpma-light" style="width: 360px; height: 1000px; display: flex; flex-direction: column; overflow: hidden; background: #f8f7fa; font-family: Montserrat, -apple-system, 'Segoe UI', sans-serif; color: #52525b; font-size: 14px; line-height: 20px;">
+
+  <header style="flex-shrink: 0; background: #ffffff; border-bottom: 1px solid rgba(47, 43, 61, 0.12);">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px 6px 16px;">
+      <span style="width: 32px; height: 32px; border-radius: 6px; background: #f3f4f6; color: #4b5563; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l18 0"></path><path d="M9 8l1 0"></path><path d="M9 12l1 0"></path><path d="M9 16l1 0"></path><path d="M14 8l1 0"></path><path d="M14 12l1 0"></path><path d="M14 16l1 0"></path><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16"></path></svg>
+      </span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+        <span style="font-size: 14px; line-height: 20px; font-weight: 600; color: #2f2b3d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Tenomad Agency 03</span>
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: #4b5563;">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e; flex-shrink: 0;"></span>
+          Đang bám · Partners
+          <span style="display: inline-flex; align-items: center; gap: 2px; color: #15803d; font-weight: 500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5l10 -10"></path></svg>hỗ trợ</span>
+        </span>
+      </div>
+      <button type="button" aria-label="Ngôn ngữ: Tiếng Việt. Bấm để đổi sang English" style="height: 36px; min-width: 40px; padding: 0 8px; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d; font-family: inherit; font-size: 12px; font-weight: 600; flex-shrink: 0;">VI</button>
+    </div>
+    <div style="padding: 4px 16px 10px;">
+      <div role="group" aria-label="Mode lần chạy" style="display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: #f3f4f6;">
+        <sc-for list="{{modes}}" as="o" hint-placeholder-count="3">
+          <button type="button" aria-pressed="{{o.pressed}}" disabled="{{o.disabled}}" style="flex: 1; height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: {{o.weight}}; background: {{o.bg}}; color: {{o.fg}}; border: 1px solid {{o.border}};">
+            <sc-if value="{{o.isDry}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"></path></svg></sc-if>
+            <sc-if value="{{o.isAssist}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13v-8.5a1.5 1.5 0 0 1 3 0v7.5"></path><path d="M11 11.5v-2a1.5 1.5 0 1 1 3 0v2.5"></path><path d="M14 10.5a1.5 1.5 0 0 1 3 0v1.5"></path><path d="M17 11.5a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7l-.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47"></path></svg></sc-if>
+            <sc-if value="{{o.isFull}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"></path></svg></sc-if>
+            <sc-if value="{{o.locked}}" hint-placeholder-val="{{false}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"></path><path d="M8 11v-4a4 4 0 1 1 8 0v4"></path></svg></sc-if>
+            {{o.label}}
+          </button>
+        </sc-for>
+      </div>
+    </div>
+    <nav aria-label="Màn hình" style="display: flex; padding: 0 8px; border-top: 1px solid rgba(47, 43, 61, 0.12);">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <a href="{{t.href}}" aria-current="{{t.current}}" style="flex: 1; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: {{t.weight}}; color: {{t.fg}}; text-decoration: none; border-bottom: 2px solid {{t.line}};">{{t.label}}</a>
+      </sc-for>
+    </nav>
+  </header>
+
+  <main style="flex: 1; min-height: 0; overflow: hidden; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+      <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: #2f2b3d;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; box-shadow: 0 0 0 3px #dbeafe;"></span>
+        Live · <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">run_9b27e5</span>
+      </span>
+      <span style="display: flex; gap: 4px;">
+        <button type="button" aria-label="Tạm dừng tự cuộn" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6v12"></path><path d="M15 6v12"></path></svg>
+        </button>
+        <button type="button" aria-label="Copy log" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid rgba(47, 43, 61, 0.22); background: #ffffff; color: #2f2b3d;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path></svg>
+        </button>
+      </span>
+    </div>
+
+    <div role="group" aria-label="Lọc theo mức" style="display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: #f3f4f6;">
+      <sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+        <button type="button" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}" style="flex: 1; height: 36px; display: flex; align-items: center; justify-content: center; gap: 5px; border-radius: 6px; font-family: inherit; font-size: 12px; cursor: pointer; font-weight: {{f.weight}}; background: {{f.bg}}; color: {{f.fg}}; border: 1px solid {{f.border}};">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: {{f.dot}};"></span>
+          {{f.label}}
+          <span style="font-size: 11px; color: #4b5563; font-weight: 500;">{{f.count}}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <section aria-label="Dòng log" aria-live="polite" style="background: #ffffff; border: 1px solid rgba(47, 43, 61, 0.12); border-radius: 6px; overflow: hidden;">
+      <ol style="list-style: none; margin: 0; padding: 0;">
+        <sc-for list="{{lines}}" as="l" hint-placeholder-count="10">
+          <li style="display: flex; flex-direction: column; gap: 3px; padding: 8px 12px; border-top: 1px solid rgba(47, 43, 61, 0.08); background: {{l.rowBg}};">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 16px; color: #4b5563; font-variant-numeric: tabular-nums;">{{l.t}}</span>
+              <span style="height: 18px; padding: 0 6px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 18px; background: #f3f4f6; color: #2f2b3d;">{{l.step}}</span>
+              <span style="margin-left: auto; height: 18px; padding: 0 6px; border-radius: 4px; font-size: 11px; line-height: 18px; font-weight: 600; background: {{l.lvBg}}; color: {{l.lvFg}};">{{l.lv}}</span>
+            </span>
+            <span style="font-size: 12px; line-height: 17px; color: #2f2b3d;">{{l.msg}}</span>
+          </li>
+        </sc-for>
+      </ol>
+      <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 16px 12px; font-size: 12px; line-height: 16px; color: #4b5563; text-align: center;">Không có dòng nào ở mức này.</div>
+      </sc-if>
+    </section>
+  </main>
+
+  <footer style="flex-shrink: 0; height: 54px; background: #ffffff; border-top: 1px solid rgba(47, 43, 61, 0.12); display: flex; align-items: center; gap: 12px; padding: 0 12px 0 16px;">
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+      <div style="font-size: 12px; line-height: 16px; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Ghi hôm nay <span style="font-weight: 600; color: #2f2b3d;">4/20</span> · Curfew 0h–6h</div>
+      <div style="height: 4px; border-radius: 9999px; background: #f1f0f2; overflow: hidden;"><div style="width: 20%; height: 4px; background: #6b7280;"></div></div>
+    </div>
+    <button type="button" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 6px; background: #b91c1c; color: #ffffff; font-family: inherit; font-size: 13px; font-weight: 600; flex-shrink: 0;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+      Kill-switch
+    </button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const MODE = 'full';
+    const FULL_LOCKED = false;
+    const RUNNING = true;
+    const TAB = 'log';
+    const SEL = {
+      dry: { bg: '#f0fdf4', fg: '#15803d', border: '#86efac' },
+      assist: { bg: '#fefce8', fg: '#854d0e', border: '#fde047' },
+      full: { bg: '#fff7ed', fg: '#c2410c', border: '#fdba74' }
+    };
+    const modes = ['dry', 'assist', 'full'].map((m) => {
+      const on = m === MODE;
+      const locked = m === 'full' && FULL_LOCKED;
+      return {
+        label: m === 'dry' ? 'Dry-run' : m === 'assist' ? 'Assist' : 'Full',
+        isDry: m === 'dry', isAssist: m === 'assist', isFull: m === 'full' && !locked, locked: locked,
+        disabled: locked || (RUNNING && !on),
+        pressed: on ? 'true' : 'false',
+        bg: on ? SEL[m].bg : 'transparent',
+        fg: locked ? '#9ca3af' : on ? SEL[m].fg : '#4b5563',
+        border: on ? SEL[m].border : 'transparent',
+        weight: on ? 600 : 500
+      };
+    });
+    const tabs = [['flows', 'Flows', 'Flows.dc.html'], ['run', 'Run', 'RunFull.dc.html'], ['log', 'Log', 'Log.dc.html'], ['probe', 'Probe', 'Probe.dc.html']].map((t) => ({
+      label: t[1], href: t[2], current: t[0] === TAB ? 'page' : 'false',
+      weight: t[0] === TAB ? 600 : 500, fg: t[0] === TAB ? '#2563eb' : '#4b5563', line: t[0] === TAB ? '#3b82f6' : 'transparent'
+    }));
+
+    const LV = {
+      ok: { lv: 'ok', lvBg: '#f0fdf4', lvFg: '#15803d', rowBg: '#ffffff' },
+      warn: { lv: 'warn', lvBg: '#fefce8', lvFg: '#854d0e', rowBg: '#ffffff' },
+      error: { lv: 'error', lvBg: '#fee2e2', lvFg: '#b91c1c', rowBg: '#fffafa' }
+    };
+    const RAW = [
+      ['14:20:40.012', 'run', 'ok', 'Bắt đầu run_9b27e5 · Full · 4 TKQC'],
+      ['14:20:41.530', 's1 locate', 'ok', 'Menu Tài khoản quảng cáo · khớp role+name'],
+      ['14:20:47.204', 's2 act', 'ok', 'Chọn TKQC HPMA – Shop Lan 01'],
+      ['14:20:52.881', 's3 locate', 'warn', 'testid trượt, khớp bằng text “Assign partners”'],
+      ['14:21:02.118', 's7 verify', 'ok', 'Readback khớp 2/2 quyền · Shop Lan 01'],
+      ['14:21:15.402', 's3 locate', 'error', 'Hết 8s chưa thấy hộp thoại, thử lại 1/2'],
+      ['14:21:18.990', 's3 locate', 'ok', 'Hộp thoại mở ở lần thử 2'],
+      ['14:21:31.640', 's5 act', 'warn', 'Phân tích đã tick sẵn, giữ nguyên'],
+      ['14:21:36.207', 's5 verify', 'ok', 'Đã tick Chạy quảng cáo'],
+      ['14:21:41.118', 'pacing', 'ok', 'Bước ghi kế tiếp sau 5s (4s + jitter)']
+    ];
+    const all = RAW.map((r) => Object.assign({ t: r[0], step: r[1], level: r[2], msg: r[3] }, LV[r[2]]));
+    const level = (this.state && this.state.level) || 'all';
+    const lines = level === 'all' ? all : all.filter((l) => l.level === level);
+    const count = (k) => k === 'all' ? all.length : all.filter((l) => l.level === k).length;
+    const DOT = { all: '#9ca3af', ok: '#22c55e', warn: '#eab308', error: '#ef4444' };
+    const filters = [['all', 'Tất cả'], ['ok', 'ok'], ['warn', 'warn'], ['error', 'error']].map((f) => {
+      const on = f[0] === level;
+      return {
+        label: f[1], count: count(f[0]), dot: DOT[f[0]],
+        pressed: on ? 'true' : 'false',
+        pick: () => this.setState({ level: f[0] }),
+        bg: on ? '#ffffff' : 'transparent',
+        border: on ? 'rgba(47, 43, 61, 0.22)' : 'transparent',
+        fg: on ? '#2f2b3d' : '#4b5563',
+        weight: on ? 600 : 500
+      };
+    });
+    return { modes: modes, tabs: tabs, filters: filters, lines: lines, empty: lines.length === 0 };
+  }
+}
+</script>
+</body>
+</html>

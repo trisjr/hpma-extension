@@ -1,0 +1,157 @@
+/**
+ * labels.ts — nhãn UI Business Manager EN/VI là DỮ LIỆU có phiên bản (NFR-06,
+ * file 17 §4.3): Meta đổi copy thì vá bảng này, không vá logic engine.
+ * `verified: true` = đã chạy thực địa (PRD §4.3, locale vi, 12/10/2026);
+ * còn lại là suy luận từ Help Center, engine phải dừng nhẹ nhàng nếu trượt.
+ */
+
+export type Label = {
+  vi: readonly string[];
+  en: readonly string[];
+  verified: boolean;
+};
+
+export type LabelKey =
+  | 'nav.users'
+  | 'nav.partners'
+  | 'partners.add'
+  | 'partners.give'
+  | 'dialog.bmId'
+  | 'dialog.next'
+  | 'dialog.assetTypeAdAccounts'
+  | 'dialog.assetSearch'
+  | 'dialog.accessPartial'
+  | 'dialog.taskCampaigns'
+  | 'dialog.taskPerformance'
+  | 'dialog.taskCreative'
+  | 'dialog.taskManage'
+  | 'dialog.assign'
+  | 'dialog.cancel'
+  | 'dialog.close'
+  | 'asset.alreadyAssigned'
+  | 'asset.selectAll'
+  | 'partner.assignedAssets'
+  | 'signal.approval';
+
+export const LABELS: Record<LabelKey, Label> = {
+  'nav.users': {
+    vi: ['Người dùng'],
+    en: ['Users'],
+    verified: false,
+  },
+  'nav.partners': {
+    vi: ['Đối tác'],
+    en: ['Partners'],
+    verified: true,
+  },
+  'partners.add': {
+    vi: ['Thêm'],
+    en: ['Add'],
+    verified: true,
+  },
+  'partners.give': {
+    vi: [
+      'Cấp cho đối tác quyền truy cập vào tài sản của bạn',
+      'Cấp cho đối tác quyền truy cập',
+    ],
+    en: ['Give a partner access to your assets'],
+    verified: true,
+  },
+  'dialog.bmId': {
+    vi: [
+      'ID trang quản lý tài sản doanh nghiệp của đối tác',
+      'ID doanh nghiệp của đối tác',
+    ],
+    en: [
+      "Partner's business portfolio ID",
+      'Business portfolio ID',
+      "Partner's business ID",
+    ],
+    verified: false,
+  },
+  'dialog.next': {
+    vi: ['Tiếp'],
+    en: ['Next'],
+    verified: true,
+  },
+  'dialog.assetTypeAdAccounts': {
+    vi: ['Tài khoản quảng cáo'],
+    en: ['Ad accounts'],
+    verified: false,
+  },
+  'dialog.assetSearch': {
+    vi: ['Tìm kiếm theo tên hoặc ID'],
+    en: ['Search by name or ID'],
+    verified: false,
+  },
+  'dialog.accessPartial': {
+    vi: ['Quyền truy cập một phần'],
+    en: ['Partial access'],
+    verified: false,
+  },
+  'dialog.taskCampaigns': {
+    vi: ['Quản lý chiến dịch'],
+    en: ['Manage campaigns'],
+    verified: false,
+  },
+  'dialog.taskPerformance': {
+    vi: ['Xem hiệu quả'],
+    en: ['View performance'],
+    verified: false,
+  },
+  'dialog.taskCreative': {
+    vi: ['Quản lý mẫu mô phỏng trong Creative Hub'],
+    en: ['Manage Creative Hub mockups'],
+    verified: false,
+  },
+  'dialog.taskManage': {
+    vi: ['Quản lý tài khoản quảng cáo'],
+    en: ['Manage ad account'],
+    verified: false,
+  },
+  'dialog.assign': {
+    vi: ['Chỉ định tài sản'],
+    en: ['Assign assets'],
+    verified: false,
+  },
+  'dialog.cancel': {
+    vi: ['Hủy', 'Huỷ'],
+    en: ['Cancel'],
+    verified: false,
+  },
+  'dialog.close': {
+    vi: ['Đóng'],
+    en: ['Close'],
+    verified: false,
+  },
+  'asset.alreadyAssigned': {
+    vi: ['Đã được chỉ định', 'Đã chia sẻ'],
+    en: ['Already assigned', 'Already shared'],
+    verified: false,
+  },
+  'asset.selectAll': {
+    vi: ['Chọn tất cả'],
+    en: ['Select all'],
+    verified: false,
+  },
+  'partner.assignedAssets': {
+    vi: ['Tài sản bạn đã chỉ định'],
+    en: ['Assets you assigned'],
+    verified: false,
+  },
+  'signal.approval': {
+    // Chỉ cụm nhiều từ: từ đơn như "approval" xuất hiện cả trong văn bản trợ giúp của wizard.
+    vi: ['cần được phê duyệt', 'cần phê duyệt', 'cần người khác duyệt'],
+    en: ['may need to approve', 'needs to be approved', 'needs approval from'],
+    verified: false,
+  },
+};
+
+// Locale thật của trang lên đầu (nhanh hơn); luôn so cả hai bộ nhãn nên
+// detect sai locale không làm sai kết quả (file 17 §4.2).
+export function labelsOf(key: LabelKey, lang: string): string[] {
+  const label = LABELS[key];
+  return lang.toLowerCase().startsWith('vi')
+    ? [...label.vi, ...label.en]
+    : [...label.en, ...label.vi];
+}
