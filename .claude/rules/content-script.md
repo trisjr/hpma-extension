@@ -4,32 +4,22 @@ paths:
   - 'src/utils/createShadowRoot.tsx'
 ---
 
-# Content script & Shadow DOM
+# Content script (headless) & Shadow DOM
 
-`src/manifest.ts` picks the entry by `NODE_ENV`: `index.dev.tsx` in dev, `index.prod.tsx` in prod. Changes to boot logic usually need to land in both.
+The content script is **headless**: it renders no UI and does not mutate the host page DOM except through the action engine's steps (docs/050-Research/21 §3.7, §5.1). All copilot UI lives in extension pages — side panel (`src/sidepanel/`), popup, options.
 
-## Dev (HMR) — `index.dev.tsx`
+## Entry
 
-- Import CSS normally so Vite injects `<style data-vite-dev-id>`.
-- Create a container, attach Shadow DOM, move the dev style element into the shadow root, render `Content` there. This is what makes CSS HMR work.
-- `touchGlobalCSSPlugin` in `vite.config.ts` re-touches `index.css` on `.tsx` changes so new Tailwind classes get generated — keep it.
+- Single entry `src/content/index.ts` (no dev/prod split — there is no React/CSS to HMR in the page). Declared in `src/manifest.ts`, matched only to `https://business.facebook.com/*`.
+- It registers `browser.runtime.onMessage` once, accepts only messages from this extension (`sender.id === browser.runtime.id`) and validates them with a type guard from `src/shared/messaging.ts`.
+- Side panel/popup reach it via `browser.tabs.sendMessage(tabId, msg)`.
 
-## Production — `index.prod.tsx`
+## Shadow DOM
 
-```tsx
-import styles from '@assets/styles/index.css?inline';
-import createShadowRoot from '@utils/createShadowRoot';
-
-import Content from './Content';
-
-const root = createShadowRoot(styles);
-root.render(<Content />);
-```
-
-`createShadowRoot` uses constructable stylesheets (`adoptedStyleSheets`) and falls back to a `<style>` tag (Firefox); it mounts into an inner node to avoid Firefox Xray wrapper issues.
+`createShadowRoot` (constructable stylesheets with `<style>` fallback, inner mount node for Firefox Xray) is used to boot **extension pages** (popup, options, side panel), not the content script.
 
 ## Rules
 
-- Never render into or mutate the host page DOM outside the shadow root.
-- Root container keeps `id='my-ext'` and `data-theme`.
-- Content scripts run on `<all_urls>`: treat page data and `window.postMessage` input as untrusted; never use `innerHTML`/`dangerouslySetInnerHTML` with page-derived strings.
+- Never render UI into the host page DOM. Root container of every UI surface (extension pages) keeps `id='my-ext'` and `data-theme`.
+- The content script runs on the Business Manager origin only: treat page data and `window.postMessage` input as untrusted; never use `innerHTML`/`dangerouslySetInnerHTML` with page-derived strings.
+- Flow runtime state and pending confirmations live in the content script, not in the service worker or the side panel.

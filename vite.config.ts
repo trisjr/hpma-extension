@@ -1,12 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-param-reassign */
 import fs from 'fs';
 import path, { resolve } from 'path';
 import { crx, ManifestV3Export } from '@crxjs/vite-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig, Plugin } from 'vite';
 
-import manifest from './src/manifest';
+import manifest, { BASE_PERMISSIONS } from './src/manifest';
 
 function touchFile(filePath: string): void {
   const time = new Date();
@@ -34,11 +32,20 @@ export function touchGlobalCSSPlugin({
   };
 }
 
+const SIDE_PANEL_PAGE = 'src/sidepanel/index.html';
+
+// `permissions` là spread nông → nối thêm vào mảng dùng chung, không ghi đè.
+// `sidePanel` chỉ khai trên Chrome (Firefox không có quyền này).
 const chromeSpecificManifest = {
   options_page: 'src/options/index.html',
   background: {
     service_worker: 'src/background/index.ts',
     type: 'module',
+  },
+  minimum_chrome_version: '116', // sidePanel.open
+  permissions: [...BASE_PERMISSIONS, 'sidePanel'],
+  side_panel: {
+    default_path: SIDE_PANEL_PAGE,
   },
 };
 
@@ -49,6 +56,12 @@ const firefoxSpecificManifest = {
   },
   background: {
     scripts: ['src/background/index.ts'],
+  },
+  sidebar_action: {
+    default_panel: SIDE_PANEL_PAGE,
+    default_title: 'HPMA Copilot',
+    open_at_install: false,
+    browser_style: false,
   },
 };
 
@@ -90,6 +103,11 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: mode === 'firefox' ? 'dist_firefox' : 'dist_chrome',
     rollupOptions: {
+      // crxjs không tự emit trang `sidebar_action.default_panel` của Firefox
+      // (Chrome `side_panel.default_path` thì có) → khai thủ công làm entry.
+      ...(mode === 'firefox' && {
+        input: { sidepanel: resolve(__dirname, SIDE_PANEL_PAGE) },
+      }),
       output: {
         assetFileNames: (assetInfo) => {
           if (

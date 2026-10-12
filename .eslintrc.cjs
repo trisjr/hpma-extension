@@ -9,7 +9,7 @@ module.exports = {
     'airbnb',
     'prettier',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs', '.husky', '.cursor'],
+  ignorePatterns: ['dist', '.eslintrc.cjs', '.husky'],
   parser: '@typescript-eslint/parser',
   plugins: ['react-refresh', 'react', '@typescript-eslint', 'import'],
   rules: {

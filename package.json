@@ -1,9 +1,19 @@
 {
-  "name": "chrome-ext-starter",
-  "displayName": "Chrome Extension Starter",
-  "description": "Get started with building your dream Chrome extension effortlessly! Our starter kit combines the power of cutting-edge technologies like Vite, TypeScript, React, CRX, Tailwind CSS, and DaisyUI, making extension development a breeze.",
+  "name": "hpma-extension",
+  "displayName": "HPMA Copilot",
+  "description": "Copilot for operating Facebook Business Manager via DOM automation: dry-run, human confirmation, safe pacing and audit log.",
   "private": true,
-  "version": "1.2.0",
+  "version": "0.1.0",
+  "author": "TrisJr <vokimtrivkt@gmail.com>",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/trisjr/hpma-extension.git"
+  },
+  "homepage": "https://github.com/trisjr/hpma-extension#readme",
+  "bugs": {
+    "url": "https://github.com/trisjr/hpma-extension/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite --mode chrome",

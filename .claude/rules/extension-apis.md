@@ -10,9 +10,12 @@ paths:
 
 - Shared manifest: `src/manifest.ts` (name gets ` ➡️ Dev` suffix in dev; version comes from `package.json`).
 - Browser-specific keys are merged in `vite.config.ts`:
-  - Chrome: `options_page`, `background.service_worker` (module)
-  - Firefox: `options_ui`, `background.scripts`
-- Current permissions: `activeTab`, `storage`. Add only what a feature needs; prefer `optional_permissions` / host permissions over broad grants.
+  - Chrome: `options_page`, `background.service_worker` (module), `side_panel` + `sidePanel` permission
+  - Firefox: `options_ui`, `background.scripts`, `sidebar_action` (`open_at_install: false`); Firefox must not declare `sidePanel`
+  - The merge is a shallow spread: arrays like `permissions` are concatenated explicitly (`BASE_PERMISSIONS` from `src/manifest.ts`), not overwritten.
+  - crxjs emits the Chrome side panel page automatically but not the Firefox `sidebar_action` page — it is added to `build.rollupOptions.input` for Firefox only.
+- Current permissions: `storage` (+ `sidePanel` on Chrome). No `tabs`/`host_permissions`: `tabs.query` returns the tab id and `tabs.sendMessage` works through the content-script match on Chrome. On Firefox MV3 the match may count as a host permission the user can leave ungranted or revoke (unverified) → check `about:addons` → Permissions when the panel stays "unreachable"; a fix likely needs `host_permissions` (M1, re-run security review). Add only what a feature needs; prefer `optional_permissions` / host permissions over broad grants.
+- Opening the side panel needs a user gesture on both browsers: resolve `windowId` beforehand and call `src/utils/openSidePanel.ts` synchronously inside the click handler (no `await` before it). It is the one place `chrome.*` is allowed (no polyfill equivalent), feature-detected.
 - Firefox metadata (`browser_specific_settings.gecko.id`, `strict_min_version`) is ignored by Chrome — safe to add.
 
 ## Cross-browser API usage
@@ -53,4 +56,4 @@ browser.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
 - Chrome: `pnpm build` → `chrome://extensions` → Load unpacked `dist_chrome/`. Service worker console via "Inspect views".
 - Firefox: `pnpm build:firefox` → `about:debugging` → This Firefox → Load Temporary Add-on → `dist_firefox/manifest.json`.
-- Check: content UI renders in Shadow DOM with styles, popup/options render and switch themes, background answers messages.
+- Check: no extension element in the Business Manager DOM; popup "Mở copilot" opens the side panel/sidebar; side panel shows "connected" on a reloaded `business.facebook.com` tab; popup/options render and switch themes.

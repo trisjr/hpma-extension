@@ -1,6 +1,6 @@
-## Contributing to Chrome Extension Starter
+## Contributing to HPMA Copilot
 
-Thanks for taking the time to contribute! This project is a production-grade MV3 starter using Vite, React 19, TypeScript 5, Tailwind CSS 4, DaisyUI 5, and the CRX plugin. The guidelines below help us keep quality high and the developer experience smooth.
+Thanks for taking the time to contribute! This project is an MV3 extension (Chrome + Firefox) using Vite, React 19, TypeScript 5, Tailwind CSS 4, DaisyUI 5, and the CRX plugin. The guidelines below help us keep quality high and the developer experience smooth.
 
 ### Code of Conduct
 

@@ -15,8 +15,9 @@ Manifest V3 browser extension (Chrome + Firefox) built with Vite 6 + `@crxjs/vit
 
 - `src/manifest.ts` — shared manifest; browser-specific parts (background, options page) are merged in `vite.config.ts`
 - `src/background/index.ts` — service worker (Chrome) / background script (Firefox)
-- `src/popup/`, `src/options/` — pages, booted via `createShadowRoot(styles)`
-- `src/content/` — content script, `index.dev.tsx` (HMR) vs `index.prod.tsx`
+- `src/popup/`, `src/options/`, `src/sidepanel/` — pages, booted via `createShadowRoot(styles)`; side panel is the main copilot UI
+- `src/content/` — headless content script (`index.ts`): engine + message listener, no UI
+- `src/shared/messaging.ts` — typed messages between extension pages and the content script
 - `src/utils/createShadowRoot.tsx` — Shadow DOM + `adoptedStyleSheets` mount helper
 - `src/assets/styles/index.css` — Tailwind + DaisyUI entry, fonts
 
@@ -27,7 +28,7 @@ Aliases: `@/*` → `src/*`, `@utils` → `src/utils`, `@assets` → `src/assets`
 - Functional React components only, explicit `JSX.Element` return type, PascalCase file names.
 - Style with Tailwind + DaisyUI classes only — no inline styles, no ad-hoc global CSS.
 - Root container of every UI surface has `id='my-ext'` and `data-theme`.
-- Content script UI renders inside Shadow DOM only; never mutate the host page DOM outside it.
+- No extension UI in the host page: the content script is headless and the copilot UI lives in the side panel/popup/options. The host page DOM is touched only by the action engine's steps.
 - Use `browser.*` from `webextension-polyfill`, not `chrome.*`, so code runs on both browsers.
 - Request the minimum permissions; any change goes through `src/manifest.ts` (or `vite.config.ts` for browser-specific keys).
 - Import order: external → aliases → relative → styles (enforced by Prettier sort-imports).

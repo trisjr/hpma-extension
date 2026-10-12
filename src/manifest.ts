@@ -1,9 +1,18 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { defineManifest } from '@crxjs/vite-plugin';
 
 import packageData from '../package.json';
 
 const isDev = process.env.NODE_ENV === 'development';
+
+// Pivot DOM automation (docs/050-Research/21 §6): siết phạm vi về đúng origin
+// Business Manager, tối thiểu quyền — chỉ `storage`; không `<all_urls>`,
+// không `tabs`/`host_permissions` (Chrome: tabs.sendMessage chạy được nhờ
+// content_scripts matches; Firefox có thể đòi cấp host permission — chưa kiểm
+// chứng, xem .claude/rules/extension-apis.md). Khóa side panel theo browser nằm ở `vite.config.ts`.
+const BM_ORIGIN = 'https://business.facebook.com/*';
+
+// Quyền dùng chung hai browser; `vite.config.ts` nối thêm quyền riêng từng bên.
+export const BASE_PERMISSIONS = ['storage'];
 
 export default defineManifest({
   manifest_version: 3,
@@ -27,19 +36,14 @@ export default defineManifest({
     48: 'icon48.png',
     128: 'icon128.png',
   },
-  permissions: ['activeTab', 'storage'],
+  permissions: BASE_PERMISSIONS,
+  // Content script headless: chỉ engine + listener message, không render UI
+  // vào DOM trang BM (docs/050-Research/21 §3.7, §5.1).
   content_scripts: [
     {
-      js: isDev
-        ? ['src/content/index.dev.tsx']
-        : ['src/content/index.prod.tsx'],
-      matches: ['<all_urls>'],
-    },
-  ],
-  web_accessible_resources: [
-    {
-      resources: ['*.js', '*.css', 'public/*'],
-      matches: ['<all_urls>'],
+      js: ['src/content/index.ts'],
+      matches: [BM_ORIGIN],
+      run_at: 'document_idle',
     },
   ],
 });

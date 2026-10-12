@@ -9,20 +9,36 @@ ignorePaths:
   - '**/*.map'
   - '**/*.ttf'
   - '.husky'
-  - '.cursor'
+  # Long-form Vietnamese docs; spell-check does not apply
+  - docs
+ignoreRegExpList:
+  # Vietnamese words carrying diacritics (code comments and docs are in Vietnamese)
+  - '/[\p{L}\p{M}]*[À-ỹ][\p{L}\p{M}]*/gu'
 dictionaries:
   - en_US
   - softwareTerms
   - typescript
   - node
 words:
+  - cooldown
   - CRX
   - crxjs
+  - HITL
+  - ianvs
+  - khai
+  - nghe
+  - theo
+  - thedutchcoder
+  - trang
+  - Tris
+  - trisjr
+  - trong
   - DaisyUI
   - HMR
   - hpma
   - MV3
   - pnpm
+  - sidepanel
   - Tailwind
   - tsconfig
   - tsx
