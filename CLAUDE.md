@@ -6,10 +6,11 @@ Manifest V3 browser extension (Chrome + Firefox) built with Vite 6 + `@crxjs/vit
 
 - `pnpm dev` — Chrome dev build with HMR → load `dist_chrome/` unpacked
 - `pnpm dev:firefox` — Firefox watch build → `dist_firefox/`
-- `pnpm build` / `pnpm build:firefox` — `tsc` + production build
+- `pnpm build` / `pnpm build:firefox` — `tsc -p tsconfig.build.json` (src only, tests excluded) + production build; `pnpm typecheck` checks everything including `tests/`
 - `pnpm lint` — ESLint (airbnb, `--max-warnings 0`)
 - `pnpm lint:spell` — cspell
-- pnpm only (enforced by `preinstall`). No test runner is configured yet.
+- `pnpm test` — Vitest + jsdom (needs Node ≥ 22.22.2); `pnpm test:watch` for watch mode
+- pnpm only (enforced by `preinstall`).
 
 ## Layout
 

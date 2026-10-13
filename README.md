@@ -17,7 +17,8 @@ bootstrap HTML; API access can expire or lack permissions.
 
 After upgrading an unpacked build, reload the extension (grant the new
 `graph.facebook.com` host permission if prompted), then reload the BM tab.
-Run `pnpm test:accounts` for inventory parsing, broker, session and UI-state checks.
+Run `pnpm test` (Vitest + jsdom, Node ≥ 22.22.2) for engine, flows and ad-account checks;
+`pnpm test:accounts` runs the inventory parsing, broker, session and UI-state checks only.
 
 ## Tech Stack
 

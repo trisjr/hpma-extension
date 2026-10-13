@@ -24,6 +24,8 @@ words:
   - CRX
   - crxjs
   - danh
+  - fontsource
+  - gstatic
   - HITL
   - ianvs
   - khai
@@ -49,6 +51,7 @@ words:
   - tsx
   - Vite
   - webextension
+  - wght
   - xanh
   - artboard
   - doanh
@@ -81,3 +84,8 @@ words:
   - kinh
   - loginpage
   - quan
+  - aabbcc
+  - Ashort
+  - Tiep
+  - ranh
+  - unstub
