@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="vi">
+  <meta charset="utf-8" />
+  <title>Existing partner regression</title>
+  <body>
+    <pre id="result">Running…</pre>
+    <main role="main" id="fixture"></main>
+    <script type="module">
+      import partnerAssignFlow, {
+        readExistingAccount,
+      } from '/src/content/flows/partnerAssign.ts';
+
+      const fixture = document.querySelector('#fixture');
+      const output = document.querySelector('#result');
+      const bm = '1451597353550362';
+      const id = '120253322039060067';
+      const nextId = '1432650704915908';
+      const checks = [];
+      const assert = (ok, message) => {
+        if (!ok) throw new Error(message);
+      };
+      const assetRow = (name, permissions, assetId = id) =>
+        `<div role="listitem"><span>${name}</span><span>${permissions}</span><a href="/latest/settings/ad_accounts/?selected_asset_id=${assetId}">View asset</a></div>`;
+      const panel = (rows, partnerId = bm) =>
+        `<section id="details"><header>ID: <a href="#">${partnerId}</a><button id="openAssets">Chỉ định tài sản</button></header><div role="tab" aria-selected="true">Tài sản bạn đã chỉ định</div><input placeholder="Tìm kiếm theo tên hoặc ID"><div role="list">${rows}</div></section>`;
+      const permissions =
+        'Quản lý chiến dịch (quảng cáo), Xem hiệu quả và Quản lý mẫu mô phỏng trong Creative Hub';
+      function readCheck(name, html, query, tasks, expected) {
+        fixture.innerHTML = html;
+        assert(readExistingAccount(bm, query, tasks, 'vi') === expected, name);
+        checks.push(`PASS ${name}`);
+      }
+      let writes, adds, assetOpens, nextClicks, cancelled;
+      function wizard() {
+        assetOpens++;
+        document.querySelector('[role="dialog"]')?.remove();
+        fixture.insertAdjacentHTML(
+          'beforeend',
+          `<div role="dialog"><div>Tài khoản quảng cáo</div><input placeholder="Tìm kiếm theo tên hoặc ID"><div id="choices"><label><input type="checkbox">New Account</label></div>${['Quản lý chiến dịch (quảng cáo)', 'Xem hiệu quả', 'Quản lý mẫu mô phỏng trong Creative Hub', 'Quản lý tài khoản quảng cáo'].map((label) => `<label><input type="checkbox" role="switch" aria-label="${label}">${label}</label>`).join('')}<button id="cancel">Hủy</button><button id="assign">Chỉ định tài sản</button></div>`
+        );
+        fixture.querySelector('#cancel').onclick = () => {
+          cancelled++;
+          fixture.querySelector('[role="dialog"]').remove();
+        };
+        fixture.querySelector('#assign').onclick = () => {
+          writes++;
+        };
+      }
+      function details(partnerId = bm) {
+        fixture.querySelector('#details')?.remove();
+        fixture.insertAdjacentHTML(
+          'beforeend',
+          panel(assetRow('Existing Account', permissions), partnerId)
+        );
+        fixture.querySelector('#openAssets').onclick = wizard;
+        fixture.querySelector('#details input').oninput = (event) => {
+          const query = event.target.value;
+          fixture.querySelector('[role="list"]').innerHTML =
+            query === nextId ? '' : assetRow('Existing Account', permissions);
+        };
+      }
+      async function flowCheck(
+        name,
+        mode,
+        queries,
+        expected,
+        errorCode,
+        wrongIdentity = false,
+        tasks = ['ANALYZE']
+      ) {
+        writes = adds = assetOpens = nextClicks = cancelled = 0;
+        fixture.innerHTML =
+          '<div><div><input placeholder="Tìm kiếm theo tên hoặc ID"></div><span><button aria-haspopup="menu" id="add">Thêm</button></span></div><div role="grid" id="partners"></div>';
+        let found = mode === 'search';
+        const search = fixture.querySelector('input');
+        search.oninput = () => {
+          fixture.querySelector('#partners').innerHTML = found
+            ? '<div role="row"><div role="gridcell"><div role="button" tabindex="0">Partner</div></div><div role="gridcell"><div role="button" tabindex="-1"><a href="#" id="partner">Details</a></div></div></div>'
+            : '';
+          const row = fixture.querySelector('#partner');
+          if (row)
+            row.onclick = () => {
+              if (row.isConnected)
+                details(wrongIdentity ? '9999999999999999' : bm);
+            };
+        };
+        // Meta có thể thay hàng khi ô tìm kiếm mất focus; phần tử cũ không mở chi tiết.
+        search.onblur = search.oninput;
+        if (mode === 'open') details();
+        fixture.querySelector('#add').onclick = () => {
+          adds++;
+          fixture.insertAdjacentHTML(
+            'beforeend',
+            '<button id="give">Cấp cho đối tác quyền truy cập vào tài sản của bạn</button>'
+          );
+          fixture.querySelector('#give').onclick = () => {
+            fixture.querySelector('#give').remove();
+            fixture.insertAdjacentHTML(
+              'beforeend',
+              '<div role="dialog"><input aria-label="Nhập ID đối tác kinh doanh"><button id="cancel">Hủy</button><button id="next">Tiếp</button></div>'
+            );
+            fixture.querySelector('#cancel').onclick = () => {
+              cancelled++;
+              fixture.querySelector('[role="dialog"]').remove();
+            };
+            fixture.querySelector('#next').onclick = () => {
+              nextClicks++;
+              if (mode === 'fallback') {
+                found = true;
+                fixture.querySelector('#next').disabled = true;
+                fixture
+                  .querySelector('[role="dialog"]')
+                  .insertAdjacentHTML(
+                    'afterbegin',
+                    '<div>Đã có mối quan hệ kinh doanh với đối tác</div>'
+                  );
+              } else wizard();
+            };
+          };
+        };
+        const targets = queries.map((accountId) => ({
+          accountId,
+          outcome: 'pending',
+        }));
+        const abort = new AbortController();
+        const timeout = wrongIdentity
+          ? setTimeout(() => abort.abort(), 8000)
+          : undefined;
+        const steps = [];
+        const ctx = {
+          signal: abort.signal,
+          lang: 'vi',
+          mode: 'dry',
+          batchSize: 10,
+          config: { partnerBmId: bm, queries, tasks },
+          state: () => ({ targets }),
+          gate: async () => {},
+          pause: async () => {},
+          beginBatch: () => {},
+          setTarget: (index, outcome, code) =>
+            Object.assign(targets[index], { outcome, code }),
+          step: async (index, body) => {
+            steps.push(index);
+            if (index === 1) return;
+            return body({ acted: () => {} });
+          },
+          skipStep: () => {},
+        };
+        let error;
+        try {
+          await partnerAssignFlow(ctx);
+        } catch (e) {
+          error = e;
+        }
+        clearTimeout(timeout);
+        if (wrongIdentity)
+          assert(
+            error && assetOpens === 0,
+            'Wrong BM must never open asset assignment'
+          );
+        else {
+          assert(
+            errorCode ? error?.code === errorCode : !error,
+            `${name}: ${error?.code ?? error?.message}`
+          );
+          assert(
+            targets.map((t) => t.outcome).join(',') === expected,
+            `${name}: target outcomes`
+          );
+          assert(
+            !fixture.querySelector('[role="dialog"]'),
+            `${name}: Dry-run must close wizard`
+          );
+        }
+        assert(writes === 0, `${name}: final Assign clicked`);
+        if (mode === 'open' || mode === 'search')
+          assert(adds === 0, `${name}: tried adding existing partner`);
+        if (mode === 'fallback')
+          assert(
+            nextClicks === 1 && adds === 1,
+            `${name}: duplicate not handled after Next`
+          );
+        checks.push(`PASS ${name}`);
+        output.textContent = checks.join('\n');
+      }
+      try {
+        readCheck(
+          'act_ ID from asset link',
+          panel(assetRow('Existing Account', permissions)),
+          `act_${id}`,
+          ['ANALYZE'],
+          'sufficient'
+        );
+        readCheck(
+          'Exact name',
+          panel(assetRow('Existing Account', permissions)),
+          'Existing Account',
+          ['ADVERTISE', 'ANALYZE'],
+          'sufficient'
+        );
+        readCheck(
+          'Full control covers requested permissions',
+          panel(assetRow('Existing Account', 'Quản lý tài khoản quảng cáo')),
+          id,
+          ['ADVERTISE', 'ANALYZE'],
+          'sufficient'
+        );
+        readCheck(
+          'Missing full control needs review',
+          panel(assetRow('Existing Account', permissions)),
+          id,
+          ['MANAGE'],
+          'needs-review'
+        );
+        readCheck(
+          'Unreadable permissions need review',
+          panel(assetRow('Existing Account', 'Quyền truy cập một phần')),
+          id,
+          ['ANALYZE'],
+          'needs-review'
+        );
+        readCheck(
+          'Wrong partner rejected even with correct ID elsewhere',
+          `<a>${bm}</a>` +
+            panel(
+              assetRow('Existing Account', permissions),
+              '9999999999999999'
+            ),
+          id,
+          ['ANALYZE'],
+          'needs-review'
+        );
+        readCheck(
+          'Duplicate names need review',
+          panel(
+            assetRow('Same', permissions) +
+              assetRow('Same', permissions, nextId)
+          ),
+          'Same',
+          ['ANALYZE'],
+          'needs-review'
+        );
+        readCheck(
+          'Missing account',
+          panel(assetRow('Existing Account', permissions)),
+          nextId,
+          ['ANALYZE'],
+          'missing'
+        );
+        await flowCheck(
+          'Open existing partner: all sufficient, no wizard',
+          'open',
+          [id],
+          'skipped-existing'
+        );
+        assert(assetOpens === 0, 'Sufficient access must not open wizard');
+        await flowCheck(
+          'Existing account without requested full control stops before wizard',
+          'open',
+          [id],
+          'failed',
+          'ERR_EXISTING_PERMISSIONS',
+          false,
+          ['MANAGE']
+        );
+        assert(assetOpens === 0, 'Insufficient access must not open wizard');
+        await flowCheck(
+          'Find existing partner by ID and verify details',
+          'search',
+          [id],
+          'skipped-existing'
+        );
+        await flowCheck(
+          'Duplicate notice after Next falls back',
+          'fallback',
+          [id],
+          'skipped-existing'
+        );
+        await flowCheck(
+          'Existing partner: only missing account enters Dry-run wizard',
+          'open',
+          [id, nextId],
+          'skipped-existing,done'
+        );
+        await flowCheck(
+          'New partner keeps original Dry-run path',
+          'new',
+          [nextId],
+          'done'
+        );
+        await flowCheck(
+          'Wrong partner from search cannot grant access',
+          'search',
+          [id],
+          '',
+          undefined,
+          true
+        );
+        output.textContent = checks.join('\n') + '\nALL PASSED';
+      } catch (error) {
+        output.textContent = checks.concat(`FAIL ${error.message}`).join('\n');
+        throw error;
+      } finally {
+        fixture.replaceChildren();
+      }
+    </script>
+  </body>
+</html>

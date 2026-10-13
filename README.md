@@ -4,6 +4,21 @@ Manifest V3 browser extension (Chrome + Firefox) that acts as a copilot for oper
 
 The content script is headless (engine only); the copilot UI lives in the side panel, popup and options pages. See [`docs/000-Index.md`](./docs/000-Index.md) for product and architecture documentation.
 
+Partner assignment step 2 reads ad accounts from the current BM's Graph API using
+the signed-in session token. Search and selection apply to loaded accounts;
+use **Load more** for the remaining owned/shared accounts, or switch to manual
+entry if the session cannot read them. Only active accounts can be selected,
+with a maximum of 200 per run. Partner assignment itself still uses the DOM engine.
+The token stays in memory, is sent only to Meta in an authorization header together
+with the browser's existing Facebook session cookies, and is never saved or
+returned to the panel. The extension does not extract or store cookies.
+Session-token extraction depends on BM's
+bootstrap HTML; API access can expire or lack permissions.
+
+After upgrading an unpacked build, reload the extension (grant the new
+`graph.facebook.com` host permission if prompted), then reload the BM tab.
+Run `pnpm test:accounts` for inventory parsing, broker, session and UI-state checks.
+
 ## Tech Stack
 
 - **Vite** + **@crxjs/vite-plugin**: build and HMR for MV3 extensions.

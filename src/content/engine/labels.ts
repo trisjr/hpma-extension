@@ -16,6 +16,7 @@ export type LabelKey =
   | 'nav.partners'
   | 'partners.add'
   | 'partners.give'
+  | 'partner.exists'
   | 'dialog.bmId'
   | 'dialog.next'
   | 'dialog.assetTypeAdAccounts'
@@ -59,6 +60,7 @@ export const LABELS: Record<LabelKey, Label> = {
   },
   'dialog.bmId': {
     vi: [
+      'Nhập ID đối tác kinh doanh',
       'ID trang quản lý tài sản doanh nghiệp của đối tác',
       'ID doanh nghiệp của đối tác',
     ],
@@ -67,6 +69,11 @@ export const LABELS: Record<LabelKey, Label> = {
       'Business portfolio ID',
       "Partner's business ID",
     ],
+    verified: false,
+  },
+  'partner.exists': {
+    vi: ['Đã có mối quan hệ kinh doanh với đối tác'],
+    en: ['You already have a business relationship with this partner'],
     verified: false,
   },
   'dialog.next': {

@@ -5,6 +5,7 @@
  */
 
 import type { Localized } from './i18n';
+import type { Surface } from './surfaces';
 
 export type RiskTier = 'read' | 'write' | 'sensitive';
 
@@ -17,6 +18,8 @@ export type FlowDef = {
   locked: boolean;
   /** Đã có màn cấu hình để điều hướng tới. */
   hasConfig: boolean;
+  /** Trang BM flow cần đứng trên; panel tự đưa tab tới đó khi mở flow. */
+  surface?: Surface;
 };
 
 /** Thứ tự nhóm cố định: rủi ro tăng dần. */
@@ -77,6 +80,7 @@ export const FLOWS: readonly FlowDef[] = [
     },
     locked: false,
     hasConfig: true,
+    surface: 'settings',
   },
   {
     id: 'partner-remove',

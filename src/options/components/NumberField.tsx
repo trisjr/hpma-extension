@@ -10,6 +10,8 @@ type NumberFieldProps = {
   // Thông điệp dưới ô: lỗi (đỏ) thay chú thích.
   message: string;
   invalid: boolean;
+  // Giá trị hợp lệ nhưng đáng lưu ý: chú thích đổi sang màu cảnh báo, không chặn lưu.
+  warn: boolean;
   integer: boolean;
   onChange: (value: string) => void;
 };
@@ -23,10 +25,14 @@ export default function NumberField({
   unit,
   message,
   invalid,
+  warn,
   integer,
   onChange,
 }: NumberFieldProps): JSX.Element {
   const messageId = `${id}-msg`;
+  let messageTone = 'text-base-content/70';
+  if (invalid) messageTone = 'text-red-700 dark:text-red-300';
+  else if (warn) messageTone = 'text-amber-700 dark:text-amber-300';
   const box = (
     <span
       className={`flex h-10 items-center rounded-md bg-base-100 ${
@@ -61,12 +67,7 @@ export default function NumberField({
         </label>
       )}
       {message !== '' && (
-        <span
-          id={messageId}
-          className={`text-xs ${
-            invalid ? 'text-red-700 dark:text-red-300' : 'text-base-content/70'
-          }`}
-        >
+        <span id={messageId} className={`text-xs ${messageTone}`}>
           {message}
         </span>
       )}

@@ -1,7 +1,29 @@
 /**
  * Background (service worker Chrome / background script Firefox).
- * M0: chưa có broker — policy gate, confirm round-trip, audit log làm ở M2
- * (docs/050-Research/21 §5.5). Giữ file để manifest hai browser có entry hợp lệ.
+ * Broker đọc TKQC: chỉ nhận token từ content script BM và chỉ GET hai edge cố định.
  */
 
-export {};
+import browser from 'webextension-polyfill';
+
+import { isAccountsGraph } from '@/shared/adAccounts';
+
+import fetchAdAccounts from './adAccounts';
+
+browser.runtime.onMessage.addListener(
+  (message: unknown, sender: browser.Runtime.MessageSender) => {
+    if (
+      sender.id !== browser.runtime.id ||
+      !sender.tab ||
+      !sender.url ||
+      !isAccountsGraph(message)
+    )
+      return undefined;
+    const url = new URL(sender.url);
+    if (
+      url.origin !== 'https://business.facebook.com' ||
+      url.searchParams.get('business_id') !== message.page.businessId
+    )
+      return undefined;
+    return fetchAdAccounts(message);
+  }
+);

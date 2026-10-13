@@ -109,11 +109,8 @@ export default function PartnerAssignWizard({
   // Full chưa mở khoá thì không bao giờ chạy Full, kể cả khi state cũ là full.
   const effectiveMode: RunMode = mode === 'full' && fullLocked ? 'dry' : mode;
   const accountCount = config.accountIds.length;
-  // Engine mode: mục đã là chuỗi user dán, không tra danh sách mẫu.
-  const selectedNames = config.accountIds.map((id) =>
-    engineMode
-      ? id
-      : source.accounts.find((account) => account.id === id)?.name ?? id
+  const selectedNames = config.accountIds.map(
+    (id) => source.accounts.find((account) => account.id === id)?.name ?? id
   );
   const accountNames = summarizeNames(selectedNames);
   const valid = isStepValid(step, config);

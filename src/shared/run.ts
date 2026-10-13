@@ -74,12 +74,15 @@ export type EngineErrorCode =
   | 'ERR_EMERGENCY'
   | 'ERR_RATE_LIMITED'
   | 'ERR_WRONG_SURFACE'
+  | 'ERR_NO_BUSINESS'
+  | 'ERR_SURFACE_TIMEOUT'
   | 'ERR_UNEXPECTED_DIALOG'
   | 'ERR_LOCATE_TIMEOUT'
   | 'ERR_LOCATE_AMBIGUOUS'
   | 'ERR_STEP_TIMEOUT'
   | 'ERR_TYPE_MISMATCH'
   | 'ERR_PERMISSION_MISMATCH'
+  | 'ERR_EXISTING_PERMISSIONS'
   | 'ERR_TARGET_NOT_FOUND'
   | 'ERR_TARGET_AMBIGUOUS'
   | 'ERR_NO_TARGETS'
@@ -173,7 +176,7 @@ const SAMPLE_EXISTING_TASKS: Record<string, PartnerTask[]> = {
   act_771203349902: ['ADVERTISE', 'ANALYZE', 'MANAGE'],
 };
 
-// `engine`: accountIds là chuỗi user dán (tên hoặc ID), "đã có" chưa đọc được.
+// `engine`: accountIds là ID chọn hoặc mục nhập tay; "đã có" chưa đọc được.
 export function buildDiff(
   config: PartnerAssignConfig,
   accounts: AdAccount[],
@@ -187,7 +190,7 @@ export function buildDiff(
     };
     if (engine) {
       return {
-        account: { id, name: id, status: 'active' as const },
+        account,
         op: 'unknown' as DiffOp,
         existing: [],
         adding: config.tasks,

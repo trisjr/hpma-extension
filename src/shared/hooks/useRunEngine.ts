@@ -20,6 +20,9 @@ import {
   stopRun,
 } from '@/shared/run';
 import type { RunController } from './runController';
+import type { SurfaceResult } from './ensureSurface';
+
+import ensureSurface from './ensureSurface';
 
 // Engine thật chạy trong content script; panel chỉ là view + nguồn lệnh
 // (SPEC-ENG-001 §3–4). Content script tự ghi `lastRun`, panel không ghi.
@@ -138,7 +141,7 @@ export default function useRunEngine(
   }, [enabled, tabId]);
 
   const start = useCallback<RunController['start']>(
-    ({ mode, config, diff }) => {
+    ({ mode, config, diff, surface }) => {
       if (!enabled) return;
       const fail = (code: EngineErrorCode): void =>
         setRun(failedRun({ mode, config, diff, code }));
@@ -157,18 +160,29 @@ export default function useRunEngine(
           tasks: config.tasks,
         },
       };
-      send(tabId, command).then((reply) => {
-        if (reply === undefined) {
-          fail('ERR_TAB_RELOADED');
-          return;
-        }
-        if (!isStartReply(reply)) {
-          fail('ERR_INTERNAL');
-          return;
-        }
-        // Thành công thì snapshot đầu tiên tới qua `run.state`.
-        if (!reply.ok) fail(reply.code);
-      });
+      const ensured: Promise<SurfaceResult> = surface
+        ? ensureSurface(tabId, surface)
+        : Promise.resolve({ ok: true });
+      ensured
+        .then((surfaceResult) => {
+          if (!surfaceResult.ok) {
+            fail(surfaceResult.code);
+            return undefined;
+          }
+          return send(tabId, command).then((reply) => {
+            if (reply === undefined) {
+              fail('ERR_TAB_RELOADED');
+              return;
+            }
+            if (!isStartReply(reply)) {
+              fail('ERR_INTERNAL');
+              return;
+            }
+            // Thành công thì snapshot đầu tiên tới qua `run.state`.
+            if (!reply.ok) fail(reply.code);
+          });
+        })
+        .catch(() => fail('ERR_INTERNAL'));
     },
     [enabled, tabId]
   );

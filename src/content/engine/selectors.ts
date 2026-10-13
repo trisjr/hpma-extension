@@ -42,6 +42,18 @@ const SELECTORS = {
     match: 'includes',
     scope: 'document',
   },
+  partnersSearch: {
+    key: 'partners.search',
+    css: 'input',
+    structure: 'div:has(> span > [aria-haspopup="menu"]) > div input',
+    scope: 'main',
+  },
+  partnerAssign: {
+    key: 'partner.assign',
+    css: BUTTON,
+    label: 'dialog.assign',
+    scope: 'main',
+  },
   bmIdInput: {
     key: 'dialog.bmId',
     css: 'input, textarea',

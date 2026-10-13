@@ -41,7 +41,9 @@ export type PacingConfig = {
 };
 
 // Biên an toàn (cứng) và biên trên chống nhập nhầm.
-export const DELAY_BASE_MIN = 3;
+export const DELAY_BASE_MIN = 1;
+// Mốc khuyến nghị (cũng là mặc định): dưới mốc này vẫn lưu được nhưng form cảnh báo.
+export const DELAY_BASE_RECOMMENDED = 3;
 export const DELAY_BASE_MAX = 60;
 export const JITTER_MIN = 20;
 export const JITTER_MAX = 100;

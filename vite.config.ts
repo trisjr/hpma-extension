@@ -53,7 +53,10 @@ const firefoxSpecificManifest = {
   // Firefox MV3 coi match của content script là quyền host user có thể không cấp/thu hồi:
   // khai tường minh (cùng origin, không rộng hơn) để tabs.sendMessage tới tab BM hoạt động.
   // Chrome không cần nên không đặt ở manifest dùng chung.
-  host_permissions: ['https://business.facebook.com/*'],
+  host_permissions: [
+    'https://business.facebook.com/*',
+    'https://graph.facebook.com/*',
+  ],
   browser_specific_settings: {
     gecko: {
       // ID cố định: nếu không, mỗi lần nạp add-on tạm thời là một storage mới và mất khoá khẩn cấp/audit.

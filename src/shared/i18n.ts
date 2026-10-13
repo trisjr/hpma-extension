@@ -82,6 +82,31 @@ const vi = {
   'pa.hint.bmOk': 'Tiếp theo: chọn TKQC nhận partner',
   'pa.hint.bmBad': 'Sửa BM ID đối tác để tiếp tục',
   'pa.acc.title': 'TKQC nhận partner',
+  'pa.acc.session': 'Danh sách từ phiên BM đang đăng nhập',
+  'pa.acc.source': 'BM nguồn · {id}',
+  'pa.acc.refresh': 'Tải lại',
+  'pa.acc.loadMore': 'Tải thêm TKQC',
+  'pa.acc.useManual': 'Nhập tên hoặc ID thủ công',
+  'pa.acc.useList': 'Chọn từ danh sách',
+  'pa.acc.clearUnlisted': 'Bỏ chọn các mục ngoài danh sách đang tải',
+  'pa.acc.limit': 'Tối đa {n} TKQC mỗi lần chạy.',
+  'pa.acc.error.business':
+    'Không xác định được BM nguồn hoặc BM đã đổi. Mở Cài đặt doanh nghiệp của BM cần thao tác rồi tải lại danh sách.',
+  'pa.acc.error.token':
+    'Chưa lấy được token phiên. Mở Business Manager, đăng nhập lại nếu cần, rồi tải lại danh sách; hoặc nhập TKQC thủ công.',
+  'pa.acc.error.expired':
+    'Phiên truy cập đã hết hạn. Tải lại trang BM hoặc đăng nhập lại, rồi tải lại danh sách.',
+  'pa.acc.error.permission':
+    'Phiên hiện tại thiếu quyền đọc danh sách TKQC. Kiểm tra quyền BM hoặc nhập TKQC thủ công.',
+  'pa.acc.error.rate':
+    'Meta đang giới hạn lượt đọc. Chờ một lúc rồi tải lại danh sách.',
+  'pa.acc.error.network':
+    'Không kết nối được tới BM hoặc Meta. Kiểm tra kết nối, tải lại trang BM rồi thử lại.',
+  'pa.acc.error.response':
+    'Không đọc được phản hồi danh sách TKQC. Thử tải lại hoặc nhập TKQC thủ công.',
+  'pa.acc.loaded': 'Đã chọn {n} · Đã tải {total} TKQC',
+  'pa.acc.emptyPage':
+    'Chưa có TKQC trong phần đã tải. Chọn “Tải thêm TKQC” để xem tiếp.',
   'pa.acc.desc': 'TKQC đã có partner này sẽ được bỏ qua khi chạy.',
   'pa.acc.searchLabel': 'Tìm TKQC',
   'pa.acc.searchPlaceholder': 'Tìm theo tên hoặc ID',
@@ -179,8 +204,8 @@ const vi = {
     'Sẽ ghi trên {n} TKQC, dùng 1 trong {left} lượt ghi còn lại hôm nay.',
   'diff.nothing': 'Không có gì để thay đổi. Mọi TKQC đã có đủ quyền.',
   'run.step.1': 'Mở Cài đặt BM › Đối tác',
-  'run.step.2': 'Mở “Cấp cho đối tác quyền truy cập”',
-  'run.step.3': 'Nhập BM ID đối tác',
+  'run.step.2': 'Tìm đối tác hoặc mở thêm đối tác',
+  'run.step.3': 'Xác minh BM ID và mở chọn tài sản',
   'run.step.4': 'Chọn TKQC',
   'run.step.5': 'Tick quyền',
   'run.step.6': 'Bấm Assign',
@@ -299,9 +324,11 @@ const vi = {
   'opt.loading': 'Đang tải cài đặt…',
   'opt.pacing.delayTitle': 'Độ trễ giữa các bước',
   'opt.pacing.delaySub':
-    'Giữ nhịp như người thao tác. Không thể đặt thấp hơn ngưỡng an toàn.',
+    'Giữ nhịp như người thao tác. Bạn tự chọn số giây; càng ngắn càng dễ bị Meta chặn.',
   'opt.pacing.base': 'Delay nền',
-  'opt.pacing.baseHint': 'Ngưỡng an toàn: tối thiểu {min} giây',
+  'opt.pacing.baseHint': 'Khuyến nghị từ {rec} giây · tối thiểu {min} giây',
+  'opt.pacing.baseWarn':
+    'Dưới mức khuyến nghị {rec} giây: thao tác nhanh hơn người thật, dễ bị Meta chặn tạm thời. Vẫn lưu được.',
   'opt.pacing.jitter': 'Jitter',
   'opt.pacing.jitterHint': 'Ngẫu nhiên quanh delay nền · tối thiểu {min}%',
   'opt.pacing.write': 'Thêm trước bước ghi',
@@ -309,7 +336,7 @@ const vi = {
   'opt.unit.sec': 'giây',
   'opt.unit.pct': '± %',
   'opt.err.invalid': 'Nhập một số hợp lệ.',
-  'opt.err.minSec': 'Không được dưới {min} giây (ngưỡng an toàn).',
+  'opt.err.minSec': 'Không được dưới {min} giây.',
   'opt.err.minPct': 'Không được dưới {min}% (ngưỡng an toàn).',
   'opt.err.range': 'Nhập giá trị từ {min} đến {max}.',
   'opt.preview.title': 'Xem trước nhịp chạy',
@@ -450,6 +477,11 @@ const vi = {
     'Meta báo chặn tạm thời do thao tác quá nhanh. Run đã dừng và Assist bị khoá 24 giờ. Đợi rồi mới thử lại, đừng chạy lại ngay.',
   'err.ERR_WRONG_SURFACE':
     'Chưa ở trang Cài đặt doanh nghiệp. Mở business.facebook.com/latest/settings rồi chạy lại.',
+  'err.ERR_NO_BUSINESS':
+    'Tab hiện tại không có business_id nên không tự chuyển trang được. Chọn đúng Business Manager trên tab BM rồi thử lại.',
+  'err.ERR_SURFACE_TIMEOUT':
+    'Đã chuyển tab sang Cài đặt doanh nghiệp nhưng trang chưa sẵn sàng sau 20 giây. Kiểm tra tab BM (đăng nhập, checkpoint) rồi thử lại.',
+  'surface.moving': 'Đang mở Cài đặt doanh nghiệp trên tab BM…',
   'err.ERR_UNEXPECTED_DIALOG':
     'Xuất hiện hộp thoại ngoài dự kiến nên run dừng để nhường bạn. Đóng hộp thoại trên tab BM, kiểm tra tay rồi chạy lại.',
   'err.ERR_LOCATE_TIMEOUT':
@@ -462,6 +494,8 @@ const vi = {
     'Nội dung gõ vào ô nhập không khớp giá trị cần nhập. Kiểm tra tab BM rồi chạy lại bằng Dry-run.',
   'err.ERR_PERMISSION_MISMATCH':
     'Bộ quyền trong wizard khác cấu hình (có quyền bật dư hoặc không bật được). Engine dừng để không cấp sai quyền; kiểm tra tab BM rồi chạy lại bằng Dry-run.',
+  'err.ERR_EXISTING_PERMISSIONS':
+    'TKQC đã được gán nhưng chưa xác nhận đủ quyền yêu cầu. Kiểm tra và cập nhật quyền bằng nút Quản lý trong tài sản đã chỉ định, rồi chạy lại Dry-run.',
   'err.ERR_TARGET_NOT_FOUND':
     'Không tìm thấy TKQC đã nhập trong danh sách tài sản của BM. Kiểm tra tên hoặc ID rồi cấu hình lại.',
   'err.ERR_TARGET_AMBIGUOUS':
@@ -554,6 +588,31 @@ const en: Record<MessageKey, string> = {
   'pa.hint.bmOk': 'Next: pick the ad accounts to share',
   'pa.hint.bmBad': 'Fix the partner BM ID to continue',
   'pa.acc.title': 'Ad accounts receiving the partner',
+  'pa.acc.session': 'Accounts from your signed-in BM session',
+  'pa.acc.source': 'Source BM · {id}',
+  'pa.acc.refresh': 'Reload',
+  'pa.acc.loadMore': 'Load more ad accounts',
+  'pa.acc.useManual': 'Enter names or IDs manually',
+  'pa.acc.useList': 'Choose from the list',
+  'pa.acc.clearUnlisted': 'Deselect items outside the loaded list',
+  'pa.acc.limit': 'Up to {n} ad accounts per run.',
+  'pa.acc.error.business':
+    'The source BM is missing or has changed. Open Business Settings for the BM you want to use, then reload the list.',
+  'pa.acc.error.token':
+    'No session token was found. Open Business Manager, sign in again if needed, then reload the list; or enter accounts manually.',
+  'pa.acc.error.expired':
+    'Your access session has expired. Reload BM or sign in again, then reload the list.',
+  'pa.acc.error.permission':
+    'This session cannot read the ad account list. Check your BM permissions or enter accounts manually.',
+  'pa.acc.error.rate':
+    'Meta is limiting read requests. Wait a while before reloading the list.',
+  'pa.acc.error.network':
+    'Cannot connect to BM or Meta. Check your connection, reload BM, then try again.',
+  'pa.acc.error.response':
+    'Cannot read the ad account response. Reload the list or enter accounts manually.',
+  'pa.acc.loaded': '{n} selected · {total} accounts loaded',
+  'pa.acc.emptyPage':
+    'No accounts in the loaded portion. Choose “Load more ad accounts” to continue.',
   'pa.acc.desc': 'Ad accounts that already have this partner are skipped.',
   'pa.acc.searchLabel': 'Search ad accounts',
   'pa.acc.searchPlaceholder': 'Search by name or ID',
@@ -655,8 +714,8 @@ const en: Record<MessageKey, string> = {
     'Writes on {n} ad accounts, uses 1 of the {left} writes left today.',
   'diff.nothing': 'Nothing to change. Every ad account already has access.',
   'run.step.1': 'Open BM settings › Partners',
-  'run.step.2': 'Open “Give a partner access”',
-  'run.step.3': 'Enter the partner BM ID',
+  'run.step.2': 'Find partner or open Add partner',
+  'run.step.3': 'Verify BM ID and open asset selection',
   'run.step.4': 'Pick the ad accounts',
   'run.step.5': 'Tick the permissions',
   'run.step.6': 'Click Assign',
@@ -779,9 +838,12 @@ const en: Record<MessageKey, string> = {
   'opt.loading': 'Loading settings…',
   'opt.pacing.delayTitle': 'Delay between steps',
   'opt.pacing.delaySub':
-    'Keep a human pace. It cannot be set below the safety threshold.',
+    'Keep a human pace. You choose the seconds; the shorter, the likelier Meta throttles you.',
   'opt.pacing.base': 'Base delay',
-  'opt.pacing.baseHint': 'Safety threshold: at least {min} seconds',
+  'opt.pacing.baseHint':
+    'Recommended from {rec} seconds · at least {min} second',
+  'opt.pacing.baseWarn':
+    'Below the recommended {rec} seconds: faster than a human, likely to trigger a temporary Meta block. You can still save.',
   'opt.pacing.jitter': 'Jitter',
   'opt.pacing.jitterHint': 'Random around the base delay · at least {min}%',
   'opt.pacing.write': 'Extra before a write step',
@@ -789,7 +851,7 @@ const en: Record<MessageKey, string> = {
   'opt.unit.sec': 'seconds',
   'opt.unit.pct': '± %',
   'opt.err.invalid': 'Enter a valid number.',
-  'opt.err.minSec': 'Must not be below {min} seconds (safety threshold).',
+  'opt.err.minSec': 'Must not be below {min} second(s).',
   'opt.err.minPct': 'Must not be below {min}% (safety threshold).',
   'opt.err.range': 'Enter a value from {min} to {max}.',
   'opt.preview.title': 'Run pace preview',
@@ -931,6 +993,11 @@ const en: Record<MessageKey, string> = {
     'Meta reports a temporary block for acting too fast. The run stopped and Assist is locked for 24 hours. Wait before trying again, do not rerun right away.',
   'err.ERR_WRONG_SURFACE':
     'Not on the Business settings page. Open business.facebook.com/latest/settings and run again.',
+  'err.ERR_NO_BUSINESS':
+    'The current tab has no business_id, so it cannot switch pages by itself. Pick the right Business Manager in the BM tab and try again.',
+  'err.ERR_SURFACE_TIMEOUT':
+    'The tab was sent to Business settings but the page was not ready after 20 seconds. Check the BM tab (login, checkpoint) and try again.',
+  'surface.moving': 'Opening Business settings in the BM tab…',
   'err.ERR_UNEXPECTED_DIALOG':
     'An unexpected dialog appeared, so the run stopped and left control to you. Close the dialog in the BM tab, check by hand, then run again.',
   'err.ERR_LOCATE_TIMEOUT':
@@ -943,6 +1010,8 @@ const en: Record<MessageKey, string> = {
     'The text typed into an input does not match the intended value. Check the BM tab, then rerun as a Dry-run.',
   'err.ERR_PERMISSION_MISMATCH':
     'The permission set in the wizard differs from your config (an extra permission is on, or one cannot be turned on). The engine stopped to avoid granting the wrong access; check the BM tab and re-run with Dry-run.',
+  'err.ERR_EXISTING_PERMISSIONS':
+    'This ad account is already assigned, but the requested permissions could not be confirmed. Check and update access using Manage in assigned assets, then rerun a Dry-run.',
   'err.ERR_TARGET_NOT_FOUND':
     'The ad account you entered was not found in the BM asset list. Check the name or ID and set up again.',
   'err.ERR_TARGET_AMBIGUOUS':

@@ -86,6 +86,7 @@ export default function LimitTable({
                         value={form.writes[kind]}
                         unit=''
                         invalid={writesError !== undefined}
+                        warn={false}
                         integer
                         message={
                           writesError
@@ -111,6 +112,7 @@ export default function LimitTable({
                         value={form.batch[kind]}
                         unit=''
                         invalid={batchError !== undefined}
+                        warn={false}
                         integer
                         message={
                           batchError

@@ -4,6 +4,7 @@ import type { FlowDef } from '@/shared/flows';
 import { FLOWS } from '@/shared/flows';
 import useAdAccounts from '@/shared/hooks/useAdAccounts';
 import useConnection from '@/shared/hooks/useConnection';
+import useFlowSurface from '@/shared/hooks/useFlowSurface';
 import useLanguage from '@/shared/hooks/useLanguage';
 import usePartnerDraft from '@/shared/hooks/usePartnerDraft';
 import useRunEngine from '@/shared/hooks/useRunEngine';
@@ -36,7 +37,6 @@ export default function SidePanel(): JSX.Element {
   const { connection, tabId, refresh } = useConnection();
   const { used, limit } = useWriteBudget();
   const draft = usePartnerDraft();
-  const source = useAdAccounts();
   const devtest = useDevtestSettings();
   // Simulator chỉ khi devtest bật và cờ useSimulator bật; còn lại là engine thật.
   const useSim =
@@ -50,6 +50,23 @@ export default function SidePanel(): JSX.Element {
   const [tab, setTab] = useState<PanelTab>('flows');
   const [openFlow, setOpenFlow] = useState<FlowDef | undefined>();
   const [diffOpen, setDiffOpen] = useState(false);
+  const wizardOpen = tab === 'flows' && openFlow?.id === PARTNER_FLOW_ID;
+  // Mở flow có `surface` thì tự đưa tab BM tới trang đó (engine thật mới cần).
+  const { state: surfaceState, retry: retrySurface } = useFlowSurface(
+    tabId,
+    wizardOpen ? openFlow?.surface : undefined,
+    devtest.ready && engineMode
+  );
+  const surfaceReady = !openFlow?.surface || surfaceState.status === 'ready';
+  const source = useAdAccounts(
+    tabId,
+    devtest.ready &&
+      engineMode &&
+      wizardOpen &&
+      surfaceReady &&
+      draft.step === 2,
+    useSim
+  );
 
   const { run } = controller;
   // Full chưa mở khoá thì không bao giờ chạy Full (engine sẽ kiểm lại).
@@ -83,6 +100,7 @@ export default function SidePanel(): JSX.Element {
       mode: runnableMode,
       config: draft.config,
       diff: buildDiff(draft.config, source.accounts, engineMode),
+      surface: openFlow?.surface,
     });
     setDiffOpen(false);
     setTab('run');
@@ -159,7 +177,7 @@ export default function SidePanel(): JSX.Element {
     return <ComingSoon lang={lang} title={tabTitle} onBack={goToFlows} />;
   };
 
-  const notice =
+  const connectionNotice =
     connection.status === 'unreachable' ? (
       <div role='status' className='alert alert-warning text-[13px]'>
         <span>{translate(lang, 'notice.unreachable')}</span>
@@ -173,7 +191,36 @@ export default function SidePanel(): JSX.Element {
       </div>
     ) : null;
 
-  const showWizard = tab === 'flows' && openFlow?.id === PARTNER_FLOW_ID;
+  let surfaceNotice: JSX.Element | null = null;
+  if (wizardOpen && surfaceState.status === 'moving') {
+    surfaceNotice = (
+      <div role='status' className='alert alert-info text-[13px]'>
+        <span>{translate(lang, 'surface.moving')}</span>
+      </div>
+    );
+  } else if (wizardOpen && surfaceState.status === 'error') {
+    surfaceNotice = (
+      <div role='status' className='alert alert-warning text-[13px]'>
+        <span>{translate(lang, `err.${surfaceState.code}`)}</span>
+        <button
+          type='button'
+          className='btn btn-outline btn-sm shrink-0 whitespace-nowrap'
+          onClick={retrySurface}
+        >
+          {translate(lang, 'notice.retry')}
+        </button>
+      </div>
+    );
+  }
+
+  const notice = (
+    <>
+      {connectionNotice}
+      {surfaceNotice}
+    </>
+  );
+
+  const showWizard = wizardOpen;
 
   return (
     // PostCSS prefix `#my-ext ` chỉ khớp phần tử con, không khớp chính root →

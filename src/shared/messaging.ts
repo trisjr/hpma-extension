@@ -3,14 +3,24 @@
  * popup) và content script (docs/050-Research/21 §5.5, SPEC-ENG-001 §4).
  * Mọi đầu nhận kiểm `sender.id` và validate shape bằng type guard viết tay.
  */
+import type { AccountsRead } from '@/shared/adAccounts';
 import type { EngineErrorCode, RunMode, RunState } from '@/shared/run';
 import type { RunConfig } from '@/shared/runConfig';
 
 import { isRunState } from '@/shared/run';
+import { isBusinessId } from '@/shared/surfaces';
 
 export type PingMessage = { kind: 'ping' };
 
 export type PongMessage = { kind: 'pong' };
+
+// Panel hỏi vị trí tab (không có quyền `tabs` nên không đọc được `tab.url`).
+export type LocationRead = { kind: 'location.read' };
+export type LocationReply = {
+  kind: 'location.reply';
+  pathname: string;
+  businessId?: string;
+};
 
 // ---- Lệnh panel → content script -------------------------------------------
 
@@ -33,7 +43,11 @@ export type RunCommand =
   | RunAssistDoneCommand
   | RunClearCommand;
 
-export type ContentMessage = PingMessage | RunCommand;
+export type ContentMessage =
+  | PingMessage
+  | LocationRead
+  | RunCommand
+  | AccountsRead;
 
 // ---- Phản hồi / sự kiện ----------------------------------------------------
 
@@ -60,6 +74,19 @@ export function isPingMessage(value: unknown): value is PingMessage {
 
 export function isPongMessage(value: unknown): value is PongMessage {
   return kindOf(value) === 'pong';
+}
+
+export function isLocationRead(value: unknown): value is LocationRead {
+  return kindOf(value) === 'location.read';
+}
+
+export function isLocationReply(value: unknown): value is LocationReply {
+  return (
+    isRecord(value) &&
+    value.kind === 'location.reply' &&
+    typeof value.pathname === 'string' &&
+    (value.businessId === undefined || isBusinessId(value.businessId))
+  );
 }
 
 // Chỉ kiểm vỏ lệnh; `config` của run.start vẫn phải qua `parseRunConfig`.

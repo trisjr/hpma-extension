@@ -3,8 +3,12 @@ import type { Lang } from '@/shared/i18n';
 import type { FormErrors, PacingForm } from '@/shared/pacingForm';
 
 import { translate } from '@/shared/i18n';
-import { previewPacing } from '@/shared/pacingForm';
-import { DELAY_BASE_MIN, JITTER_MIN } from '@/shared/settings';
+import { parseDecimal, previewPacing } from '@/shared/pacingForm';
+import {
+  DELAY_BASE_MIN,
+  DELAY_BASE_RECOMMENDED,
+  JITTER_MIN,
+} from '@/shared/settings';
 
 import fieldErrorText from './fieldError';
 import NumberField from './NumberField';
@@ -24,6 +28,11 @@ export default function DelayFields({
   onChange,
 }: DelayFieldsProps): JSX.Element {
   const sec = translate(lang, 'opt.unit.sec');
+  const baseValue = parseDecimal(form.delayBase);
+  const belowRecommended =
+    errors.delayBase === undefined &&
+    baseValue !== undefined &&
+    baseValue < DELAY_BASE_RECOMMENDED;
   return (
     <section className='flex flex-col gap-4'>
       <div className='flex flex-col gap-1'>
@@ -42,11 +51,18 @@ export default function DelayFields({
           value={form.delayBase}
           unit={sec}
           invalid={errors.delayBase !== undefined}
+          warn={belowRecommended}
           integer={false}
           message={
             errors.delayBase
               ? fieldErrorText(lang, errors.delayBase, 'opt.err.minSec')
-              : translate(lang, 'opt.pacing.baseHint', { min: DELAY_BASE_MIN })
+              : translate(
+                  lang,
+                  belowRecommended
+                    ? 'opt.pacing.baseWarn'
+                    : 'opt.pacing.baseHint',
+                  { min: DELAY_BASE_MIN, rec: DELAY_BASE_RECOMMENDED }
+                )
           }
           onChange={(delayBase) => onChange({ delayBase })}
         />
@@ -57,6 +73,7 @@ export default function DelayFields({
           value={form.jitter}
           unit={translate(lang, 'opt.unit.pct')}
           invalid={errors.jitter !== undefined}
+          warn={false}
           integer={false}
           message={
             errors.jitter
@@ -72,6 +89,7 @@ export default function DelayFields({
           value={form.writeExtra}
           unit={sec}
           invalid={errors.writeExtra !== undefined}
+          warn={false}
           integer={false}
           message={
             errors.writeExtra

@@ -16,13 +16,13 @@ import Icon from '../Icon';
 type StepAccountsProps = {
   lang: Lang;
   source: AdAccountsState;
-  // true: engine thật, nhập TKQC bằng dán tên/ID; false: danh sách mẫu của simulator.
+  // true: danh sách từ API phiên BM, có nhập tay dự phòng.
   engineMode: boolean;
   selectedIds: string[];
   onChange: (ids: string[]) => void;
 };
 
-type SampleAccountsProps = Omit<StepAccountsProps, 'engineMode'>;
+type AccountListProps = Omit<StepAccountsProps, 'engineMode'>;
 
 type PasteAccountsProps = Pick<
   StepAccountsProps,
@@ -46,12 +46,12 @@ function normalize(text: string): string {
     .toLowerCase();
 }
 
-function SampleAccounts({
+function AccountList({
   lang,
   source,
   selectedIds,
   onChange,
-}: SampleAccountsProps): JSX.Element {
+}: AccountListProps): JSX.Element {
   const [query, setQuery] = useState('');
   const needle = normalize(query.trim());
   const visible = source.accounts.filter(
@@ -67,6 +67,7 @@ function SampleAccounts({
     pickable.every((account) => selectedIds.includes(account.id));
 
   const toggleOne = (id: string): void => {
+    if (!selectedIds.includes(id) && selectedIds.length >= MAX_QUERIES) return;
     onChange(
       selectedIds.includes(id)
         ? selectedIds.filter((item) => item !== id)
@@ -81,14 +82,14 @@ function SampleAccounts({
       return;
     }
     onChange(
-      [...selectedIds, ...pickable.map((a) => a.id)].filter(
-        (id, index, all) => all.indexOf(id) === index
-      )
+      [...selectedIds, ...pickable.map((a) => a.id)]
+        .filter((id, index, all) => all.indexOf(id) === index)
+        .slice(0, MAX_QUERIES)
     );
   };
 
-  const renderList = (): JSX.Element => {
-    if (source.status === 'loading') {
+  const renderList = (): JSX.Element | null => {
+    if (source.status === 'loading' && source.accounts.length === 0) {
       return (
         <p
           aria-busy='true'
@@ -99,9 +100,13 @@ function SampleAccounts({
       );
     }
     if (source.accounts.length === 0) {
+      if (source.status === 'error') return null;
       return (
         <p className='text-base-content/70 m-0 py-3 text-center text-[13px]'>
-          {translate(lang, 'pa.acc.empty')}
+          {translate(
+            lang,
+            source.hasMore ? 'pa.acc.emptyPage' : 'pa.acc.empty'
+          )}
         </p>
       );
     }
@@ -130,7 +135,12 @@ function SampleAccounts({
                 type='checkbox'
                 className='checkbox checkbox-sm shrink-0'
                 checked={!blocked && selectedIds.includes(account.id)}
-                disabled={blocked}
+                disabled={
+                  blocked ||
+                  source.status === 'loading' ||
+                  (!selectedIds.includes(account.id) &&
+                    selectedIds.length >= MAX_QUERIES)
+                }
                 onChange={() => toggleOne(account.id)}
               />
               <span className='flex min-w-0 flex-1 flex-col'>
@@ -178,6 +188,28 @@ function SampleAccounts({
           <span>{translate(lang, 'pa.acc.sample')}</span>
         </div>
       )}
+      {!source.isSample && (
+        <div className='flex items-center justify-between gap-2'>
+          <span className='text-base-content/70 text-xs'>
+            {source.businessId
+              ? translate(lang, 'pa.acc.source', { id: source.businessId })
+              : translate(lang, 'pa.acc.session')}
+          </span>
+          <button
+            type='button'
+            className='btn btn-outline btn-sm shrink-0'
+            disabled={source.status === 'loading'}
+            onClick={source.refresh}
+          >
+            {translate(lang, 'pa.acc.refresh')}
+          </button>
+        </div>
+      )}
+      {source.error && (
+        <p role='alert' className='m-0 text-[13px] text-error'>
+          {translate(lang, `pa.acc.error.${source.error}`)}
+        </p>
+      )}
       <div className='flex flex-col gap-1.5'>
         <label htmlFor='acc-search' className='sr-only'>
           {translate(lang, 'pa.acc.searchLabel')}
@@ -200,14 +232,18 @@ function SampleAccounts({
       </div>
       <div className='flex items-center justify-between gap-2'>
         <span className='text-base-content/70 text-xs'>
-          {translate(lang, 'pa.acc.selected', {
-            n: selectedIds.length,
-            total: source.total,
-          })}
+          {translate(
+            lang,
+            source.isSample ? 'pa.acc.selected' : 'pa.acc.loaded',
+            {
+              n: selectedIds.length,
+              total: source.total,
+            }
+          )}
         </span>
         <button
           type='button'
-          disabled={pickable.length === 0}
+          disabled={pickable.length === 0 || source.status === 'loading'}
           onClick={toggleAll}
           className='h-9 text-[13px] font-medium text-blue-600 disabled:opacity-50 dark:text-blue-400'
         >
@@ -220,19 +256,47 @@ function SampleAccounts({
         </p>
       )}
       {renderList()}
+      {source.status !== 'loading' &&
+        selectedIds.some(
+          (id) => !source.accounts.some((account) => account.id === id)
+        ) && (
+          <button
+            type='button'
+            className='btn btn-outline btn-sm'
+            onClick={() =>
+              onChange(
+                selectedIds.filter((id) =>
+                  source.accounts.some((account) => account.id === id)
+                )
+              )
+            }
+          >
+            {translate(lang, 'pa.acc.clearUnlisted')}
+          </button>
+        )}
+      {selectedIds.length >= MAX_QUERIES && (
+        <p role='status' className='text-base-content/70 m-0 text-xs'>
+          {translate(lang, 'pa.acc.limit', { n: MAX_QUERIES })}
+        </p>
+      )}
       {source.hasMore && (
-        <button type='button' className='btn btn-outline btn-sm h-9'>
-          {translate(lang, 'pa.acc.more', {
-            n: source.total - source.accounts.length,
-          })}
+        <button
+          type='button'
+          className='btn btn-outline btn-sm h-9'
+          onClick={source.loadMore}
+          disabled={source.status === 'loading'}
+        >
+          {translate(
+            lang,
+            source.status === 'loading' ? 'pa.acc.loading' : 'pa.acc.loadMore'
+          )}
         </button>
       )}
     </section>
   );
 }
 
-// Engine thật: không có danh sách TKQC để chọn, user dán tên/ID và engine khớp
-// trong hộp thoại của BM khi chạy.
+// Nhập tay vẫn dùng cùng bộ phân tích và engine so khớp ID.
 function PasteAccounts({
   lang,
   selectedIds,
@@ -294,7 +358,7 @@ function PasteAccounts({
           spellCheck={false}
           placeholder={translate(lang, 'pa.acc.paste.placeholder')}
           onChange={(event) => handleChange(event.target.value)}
-          className='textarea min-h-32 w-full bg-base-100 text-sm'
+          className='textarea min-h-32 w-full resize-none bg-base-100 text-sm'
         />
       </label>
       <span aria-live='polite' className='text-base-content/70 text-xs'>
@@ -329,21 +393,32 @@ export default function StepAccounts({
   selectedIds,
   onChange,
 }: StepAccountsProps): JSX.Element {
-  if (engineMode) {
-    return (
-      <PasteAccounts
-        lang={lang}
-        selectedIds={selectedIds}
-        onChange={onChange}
-      />
-    );
-  }
+  const [manual, setManual] = useState(false);
   return (
-    <SampleAccounts
-      lang={lang}
-      source={source}
-      selectedIds={selectedIds}
-      onChange={onChange}
-    />
+    <div className='flex flex-col gap-3'>
+      {engineMode && (
+        <button
+          type='button'
+          className='self-end text-[13px] font-medium text-primary'
+          onClick={() => setManual(!manual)}
+        >
+          {translate(lang, manual ? 'pa.acc.useList' : 'pa.acc.useManual')}
+        </button>
+      )}
+      {engineMode && manual ? (
+        <PasteAccounts
+          lang={lang}
+          selectedIds={selectedIds}
+          onChange={onChange}
+        />
+      ) : (
+        <AccountList
+          lang={lang}
+          source={source}
+          selectedIds={selectedIds}
+          onChange={onChange}
+        />
+      )}
+    </div>
   );
 }

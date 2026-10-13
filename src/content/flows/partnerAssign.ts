@@ -4,8 +4,11 @@
  * Tiếp → chọn TKQC + quyền → (Assign: chỉ user bấm) → verify. Mỗi mẻ ≤ 10 TKQC.
  * Chỉ Dry-run/Assist: không có đường nào tự bấm Assign.
  */
+import type { PartnerTask } from '@/shared/partnerAssign';
+import { isOnSurface } from '@/shared/surfaces';
 import type { FlowContext } from '../engine/runner';
 import type { TaskUiKey } from './partnerTasks';
+
 
 import EngineError from '../engine/errors';
 import { labelsOf } from '../engine/labels';
@@ -23,6 +26,7 @@ import {
   isEnabled,
   sleep,
   typeText,
+  visibleText,
   waitFor,
   waitGone,
 } from '../engine/primitives';
@@ -63,7 +67,7 @@ async function openPartners(
   acted: () => void
 ): Promise<void> {
   // Không điều hướng bằng href (tải lại trang giết content script): chỉ bấm menu SPA.
-  if (!window.location.pathname.includes('/settings')) {
+  if (!isOnSurface('settings', window.location.pathname)) {
     throw new EngineError('ERR_WRONG_SURFACE');
   }
   if (activeDialog()) throw new EngineError('ERR_UNEXPECTED_DIALOG');
@@ -106,7 +110,17 @@ async function openGiveAccess(
   });
 }
 
-async function enterBmId(ctx: FlowContext, acted: () => void): Promise<void> {
+function partnerExists(lang: string): boolean {
+  const text = normalizeText(visibleText(activeDialog()));
+  return labelsOf('partner.exists', lang).some((label) =>
+    text.includes(normalizeText(label))
+  );
+}
+
+async function enterBmId(
+  ctx: FlowContext,
+  acted: () => void
+): Promise<boolean> {
   const input = await locate(SELECTORS.bmIdInput, ctx);
   if (
     !(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)
@@ -116,10 +130,14 @@ async function enterBmId(ctx: FlowContext, acted: () => void): Promise<void> {
   acted();
   await typeText(input, ctx.config.partnerBmId, ctx);
   await ctx.pause('micro');
+  if (partnerExists(ctx.lang)) return true;
   await click(await locate(SELECTORS.next, ctx), ctx);
   // Wizard chọn tài sản xuất hiện khi có danh sách hộp kiểm; ID sai thì không bao giờ tới.
-  await waitFor(
-    () => (activeDialog()?.querySelector(CHECKBOX_CSS) ? true : undefined),
+  return waitFor(
+    () => {
+      if (partnerExists(ctx.lang)) return true;
+      return activeDialog()?.querySelector(CHECKBOX_CSS) ? false : undefined;
+    },
     { signal: ctx.signal }
   ).catch((error) => {
     throw error instanceof EngineError
@@ -134,6 +152,191 @@ function isAlreadyAssigned(rowText: string, lang: string): boolean {
   const text = normalizeText(rowText);
   return labelsOf('asset.alreadyAssigned', lang).some((label) =>
     text.includes(normalizeText(label))
+  );
+}
+
+// Readback chỉ tính tài khoản trong danh sách đã gán của đúng partner, kể cả chi tiết mở sẵn.
+function partnerDetails(bmId: string, lang: string): HTMLElement | undefined {
+  if (activeDialog()) return undefined;
+  const tab = tryResolve(SELECTORS.partnerAssignedAssets, lang);
+  if (!tab) return undefined;
+  let details = tab.parentElement;
+  while (details && details !== document.body) {
+    if (
+      details.querySelector('[role="list"], ul') ||
+      Array.from(
+        details.querySelectorAll<HTMLElement>('button,[role="button"]')
+      ).some((el) =>
+        labelsOf('dialog.assign', lang)
+          .map(normalizeText)
+          .includes(normalizeText(el.textContent ?? ''))
+      )
+    )
+      break;
+    details = details.parentElement;
+  }
+  if (!details || details === document.body) return undefined;
+  const identity = Array.from(details.querySelectorAll<HTMLElement>('a')).some(
+    (link) => isVisible(link) && normalizeText(link.textContent ?? '') === bmId
+  );
+  return identity ? details : undefined;
+}
+
+function assignedRows(details: HTMLElement): HTMLElement[] {
+  return Array.from(
+    details.querySelectorAll<HTMLElement>('[role="listitem"], li')
+  ).filter(
+    (row) =>
+      isVisible(row) && row.querySelector('a[href*="/settings/ad_accounts"]')
+  );
+}
+
+export function readExistingAccount(
+  bmId: string,
+  query: string,
+  tasks: PartnerTask[],
+  lang: string
+): 'missing' | 'sufficient' | 'needs-review' {
+  const details = partnerDetails(bmId, lang);
+  const tab = tryResolve(SELECTORS.partnerAssignedAssets, lang);
+  if (!details || !tab || !isChecked(tab)) return 'needs-review';
+  const wanted = matchKey(query.replace(/^act_/i, ''));
+  const idQuery = /^\d{10,}$/.test(wanted);
+  const rows = assignedRows(details).filter((row) =>
+    idQuery
+      ? Array.from(
+          row.querySelectorAll<HTMLAnchorElement>(
+            'a[href*="/settings/ad_accounts"]'
+          )
+        ).some(
+          (a) =>
+            new URL(a.href).searchParams.get('selected_asset_id') === wanted
+        )
+      : [row, ...row.querySelectorAll<HTMLElement>('*')].some(
+          (el) => isVisible(el) && matchKey(el.textContent ?? '') === wanted
+        )
+  );
+  if (rows.length === 0) return 'missing';
+  if (rows.length !== 1) return 'needs-review';
+  const keys = uiTaskKeys(tasks);
+  const text = normalizeText(visibleText(rows[0]));
+  const has = (key: TaskUiKey): boolean =>
+    labelsOf(SELECTORS[key].label, lang).some((label) =>
+      text.includes(normalizeText(label))
+    );
+  return keys &&
+    keys.every(
+      (key) =>
+        has(key) ||
+        has('taskManage') ||
+        (key === 'taskPerformance' && has('taskCampaigns'))
+    )
+    ? 'sufficient'
+    : 'needs-review';
+}
+
+async function openExistingPartner(ctx: FlowContext): Promise<boolean> {
+  if (partnerDetails(ctx.config.partnerBmId, ctx.lang)) return true;
+  const search = await locate(SELECTORS.partnersSearch, ctx);
+  if (!(search instanceof HTMLInputElement)) {
+    throw new EngineError('ERR_TYPE_MISMATCH', SELECTORS.partnersSearch.key);
+  }
+  await typeText(search, ctx.config.partnerBmId, ctx);
+  // shortcut: chờ debounce 2.5s, thay bằng tín hiệu hoàn tất search khi Meta cung cấp.
+  await sleep(NOTICE_SETTLE_MS, ctx.signal);
+  // Blur có thể làm Meta render lại hàng: bỏ focus trước khi lấy phần tử để bấm.
+  await ctx.gate();
+  search.blur();
+  await ctx.pause('micro');
+  await waitFor(
+    () =>
+      mainRegion().querySelector('[aria-busy="true"], [role="progressbar"]')
+        ? undefined
+        : true,
+    { signal: ctx.signal }
+  );
+  const rows = Array.from(
+    mainRegion().querySelectorAll<HTMLElement>(
+      '[role="grid"] [role="row"], table tbody tr'
+    )
+  ).filter(
+    (row) => isVisible(row) && row.querySelector('[role="gridcell"], td')
+  );
+  if (rows.length === 0) return false;
+  if (rows.length !== 1)
+    throw new EngineError('ERR_LOCATE_AMBIGUOUS', 'partner.row');
+  const links = Array.from(rows[0].querySelectorAll<HTMLElement>('a')).filter(
+    isVisible
+  );
+  if (links.length !== 1) {
+    throw new EngineError('ERR_LOCATE_AMBIGUOUS', 'partner.details');
+  }
+  await click(links[0], ctx);
+  await waitFor(() => partnerDetails(ctx.config.partnerBmId, ctx.lang), {
+    signal: ctx.signal,
+  });
+  return true;
+}
+
+async function openExistingAssets(
+  ctx: FlowContext,
+  indexes: number[]
+): Promise<void> {
+  const tab = await locate(SELECTORS.partnerAssignedAssets, ctx);
+  if (!isChecked(tab)) await click(tab, ctx);
+  for (let i = 0; i < indexes.length; i += 1) {
+    const index = indexes[i];
+    const details = partnerDetails(ctx.config.partnerBmId, ctx.lang);
+    const searches = Array.from(
+      details?.querySelectorAll<HTMLInputElement>('input') ?? []
+    ).filter((input) => isVisible(input) && input.placeholder);
+    if (searches.length !== 1) {
+      throw new EngineError('ERR_LOCATE_AMBIGUOUS', 'partner.assetsSearch');
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await typeText(
+      searches[0],
+      ctx.state().targets[index].accountId.replace(/^act_/i, ''),
+      ctx
+    );
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(NOTICE_SETTLE_MS, ctx.signal);
+    // eslint-disable-next-line no-await-in-loop
+    await waitFor(
+      () => {
+        const current = partnerDetails(ctx.config.partnerBmId, ctx.lang);
+        return current &&
+          !current.querySelector('[aria-busy="true"], [role="progressbar"]')
+          ? true
+          : undefined;
+      },
+      { signal: ctx.signal }
+    );
+    const existing = readExistingAccount(
+      ctx.config.partnerBmId,
+      ctx.state().targets[index].accountId,
+      ctx.config.tasks,
+      ctx.lang
+    );
+    if (existing === 'sufficient') ctx.setTarget(index, 'skipped-existing');
+    else if (existing !== 'missing') {
+      ctx.setTarget(index, 'failed', 'ERR_EXISTING_PERMISSIONS');
+      throw new EngineError('ERR_EXISTING_PERMISSIONS');
+    }
+  }
+  const details = partnerDetails(ctx.config.partnerBmId, ctx.lang);
+  const search = details?.querySelector<HTMLInputElement>('input[placeholder]');
+  if (search) await typeText(search, '', ctx);
+  if (
+    indexes.every(
+      (index) => ctx.state().targets[index].outcome === 'skipped-existing'
+    )
+  )
+    return;
+  await click(await locate(SELECTORS.partnerAssign, ctx), ctx);
+  await waitFor(
+    () => (activeDialog()?.querySelector(CHECKBOX_CSS) ? true : undefined),
+    { signal: ctx.signal }
   );
 }
 
@@ -153,12 +356,16 @@ async function selectAccounts(
   acted: () => void,
   indexes: number[]
 ): Promise<SelectedAsset[]> {
+  const pending = indexes.filter(
+    (index) => ctx.state().targets[index].outcome !== 'skipped-existing'
+  );
+  if (pending.length === 0) return [];
   const tab = await locate(SELECTORS.assetTypeAdAccounts, ctx);
   acted();
   if (!isChecked(tab)) await click(tab, ctx);
   const selected: SelectedAsset[] = [];
-  for (let i = 0; i < indexes.length; i += 1) {
-    const index = indexes[i];
+  for (let i = 0; i < pending.length; i += 1) {
+    const index = pending[i];
     // eslint-disable-next-line no-await-in-loop
     await ctx.pause('micro');
     const { accountId: query } = ctx.state().targets[index];
@@ -197,7 +404,8 @@ async function selectAccounts(
       !isEnabled(match.checkbox) ||
       isAlreadyAssigned(match.rowText, ctx.lang)
     ) {
-      ctx.setTarget(index, 'skipped-existing');
+      ctx.setTarget(index, 'failed', 'ERR_EXISTING_PERMISSIONS');
+      throw new EngineError('ERR_EXISTING_PERMISSIONS');
     } else {
       if (!isChecked(match.checkbox)) {
         // eslint-disable-next-line no-await-in-loop
@@ -412,10 +620,11 @@ function findPartnerRow(bmId: string): HTMLElement | undefined {
     (el) =>
       isVisible(el) &&
       (normalizeText(el.textContent ?? '') === bmId ||
-        new URL(
-          el.getAttribute('href') ?? '',
-          window.location.href
-        ).searchParams.get('selected_partner_id') === bmId)
+        ((el.getAttribute('href') ?? '').includes('selected_partner_id=') &&
+          new URL(
+            el.getAttribute('href') ?? '',
+            window.location.href
+          ).searchParams.get('selected_partner_id') === bmId))
   );
   const innermost = rows.filter(
     (el) => !rows.some((other) => other !== el && el.contains(other))
@@ -423,31 +632,15 @@ function findPartnerRow(bmId: string): HTMLElement | undefined {
   return innermost.length === 1 ? innermost[0] : undefined;
 }
 
-// Readback chỉ tính tài khoản trong danh sách đã gán của đúng partner, kể cả chi tiết mở sẵn.
 export function isAssignedAccount(
   bmId: string,
   tokens: string[],
   lang: string
 ): boolean {
-  if (activeDialog()) return false;
+  const details = partnerDetails(bmId, lang);
   const tab = tryResolve(SELECTORS.partnerAssignedAssets, lang);
-  if (!tab || !isChecked(tab)) return false;
-  let details = tab.parentElement;
-  while (details && details !== document.body) {
-    if (details.querySelector('[role="list"], ul')) break;
-    details = details.parentElement;
-  }
-  if (!details || details === document.body) return false;
-  const identity = Array.from(details.querySelectorAll<HTMLElement>('a')).some(
-    (link) => isVisible(link) && normalizeText(link.textContent ?? '') === bmId
-  );
-  if (!identity) return false;
-  const rows = Array.from(
-    details.querySelectorAll<HTMLElement>('[role="listitem"], li')
-  ).filter(
-    (row) =>
-      isVisible(row) && row.querySelector('a[href*="/settings/ad_accounts"]')
-  );
+  if (!details || !tab || !isChecked(tab)) return false;
+  const rows = assignedRows(details);
   const matches = rows.filter((row) =>
     [row, ...row.querySelectorAll<HTMLElement>('*')].some(
       (el) => isVisible(el) && tokens.includes(matchKey(el.textContent ?? ''))
@@ -501,9 +694,28 @@ async function runBatchSteps(
   await ctx.pause('step');
   await ctx.step(1, (h) => openPartners(ctx, h.acted));
   await ctx.pause('step');
-  await ctx.step(2, (h) => openGiveAccess(ctx, h.acted));
+  const existing = await ctx.step(2, async (h) => {
+    h.acted();
+    if (await openExistingPartner(ctx)) return true;
+    // Không để bộ lọc BM ID che partner mới sau khi user ghi và engine đọc lại.
+    const search = await locate(SELECTORS.partnersSearch, ctx);
+    if (search instanceof HTMLInputElement) await typeText(search, '', ctx);
+    await openGiveAccess(ctx, h.acted);
+    return false;
+  });
   await ctx.pause('step');
-  await ctx.step(3, (h) => enterBmId(ctx, h.acted));
+  await ctx.step(3, async (h) => {
+    if (!existing && !(await enterBmId(ctx, h.acted))) return;
+    h.acted();
+    if (!existing) {
+      await cancelWizard(ctx);
+      if (activeDialog()) throw new EngineError('ERR_UNEXPECTED_DIALOG');
+      if (!(await openExistingPartner(ctx))) {
+        throw new EngineError('ERR_LOCATE_TIMEOUT', 'partner.existing');
+      }
+    }
+    await openExistingAssets(ctx, indexes);
+  });
   await ctx.pause('step');
   const selected = await ctx.step(4, (h) =>
     selectAccounts(ctx, h.acted, indexes)

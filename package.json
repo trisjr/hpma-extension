@@ -16,6 +16,7 @@
   },
   "type": "module",
   "scripts": {
+    "test:accounts": "node tests/adAccounts.test.mjs",
     "dev": "vite --mode chrome",
     "dev:firefox": "vite build --mode firefox --watch",
     "build": "tsc && vite build --mode chrome",
