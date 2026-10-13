@@ -56,17 +56,14 @@ const firefoxSpecificManifest = {
   // Firefox MV3 coi match của content script là quyền host user có thể không cấp/thu hồi:
   // khai tường minh (cùng origin, không rộng hơn) để tabs.sendMessage tới tab BM hoạt động.
   // Chrome không cần nên không đặt ở manifest dùng chung.
-  // Graph để bắt buộc trên Firefox: chưa xác nhận Firefox hỗ trợ optional_host_permissions ở 127.0,
-  // nên chưa chuyển; khi xác nhận được có thể chuyển sang optional như Chrome.
-  host_permissions: [
-    'https://business.facebook.com/*',
-    'https://graph.facebook.com/*',
-  ],
+  host_permissions: ['https://business.facebook.com/*'],
+  // Graph là quyền tuỳ chọn như Chrome (Firefox hỗ trợ optional_host_permissions từ 128, MDN BCD).
+  optional_host_permissions: [GRAPH_ORIGIN_PATTERN],
   browser_specific_settings: {
     gecko: {
       // ID cố định: nếu không, mỗi lần nạp add-on tạm thời là một storage mới và mất khoá khẩn cấp/audit.
       id: 'hpma-copilot@tenomad',
-      strict_min_version: '127.0',
+      strict_min_version: '128.0',
       data_collection_permissions: { required: ['none'] },
     },
   },
