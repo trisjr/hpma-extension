@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.4.0
+
+### What's Changed
+
+- **Requires Firefox 128 or later.** Graph is an optional host permission on Firefox too, so an update does not disable the extension behind a new permission prompt
+- fix(ui): Montserrat is self-hosted instead of loaded from Google Fonts
+
+Full Changelog: Compare v0.3.0...v0.4.0
+
 ## v0.3.0
 
 ### What's Changed
