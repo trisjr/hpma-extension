@@ -1,5 +1,8 @@
 import type { AdAccount } from './partnerAssign';
 
+// Origin Graph đọc TKQC; quyền truy cập là tuỳ chọn trên Chrome (xin khi user bấm).
+export const GRAPH_ORIGIN_PATTERN = 'https://graph.facebook.com/*';
+
 export type AccountEdge = 'owned_ad_accounts' | 'client_ad_accounts';
 export type AccountPage = {
   businessId: string;
@@ -9,6 +12,7 @@ export type AccountPage = {
 export type AccountsError =
   | 'business'
   | 'token'
+  | 'access'
   | 'permission'
   | 'expired'
   | 'rate'
@@ -64,6 +68,7 @@ export function isAccountsReply(value: unknown): value is AccountsReply {
     return [
       'business',
       'token',
+      'access',
       'permission',
       'expired',
       'rate',
@@ -89,18 +94,25 @@ export function isAccountsReply(value: unknown): value is AccountsReply {
   );
 }
 
-// shortcut: chỉ đọc token trong bootstrap HTML; nếu Meta đổi bootstrap, cập nhật extractor.
-export function extractSessionToken(html: string): string | undefined {
-  const decoded = html.replace(/&quot;|&#34;/g, '"').replace(/\\"/g, '"');
-  return (
-    decoded.match(
-      /"(?:accessToken|access_token|apiAccessToken)"\s*:\s*"(EAA[A-Za-z0-9_-]{20,4096})"/
-    )?.[1] ??
-    // /business_locations/ đưa token vào lời gọi init: [...,"LMBootstrapper",...],["EAA..."
-    decoded.match(
-      /"LMBootstrapper"[^\]]*\]\s*,\s*\[\s*"(EAA[A-Za-z0-9_-]{20,4096})"/
-    )?.[1]
+// Nhận vào TEXT của các inline <script> (không phải cả HTML trang): nội dung ngoài script
+// không được coi là token, nên tên business/partner do bên ngoài đặt không đánh lừa được.
+// shortcut: nếu Meta đổi bootstrap, cập nhật extractor.
+const SESSION_TOKEN_PATTERNS = [
+  /"(?:accessToken|access_token|apiAccessToken)"\s*:\s*"(EAA[A-Za-z0-9_-]{20,4096})"/g,
+  // /business_locations/ đưa token vào lời gọi init: [...,"LMBootstrapper",...],["EAA..."
+  /"LMBootstrapper"[^\]]*\]\s*,\s*\[\s*"(EAA[A-Za-z0-9_-]{20,4096})"/g,
+];
+
+// Tên business/TKQC do bên ngoài đặt có thể chứa chuỗi giống token: nếu có HAI token khác nhau
+// thì không chọn cái nào (trả undefined → lỗi 'token'), không lấy match đầu tiên.
+export function extractSessionToken(scripts: string): string | undefined {
+  const decoded = scripts.replace(/\\"/g, '"');
+  const found = new Set(
+    SESSION_TOKEN_PATTERNS.flatMap((pattern) =>
+      [...decoded.matchAll(pattern)].map((match) => match[1])
+    )
   );
+  return found.size === 1 ? [...found][0] : undefined;
 }
 
 export function parseAccountsPage(

@@ -104,6 +104,9 @@ const vi = {
     'Không kết nối được tới BM hoặc Meta. Kiểm tra kết nối, tải lại trang BM rồi thử lại.',
   'pa.acc.error.response':
     'Không đọc được phản hồi danh sách TKQC. Thử tải lại hoặc nhập TKQC thủ công.',
+  'pa.acc.error.access':
+    'Extension chưa có quyền gọi Meta để đọc danh sách TKQC. Cấp quyền rồi tải lại, hoặc nhập TKQC thủ công.',
+  'pa.acc.grant': 'Cấp quyền và tải lại',
   'pa.acc.loaded': 'Đã chọn {n} · Đã tải {total} TKQC',
   'pa.acc.emptyPage':
     'Chưa có TKQC trong phần đã tải. Chọn “Tải thêm TKQC” để xem tiếp.',
@@ -610,6 +613,9 @@ const en: Record<MessageKey, string> = {
     'Cannot connect to BM or Meta. Check your connection, reload BM, then try again.',
   'pa.acc.error.response':
     'Cannot read the ad account response. Reload the list or enter accounts manually.',
+  'pa.acc.error.access':
+    'The extension is not allowed to reach Meta to read the ad account list yet. Grant access, then reload, or enter accounts manually.',
+  'pa.acc.grant': 'Grant access and reload',
   'pa.acc.loaded': '{n} selected · {total} accounts loaded',
   'pa.acc.emptyPage':
     'No accounts in the loaded portion. Choose “Load more ad accounts” to continue.',

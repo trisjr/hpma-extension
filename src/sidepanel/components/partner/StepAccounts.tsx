@@ -210,6 +210,15 @@ function AccountList({
           {translate(lang, `pa.acc.error.${source.error}`)}
         </p>
       )}
+      {source.error === 'access' && source.grantAccess && (
+        <button
+          type='button'
+          className='btn btn-outline btn-sm self-start'
+          onClick={source.grantAccess}
+        >
+          {translate(lang, 'pa.acc.grant')}
+        </button>
+      )}
       <div className='flex flex-col gap-1.5'>
         <label htmlFor='acc-search' className='sr-only'>
           {translate(lang, 'pa.acc.searchLabel')}

@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, Plugin } from 'vite';
 
 import manifest, { BASE_PERMISSIONS } from './src/manifest';
+import { GRAPH_ORIGIN_PATTERN } from './src/shared/adAccounts';
 
 function touchFile(filePath: string): void {
   const time = new Date();
@@ -44,6 +45,8 @@ const chromeSpecificManifest = {
   },
   minimum_chrome_version: '116', // sidePanel.open
   permissions: [...BASE_PERMISSIONS, 'sidePanel'],
+  // Graph là quyền tuỳ chọn: không khai bắt buộc thì bản cập nhật không bị Chrome tắt chờ user chấp nhận.
+  optional_host_permissions: [GRAPH_ORIGIN_PATTERN],
   side_panel: {
     default_path: SIDE_PANEL_PAGE,
   },
@@ -53,6 +56,8 @@ const firefoxSpecificManifest = {
   // Firefox MV3 coi match của content script là quyền host user có thể không cấp/thu hồi:
   // khai tường minh (cùng origin, không rộng hơn) để tabs.sendMessage tới tab BM hoạt động.
   // Chrome không cần nên không đặt ở manifest dùng chung.
+  // Graph để bắt buộc trên Firefox: chưa xác nhận Firefox hỗ trợ optional_host_permissions ở 127.0,
+  // nên chưa chuyển; khi xác nhận được có thể chuyển sang optional như Chrome.
   host_permissions: [
     'https://business.facebook.com/*',
     'https://graph.facebook.com/*',

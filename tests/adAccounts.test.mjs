@@ -7,6 +7,7 @@ const { build } = createRequire(require.resolve('vite/package.json'))(
 );
 const listeners = [];
 globalThis.testBrowser = {
+  permissions: { contains: async () => true },
   runtime: {
     id: 'hpma-test',
     onMessage: { addListener: (listener) => listeners.push(listener) },
@@ -87,11 +88,24 @@ assert.equal(
   api.extractSessionToken(`{\\"apiAccessToken\\":\\"${token}\\"}`),
   token
 );
+// Entity HTML không còn được giải mã: input là text của inline script, không phải HTML.
 assert.equal(
   api.extractSessionToken(`{&quot;access_token&quot;:&quot;${token}&quot;}`),
-  token
+  undefined
 );
 assert.equal(api.extractSessionToken(`<div>${token}</div>`), undefined);
+// Hai token khác nhau (một cái do bên ngoài chèn vào tên) → không chọn cái nào.
+const otherToken = `EAA${'B'.repeat(80)}`;
+assert.equal(
+  api.extractSessionToken(
+    JSON.stringify({ name: `{"accessToken":"${otherToken}"}`, accessToken: token })
+  ),
+  undefined
+);
+assert.equal(
+  api.extractSessionToken(JSON.stringify({ accessToken: token, nested: { access_token: token } })),
+  token
+);
 assert.equal(api.extractSessionToken('{"accessToken":"EAAshort"}'), undefined);
 assert.equal(api.isAccountsRead({ kind: 'accounts.read', page }), true);
 assert.equal(
@@ -211,6 +225,19 @@ assert.deepEqual(
   await api.fetchAdAccounts({ kind: 'accounts.graph', token, page }),
   { ok: false, error: 'network' }
 );
+// Quyền Graph bị thu hồi: báo 'access' và không gọi Graph (không để CORS giả dạng 'network').
+let graphCalled = false;
+globalThis.testBrowser.permissions.contains = async () => false;
+globalThis.fetch = async () => {
+  graphCalled = true;
+  return new Response(JSON.stringify(reply([row])));
+};
+assert.deepEqual(
+  await api.fetchAdAccounts({ kind: 'accounts.graph', token, page }),
+  { ok: false, error: 'access' }
+);
+assert.equal(graphCalled, false);
+globalThis.testBrowser.permissions.contains = async () => true;
 
 const listener = listeners[0];
 const message = { kind: 'accounts.graph', token, page };
@@ -252,7 +279,14 @@ globalThis.location = {
 };
 globalThis.window = { location: globalThis.location };
 globalThis.document = {
-  documentElement: { outerHTML: JSON.stringify({ accessToken: token }) },
+  documentElement: {},
+  scripts: [{ src: '', textContent: JSON.stringify({ accessToken: token }) }],
+};
+// Trong trình duyệt DOMParser không chạy script; stub chỉ cần trả về các <script> của chuỗi HTML.
+globalThis.DOMParser = class {
+  parseFromString(text) {
+    return { scripts: [{ src: '', textContent: text }] };
+  }
 };
 globalThis.fetch = async () => new Response(JSON.stringify(reply([row])));
 assert.equal((await api.readAdAccounts({ kind: 'accounts.read' })).ok, true);
@@ -265,7 +299,16 @@ assert.equal(
   ).error,
   'business'
 );
-globalThis.document.documentElement.outerHTML = '';
+// Token chỉ nằm ngoài <script> (ở HTML trang) thì không được dùng.
+globalThis.document.scripts = [];
+globalThis.document.documentElement.outerHTML = JSON.stringify({
+  accessToken: token,
+});
+globalThis.fetch = async () => new Response('<html>Sign in</html>');
+assert.equal(
+  (await api.readAdAccounts({ kind: 'accounts.read' })).error,
+  'token'
+);
 globalThis.fetch = async (url) =>
   String(url).startsWith('https://business.facebook.com/')
     ? new Response(JSON.stringify({ apiAccessToken: token }))
@@ -287,9 +330,9 @@ assert.equal(
   'token'
 );
 
-globalThis.document.documentElement.outerHTML = JSON.stringify({
-  accessToken: token,
-});
+globalThis.document.scripts = [
+  { src: '', textContent: JSON.stringify({ accessToken: token }) },
+];
 globalThis.fetch = async () => {
   globalThis.location.href =
     'https://business.facebook.com/settings?business_id=987';

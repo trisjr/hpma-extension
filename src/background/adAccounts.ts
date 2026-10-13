@@ -1,11 +1,17 @@
 import type { AccountsGraph, AccountsReply } from '@/shared/adAccounts';
+import browser from 'webextension-polyfill';
 
-import { parseAccountsPage } from '@/shared/adAccounts';
+import { GRAPH_ORIGIN_PATTERN, parseAccountsPage } from '@/shared/adAccounts';
 
 export default async function fetchAdAccounts(
   message: AccountsGraph
 ): Promise<AccountsReply> {
   const { page } = message;
+  // Lớp phòng thủ thứ hai: user có thể thu hồi quyền; khi đó báo đúng lỗi, không để CORS giả dạng 'network'.
+  if (
+    !(await browser.permissions.contains({ origins: [GRAPH_ORIGIN_PATTERN] }))
+  )
+    return { ok: false, error: 'access' };
   const url = new URL(
     `https://graph.facebook.com/v26.0/${page.businessId}/${page.edge}`
   );

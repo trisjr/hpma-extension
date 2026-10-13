@@ -333,7 +333,15 @@ async function openExistingAssets(
     )
   )
     return;
-  await click(await locate(SELECTORS.partnerAssign, ctx), ctx);
+  // Hộp chọn TKQC đang mở thì nút "Assign" trên trang có thể trùng nhãn với nút xác nhận
+  // trong hộp đó: dừng thay vì bấm nhầm nút ghi.
+  if (activeDialog()?.querySelector(CHECKBOX_CSS))
+    throw new EngineError('ERR_UNEXPECTED_DIALOG', SELECTORS.partnerAssign.key);
+  const assignButton = await locate(SELECTORS.partnerAssign, ctx);
+  // Kiểm trên chính phần tử sắp bấm: locate có thể đã poll tới nút trong dialog sau guard trên.
+  if (assignButton.closest('[role="dialog"]'))
+    throw new EngineError('ERR_UNEXPECTED_DIALOG', SELECTORS.partnerAssign.key);
+  await click(assignButton, ctx);
   await waitFor(
     () => (activeDialog()?.querySelector(CHECKBOX_CSS) ? true : undefined),
     { signal: ctx.signal }

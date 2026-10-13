@@ -3,7 +3,11 @@ import type { AccountPage, AccountsError } from '@/shared/adAccounts';
 import type { AdAccount } from '@/shared/partnerAssign';
 import browser from 'webextension-polyfill';
 
-import { isAccountsReply, isRecord } from '@/shared/adAccounts';
+import {
+  GRAPH_ORIGIN_PATTERN,
+  isAccountsReply,
+  isRecord,
+} from '@/shared/adAccounts';
 
 export type AdAccountsState = {
   status: 'loading' | 'ready' | 'error';
@@ -16,6 +20,8 @@ export type AdAccountsState = {
   error?: AccountsError;
   refresh?: () => void;
   loadMore?: () => void;
+  // Xin quyền Graph (chỉ gọi từ click handler; xong thì tải lại).
+  grantAccess?: () => void;
 };
 
 // Simulator giữ dữ liệu mẫu; engine thật đọc Graph API qua content script.
@@ -71,6 +77,19 @@ export default function useAdAccounts(
         error: undefined,
       }));
       try {
+        // Chưa có quyền Graph thì dừng trước khi trích token: không có quyền thì token vô dụng.
+        const granted = await browser.permissions.contains({
+          origins: [GRAPH_ORIGIN_PATTERN],
+        });
+        if (!granted) {
+          if (generation.current === requestGeneration)
+            setState((previous) => ({
+              ...previous,
+              status: 'error',
+              error: 'access',
+            }));
+          return;
+        }
         const reply: unknown = await browser.tabs.sendMessage(tabId, {
           kind: 'accounts.read',
           page,
@@ -190,6 +209,16 @@ export default function useAdAccounts(
         },
         loadMore: () => {
           read(true).catch(() => undefined);
+        },
+        // Không `await` trước `permissions.request`: Firefox mất user gesture sau await.
+        grantAccess: () => {
+          browser.permissions
+            .request({ origins: [GRAPH_ORIGIN_PATTERN] })
+            .then((granted) => {
+              if (granted) read().catch(() => undefined);
+              return granted;
+            })
+            .catch(() => undefined);
         },
       };
 }

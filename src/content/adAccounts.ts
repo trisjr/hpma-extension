@@ -3,6 +3,14 @@ import browser from 'webextension-polyfill';
 
 import { extractSessionToken, isAccountsReply } from '@/shared/adAccounts';
 
+// Text của inline <script> trong document; bỏ qua script có src (không chứa bootstrap).
+function inlineScriptText(doc: Document): string {
+  return Array.from(doc.scripts)
+    .filter((script) => !script.src)
+    .map((script) => script.textContent ?? '')
+    .join('\n');
+}
+
 export default async function readAdAccounts(
   message: AccountsRead
 ): Promise<AccountsReply> {
@@ -16,7 +24,7 @@ export default async function readAdAccounts(
   )
     return { ok: false, error: 'business' };
   try {
-    let token = extractSessionToken(document.documentElement.outerHTML);
+    let token = extractSessionToken(inlineScriptText(document));
     if (!token) {
       const url = new URL('/business_locations/', window.location.origin);
       url.searchParams.set('business_id', businessId);
@@ -33,7 +41,12 @@ export default async function readAdAccounts(
         finalUrl.pathname.startsWith('/business/loginpage')
       )
         return { ok: false, error: 'token' };
-      token = extractSessionToken(await response.text());
+      // DOMParser không chạy script và không tải tài nguyên: an toàn để đọc HTML tải về.
+      const html = new DOMParser().parseFromString(
+        await response.text(),
+        'text/html'
+      );
+      token = extractSessionToken(inlineScriptText(html));
     }
     if (!token) return { ok: false, error: 'token' };
     if (
