@@ -1,8 +1,9 @@
 ---
 id: SPEC-UI-003
 type: technical-spec
-status: draft
+status: approved
 created: 2026-10-12
+approved: 2026-10-13
 source: docs/040-Design/project/Diff.dc.html
 related: [SPEC-UI-001, SPEC-UI-002, PRD-001, DES-001]
 ---

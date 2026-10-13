@@ -1,8 +1,9 @@
 ---
 id: SPEC-UI-004
 type: technical-spec
-status: draft
+status: approved
 created: 2026-10-12
+approved: 2026-10-13
 source: docs/040-Design/project/OptionsPacing.dc.html
 related: [SPEC-UI-001, SPEC-UI-003, PRD-001, DES-001]
 ---

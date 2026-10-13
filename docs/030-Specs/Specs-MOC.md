@@ -13,11 +13,11 @@ Chứa SDD, ADR, RFC, API Specs, DB Schema, Security Specs — dùng [Template-S
 
 ### 🖥️ UI Specs
 
-- [SPEC-UI-001 — Màn hình "1 · Flows" (side panel)](SPEC-UI-001-flows-screen.md) — `draft`
-- [SPEC-UI-002 — Cấu hình flow "Gán partner vào TKQC" (wizard 4 bước)](SPEC-UI-002-partner-assign-config.md) — `draft`
-- [SPEC-UI-003 — Diff, Run (Dry-run/Assist) và Result của flow "Gán partner vào TKQC"](SPEC-UI-003-diff-run-result.md) — `draft`
-- [SPEC-UI-004 — Trang Options (Pacing & limit, Audit log, Devtest)](SPEC-UI-004-options.md) — `draft`
+- [SPEC-UI-001 — Màn hình "1 · Flows" (side panel)](SPEC-UI-001-flows-screen.md) — `approved`
+- [SPEC-UI-002 — Cấu hình flow "Gán partner vào TKQC" (wizard 4 bước)](SPEC-UI-002-partner-assign-config.md) — `approved`
+- [SPEC-UI-003 — Diff, Run (Dry-run/Assist) và Result của flow "Gán partner vào TKQC"](SPEC-UI-003-diff-run-result.md) — `approved`
+- [SPEC-UI-004 — Trang Options (Pacing & limit, Audit log, Devtest)](SPEC-UI-004-options.md) — `approved`
 
 ### ⚙️ Engine Specs
 
-- [SPEC-ENG-001 — Action engine và flow "Gán partner vào TKQC" (Dry-run / Assist)](SPEC-ENG-001-engine-partner-assign.md) — `draft`
+- [SPEC-ENG-001 — Action engine và flow "Gán partner vào TKQC" (Dry-run / Assist)](SPEC-ENG-001-engine-partner-assign.md) — `approved`

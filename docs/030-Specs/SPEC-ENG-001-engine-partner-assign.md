@@ -1,8 +1,9 @@
 ---
 id: SPEC-ENG-001
 type: technical-spec
-status: draft
+status: approved
 created: 2026-10-12
+approved: 2026-10-13
 related:
   [
     SPEC-UI-002,
