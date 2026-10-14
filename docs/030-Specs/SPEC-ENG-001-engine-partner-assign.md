@@ -19,7 +19,7 @@ related:
 
 # SPEC-ENG-001 — Action engine và flow "Gán partner vào TKQC" (Dry-run / Assist)
 
-> Yêu cầu: PRD-001 FR-02, FR-03, FR-04, FR-05, FR-06, FR-07 (phần ghi tối thiểu), NFR-02, NFR-05, NFR-06, NFR-07. Thay simulator của SPEC-UI-003 bằng engine thật chạy trong content script. **Chưa có trường hợp nào được kiểm chứng trên BM thật** ngoài phát hiện thực địa 12/10 (PRD §4.3); mọi nhãn/selector khác đánh dấu `unverified` trong dữ liệu (§6) và engine phải dừng nhẹ nhàng (fail-soft) khi không tìm thấy.
+> Yêu cầu: PRD-001 FR-02, FR-03, FR-04, FR-05, FR-06, FR-07 (phần ghi tối thiểu), NFR-02, NFR-05, NFR-06, NFR-07. Thay simulator của SPEC-UI-003 bằng engine thật chạy trong content script. **Cập nhật 14/10/2026: Dry-run và Assist đã chạy thành công trên 1 BM thật, với cả partner mới lẫn partner có sẵn (xem QA-REPORT-002); chưa đối chiếu từng nhãn nên cờ `verified` giữ nguyên.** Ngoài phát hiện thực địa 12/10 (PRD §4.3) và lần chạy này, mọi nhãn/selector khác đánh dấu `unverified` trong dữ liệu (§6) và engine phải dừng nhẹ nhàng (fail-soft) khi không tìm thấy.
 
 ## 1. Mục đích & phạm vi
 

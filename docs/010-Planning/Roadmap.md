@@ -14,16 +14,16 @@ related:
 
 ## 1. Hiện trạng (v0.3.0)
 
-| Hạng mục                                                                | Trạng thái   | Ghi chú                                                                   |
-| :---------------------------------------------------------------------- | :----------- | :------------------------------------------------------------------------ |
-| Content script headless + side panel + popup + options (FR-01)          | Done (khung) | Chrome + Firefox; P-1 mới test trên BM giả                                |
-| Action engine: dry-run, Assist, pacing, curfew, ngân sách ghi (FR-03/6) | In-progress  | Có code + test jsdom; chưa kiểm chứng trên BM thật; chưa có mode `full`   |
-| Flow gán partner vào TKQC, gồm cả partner có sẵn (FR-04)                | In-progress  | Chỉ Dry-run/Assist; `Full` vẫn `FULL_LOCKED`; `dialog.*` còn `unverified` |
-| Audit log + trang Options (FR-07)                                       | In-progress  | SPEC-UI-004; chưa kiểm chứng trên BM thật                                 |
-| Load ad accounts vào side panel (một phần FR-08)                        | In-progress  | Graph API là optional permission trên Chrome và Firefox (≥ 128)           |
-| Probe + SelectorRegistry (FR-02)                                        | In-progress  | Có locator/selectors/labels; chưa có probe P0 và báo cáo hit-rate         |
-| Test tự động                                                            | Có           | Vitest + jsdom, 290 test; `pnpm test` và pre-commit; không có CI          |
-| Kill-switch, resync khi mất tab BM, nút Undo                            | Chưa làm     | SPEC-UI-003 §7 ghi "handler nối ở M2"; Undo hiện khoá chờ FR-09           |
+| Hạng mục                                                                | Trạng thái   | Ghi chú                                                                                                                                             |
+| :---------------------------------------------------------------------- | :----------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Content script headless + side panel + popup + options (FR-01)          | Done (khung) | Chrome + Firefox; P-1 mới test trên BM giả                                                                                                          |
+| Action engine: dry-run, Assist, pacing, curfew, ngân sách ghi (FR-03/6) | In-progress  | Có code + test jsdom; chưa kiểm chứng trên BM thật; chưa có mode `full`                                                                             |
+| Flow gán partner vào TKQC, gồm cả partner có sẵn (FR-04)                | In-progress  | Dry-run/Assist đã chạy thành công trên 1 BM thật (partner mới + cũ, 14/10); `Full` vẫn `FULL_LOCKED`; cờ `verified` trong `labels.ts` chưa cập nhật |
+| Audit log + trang Options (FR-07)                                       | In-progress  | SPEC-UI-004; chưa kiểm chứng trên BM thật                                                                                                           |
+| Load ad accounts vào side panel (một phần FR-08)                        | In-progress  | Graph API là optional permission trên Chrome và Firefox (≥ 128)                                                                                     |
+| Probe + SelectorRegistry (FR-02)                                        | In-progress  | Có locator/selectors/labels; chưa có probe P0 và báo cáo hit-rate                                                                                   |
+| Test tự động                                                            | Có           | Vitest + jsdom, 290 test; `pnpm test` và pre-commit; không có CI                                                                                    |
+| Kill-switch, resync khi mất tab BM, nút Undo                            | Chưa làm     | SPEC-UI-003 §7 ghi "handler nối ở M2"; Undo hiện khoá chờ FR-09                                                                                     |
 
 > Trạng thái dùng thuật ngữ của PRD-001 §4.1 (đã cập nhật 13/10/2026): "Done" chỉ khi đã kiểm chứng; có code nhưng chưa chạy trên BM thật là "In-progress".
 
