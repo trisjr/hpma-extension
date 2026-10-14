@@ -5,10 +5,10 @@
  * Chỉ Dry-run/Assist: không có đường nào tự bấm Assign.
  */
 import type { PartnerTask } from '@/shared/partnerAssign';
-import { isOnSurface } from '@/shared/surfaces';
 import type { FlowContext } from '../engine/runner';
 import type { TaskUiKey } from './partnerTasks';
 
+import { isOnSurface } from '@/shared/surfaces';
 
 import EngineError from '../engine/errors';
 import { labelsOf } from '../engine/labels';
@@ -248,12 +248,20 @@ async function openExistingPartner(ctx: FlowContext): Promise<boolean> {
   await ctx.gate();
   search.blur();
   await ctx.pause('micro');
-  await waitFor(
-    () =>
-      mainRegion().querySelector('[aria-busy="true"], [role="progressbar"]')
-        ? undefined
-        : true,
-    { signal: ctx.signal }
+  // Chỉ tính chỉ báo đang tải còn hiển thị, và hết hạn thì đọc luôn: trang "No results found"
+  // có thể còn aria-busy/progressbar treo, không được biến "không có partner" thành timeout.
+  await orUndefined(
+    waitFor(
+      () =>
+        Array.from(
+          mainRegion().querySelectorAll<HTMLElement>(
+            '[aria-busy="true"], [role="progressbar"]'
+          )
+        ).some(isVisible)
+          ? undefined
+          : true,
+      { signal: ctx.signal }
+    )
   );
   const rows = Array.from(
     mainRegion().querySelectorAll<HTMLElement>(
