@@ -16,6 +16,7 @@ import { useDevtestSettings } from '@/shared/hooks/useSettings';
 import useTheme from '@/shared/hooks/useTheme';
 import useWriteBudget from '@/shared/hooks/useWriteBudget';
 import { translate } from '@/shared/i18n';
+import { pickedBusinessId } from '@/shared/partnerAssign';
 import { buildDiff, isRunActive, isRunFinished } from '@/shared/run';
 
 import ComingSoon from './components/ComingSoon';
@@ -109,7 +110,7 @@ export default function SidePanel(): JSX.Element {
       config: draft.config,
       diff: buildDiff(draft.config, source.accounts, engineMode),
       surface: openFlow?.surface,
-      businessId: source.businessId,
+      businessId: pickedBusinessId(draft.businessId, source.businessId),
     });
     setDiffOpen(false);
     setTab('run');

@@ -58,7 +58,7 @@ Chi tiết: [PLAN-R1](./Implementation-Plans/PLAN-R1-probe-and-safety.md). Mục
 - [x] Probe P0 + báo cáo JSON: code xong (6 màn, báo cáo kèm locale/trình duyệt); **chưa đo thực địa**
 - [ ] Đo thực địa 6 màn trên BM thật, gồm `dialog.accessPartial`, `dialog.taskManage*` (blocker duy nhất trước write, PRD §4.3) → QA-REPORT-003
 - [x] **Kill-switch** ở footer side panel và popup, khoá bằng cờ `EMERGENCY_KEY` (code xong; còn thử tay Chrome + Firefox)
-- [x] **Guard đổi BM giữa run:** `ERR_BM_CHANGED` (code xong). Còn follow-up M1/L1 (mốc BM theo panel) trước khi mở `Full`
+- [x] **Guard đổi BM giữa run:** `ERR_BM_CHANGED` (code xong; mốc là BM panel đã chọn TKQC, M1/L1 xong 14/10). Còn L2, L-a, L-b trước khi mở `Full`, và cần thử trên BM thật xem điều hướng của flow có làm rơi `business_id` không
 - [ ] Resync khi mất tab BM giữa run: trạng thái `paused`, `re-sync` (SPEC-UI-003 §7)
 - [x] Xử lý trạng thái TKQC khác (tắt, chờ duyệt) trong SPEC-UI-002 Q3: `account_status === 1` là active, còn lại `restricted` bị chặn
 

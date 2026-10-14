@@ -4,6 +4,8 @@
  */
 import type { MessageKey } from '@/shared/i18n';
 
+import { isBusinessId } from '@/shared/surfaces';
+
 export type WizardStep = 1 | 2 | 3 | 4;
 
 export const WIZARD_STEPS: readonly WizardStep[] = [1, 2, 3, 4];
@@ -95,15 +97,27 @@ function isStringArray(value: unknown): value is string[] {
   );
 }
 
+// BM mà run được phép chạy: BM của danh sách lúc user chọn TKQC. Danh sách đang tải cho BM khác
+// (tab đã đổi BM) thì không có BM hợp lệ để gửi. Danh sách chưa tải (mở lại panel ở bước tóm tắt)
+// thì dùng BM đã lưu; content script kiểm lại với URL.
+export function pickedBusinessId(
+  picked: string | undefined,
+  loaded: string | undefined
+): string | undefined {
+  return loaded === undefined || loaded === picked ? picked : undefined;
+}
+
 export type PartnerAssignDraft = {
   config: PartnerAssignConfig;
   step: WizardStep;
+  // BM của danh sách TKQC lúc user chọn `accountIds`: run chỉ chạy trên đúng BM này.
+  businessId?: string;
 };
 
 // Bản nháp đọc từ storage không đáng tin: kiểm từng trường, hỏng thì bỏ.
 export function parseDraft(value: unknown): PartnerAssignDraft | undefined {
   if (typeof value !== 'object' || value === null) return undefined;
-  const { config, step } = value as Record<string, unknown>;
+  const { config, step, businessId } = value as Record<string, unknown>;
   if (typeof config !== 'object' || config === null) return undefined;
   const { partnerBmId, accountIds, tasks } = config as Record<string, unknown>;
   if (typeof partnerBmId !== 'string') return undefined;
@@ -121,5 +135,6 @@ export function parseDraft(value: unknown): PartnerAssignDraft | undefined {
   return {
     config: parsed,
     step: Math.min(stored, firstInvalidStep(parsed)) as WizardStep,
+    ...(isBusinessId(businessId) ? { businessId } : {}),
   };
 }

@@ -4,13 +4,13 @@ import type { ConnectionState } from '@/shared/hooks/useConnection';
 import type { PartnerDraftApi } from '@/shared/hooks/usePartnerDraft';
 import type { Lang, MessageKey } from '@/shared/i18n';
 import type { WizardStep } from '@/shared/partnerAssign';
+import type { RunMode } from '../riskStyles';
 
 import { usePacingConfig } from '@/shared/hooks/useSettings';
 import useWriteBudget from '@/shared/hooks/useWriteBudget';
 import { translate } from '@/shared/i18n';
 import { isStepValid } from '@/shared/partnerAssign';
 import { isCurfew } from '@/shared/settings';
-import type { RunMode } from '../riskStyles';
 
 import Icon from '../Icon';
 import { RISK_STYLES } from '../riskStyles';
@@ -184,7 +184,21 @@ export default function PartnerAssignWizard({
           source={source}
           engineMode={engineMode}
           selectedIds={config.accountIds}
-          onChange={(accountIds) => setConfig({ ...config, accountIds })}
+          onChange={(accountIds) => {
+            // Lựa chọn cũ thuộc BM khác với danh sách đang hiện: bỏ, chỉ giữ phần vừa thêm ở BM này.
+            const stale =
+              draft.businessId !== undefined &&
+              source.businessId !== undefined &&
+              draft.businessId !== source.businessId;
+            setConfig({
+              ...config,
+              accountIds: stale
+                ? accountIds.filter((id) => !config.accountIds.includes(id))
+                : accountIds,
+            });
+            // Ghi BM của danh sách đang chọn: run chỉ chạy trên đúng BM này.
+            draft.setBusinessId(source.businessId);
+          }}
         />
       );
     }
