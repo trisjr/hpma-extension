@@ -145,8 +145,9 @@ export const LABELS: Record<LabelKey, Label> = {
   },
   'partner.assignedAssets': {
     vi: ['Tài sản bạn đã chỉ định'],
+    // Probe thực địa 14/10 (QA-REPORT-003): nhãn `en` trúng tầng 1 20/20; `vi` chưa có báo cáo probe.
     en: ['Assets you assigned'],
-    verified: false,
+    verified: true,
   },
   'signal.approval': {
     // Chỉ cụm nhiều từ: từ đơn như "approval" xuất hiện cả trong văn bản trợ giúp của wizard.
