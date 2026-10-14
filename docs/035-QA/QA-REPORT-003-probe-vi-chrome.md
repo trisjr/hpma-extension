@@ -12,14 +12,14 @@ Người đo: anh (14/10/2026). Phiên bản: v0.6.0 (build local). BM thường
 
 ## Kết quả theo màn
 
-| Màn             | `vi`                                                                             | `en`                                                                                     |
-| --------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `page`          | 100%: `nav.users` t1, `nav.partners` t1, `partners.add` t3, `partners.search` t4 | 100%: giống `vi` (cùng tầng thắng)                                                       |
-| `menu`          | 100%: `partners.give` t1                                                         | 100%: `partners.give` t1                                                                 |
-| `dialog-bm`     | 100%: `dialog.bmId` t1, `dialog.next` t3                                         | 100%: `dialog.bmId` **t4**, `dialog.next` t3                                             |
-| `dialog-assets` | 100%: `dialog.assetTypeAdAccounts` t3, `dialog.assetSearch` t4                   | 100%: giống `vi`                                                                         |
-| `dialog-access` | 71,4% lúc đo (5/7), tính lại 100% sau khi sửa key dự phòng                       | 100%: 4 `dialog.task*` t1, `dialog.assign` t3                                            |
-| `detail`        | 100% (đo lại sau bản sửa `duplicatesOk`, anh báo, chưa có JSON)                  | lần 1: **50%** (`partner.assign` 0/20); đo lại sau bản sửa: 100% (anh báo, chưa có JSON) |
+| Màn             | `vi`                                                                             | `en`                                                                                                                                               |
+| --------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `page`          | 100%: `nav.users` t1, `nav.partners` t1, `partners.add` t3, `partners.search` t4 | 100%: giống `vi` (cùng tầng thắng)                                                                                                                 |
+| `menu`          | 100%: `partners.give` t1                                                         | 100%: `partners.give` t1                                                                                                                           |
+| `dialog-bm`     | 100%: `dialog.bmId` t1, `dialog.next` t3                                         | 100%: `dialog.bmId` **t4**, `dialog.next` t3                                                                                                       |
+| `dialog-assets` | 100%: `dialog.assetTypeAdAccounts` t3, `dialog.assetSearch` t4                   | 100%: giống `vi`                                                                                                                                   |
+| `dialog-access` | 71,4% lúc đo (5/7), tính lại 100% sau khi sửa key dự phòng                       | 100%: 4 `dialog.task*` t1, `dialog.assign` t3                                                                                                      |
+| `detail`        | 100% sau bản sửa `duplicatesOk` (anh báo, chưa có JSON)                          | lần 1: **50%** (`partner.assign` 0/20). Sau bản sửa: **100%**, `partner.assign` t3, `partner.assignedAssets` t1; **tự nhận diện** (không `manual`) |
 
 Tầng: t1 = nhãn khớp chính xác, t3 = nhãn khớp lỏng, t4 = đường lui cấu trúc.
 
@@ -39,6 +39,7 @@ Tầng: t1 = nhãn khớp chính xác, t3 = nhãn khớp lỏng, t4 = đường 
 
 ## Việc tiếp theo
 
-- Dán JSON `detail` sau bản sửa (`vi` và `en`) để ghi tầng thắng; lật `verified` cho `partner.assignedAssets` nếu `vi` cũng trúng tầng 1.
+- Dán JSON `detail` `vi` sau bản sửa; lật `verified` cho `partner.assignedAssets` nếu `vi` cũng trúng tầng 1 (`en` đã trúng tầng 1, 20/20).
+- `detectStage` đã được kiểm chứng thực địa cho màn `detail` (`en`, không chọn tay). Các màn còn lại vẫn chỉ đo chọn tay.
 - Đo lại một lần có tự nhận diện (không chọn tay) để kiểm chứng `detectStage`.
 - Xem lại nhãn `dialog.bmId` (`en`), `dialog.assetSearch`, `partners.search` khi có DOM (placeholder/aria-label thật).
