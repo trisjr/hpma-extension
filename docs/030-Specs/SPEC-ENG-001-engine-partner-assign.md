@@ -19,7 +19,7 @@ related:
 
 # SPEC-ENG-001 — Action engine và flow "Gán partner vào TKQC" (Dry-run / Assist)
 
-> Yêu cầu: PRD-001 FR-02, FR-03, FR-04, FR-05, FR-06, FR-07 (phần ghi tối thiểu), NFR-02, NFR-05, NFR-06, NFR-07. Thay simulator của SPEC-UI-003 bằng engine thật chạy trong content script. **Cập nhật 14/10/2026: Dry-run và Assist đã chạy thành công trên 1 BM thật, với cả partner mới lẫn partner có sẵn (xem QA-REPORT-002); chưa đối chiếu từng nhãn nên cờ `verified` giữ nguyên.** Ngoài phát hiện thực địa 12/10 (PRD §4.3) và lần chạy này, mọi nhãn/selector khác đánh dấu `unverified` trong dữ liệu (§6) và engine phải dừng nhẹ nhàng (fail-soft) khi không tìm thấy.
+> Yêu cầu: PRD-001 FR-02, FR-03, FR-04, FR-05, FR-06, FR-07 (phần ghi tối thiểu), NFR-02, NFR-05, NFR-06, NFR-07. Thay simulator của SPEC-UI-003 bằng engine thật chạy trong content script. **Cập nhật 14/10/2026: Dry-run và Assist đã chạy thành công trên 1 BM thật, với cả partner mới lẫn partner có sẵn (xem QA-REPORT-002); nhóm nhãn `dialog.*`, `asset.alreadyAssigned`, `signal.approval` (locale `vi`, BM thường) đã gắn `verified: true`.** Ngoài phát hiện thực địa 12/10 (PRD §4.3) và lần chạy này, mọi nhãn/selector khác đánh dấu `unverified` trong dữ liệu (§6) và engine phải dừng nhẹ nhàng (fail-soft) khi không tìm thấy.
 
 ## 1. Mục đích & phạm vi
 
@@ -137,7 +137,7 @@ Khác simulator: bước 1–3 chạy **một lần mỗi mẻ**; bước 4–5 
 
 ## 6. Locator, nhãn, primitives
 
-- **Nhãn là dữ liệu**: `labels.ts` mỗi key có `{ vi: string[], en: string[], verified: boolean }`. Nhãn đã có trong tài liệu (Partners/Đối tác, Thêm/Add, Chỉ định tài sản/Assign assets, Tiếp/Next) gắn `verified: false` trừ những gì PRD §4.3 đã ghi nhận chạy thực địa (đến bước vào wizard chọn tài sản, locale vi). `dialog.accessPartial`, `dialog.task*`, `asset.alreadyAssigned`, `signal.approval` đều `unverified`.
+- **Nhãn là dữ liệu**: `labels.ts` mỗi key có `{ vi: string[], en: string[], verified: boolean }`. Nhãn đã có trong tài liệu (Partners/Đối tác, Thêm/Add, Chỉ định tài sản/Assign assets, Tiếp/Next) gắn `verified: false` trừ những gì PRD §4.3 đã ghi nhận chạy thực địa (đến bước vào wizard chọn tài sản, locale vi). Cập nhật 14/10/2026: `dialog.*`, `asset.alreadyAssigned`, `signal.approval` đã `verified: true` sau lần chạy trên BM thật (locale `vi`); còn `unverified`: `nav.users`, `partner.exists`, `asset.selectAll`, `partner.assignedAssets`.
 - **`LocatorSpec`** theo file 17 §9.2: `role`, `names`, `attrs`, `texts`, `within`, `structure`. Thứ tự tầng 1→4; tầng fiber không dùng.
 - **`resolve`**: (a) tìm lại từ DOM ở **mỗi** lần gọi, kiểm `isConnected`; (b) lọc phần tử ẩn (`hidden`, `aria-hidden`, kích thước 0, `display:none`/`visibility:hidden`); (c) ≥ 2 ứng viên cùng tầng → thu hẹp bằng `within`/vùng main, vẫn nhiều → lỗi `ERR_LOCATE_AMBIGUOUS`, **không lấy `first()`**; (d) không ứng viên → `ERR_LOCATE_TIMEOUT` kèm `key`.
 - **`normalizeText`** bỏ `\p{Cf}` (zero-width) và quy mọi `\p{Zs}` về khoảng trắng thường trước khi so (PRD §4.3 điểm 2). Không bỏ dấu tiếng Việt, trừ fallback cuối.

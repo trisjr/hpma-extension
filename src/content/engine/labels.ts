@@ -1,8 +1,9 @@
 /**
  * labels.ts — nhãn UI Business Manager EN/VI là DỮ LIỆU có phiên bản (NFR-06,
  * file 17 §4.3): Meta đổi copy thì vá bảng này, không vá logic engine.
- * `verified: true` = đã chạy thực địa (PRD §4.3, locale vi, 12/10/2026);
- * còn lại là suy luận từ Help Center, engine phải dừng nhẹ nhàng nếu trượt.
+ * `verified: true` = đã chạy thực địa, locale vi (PRD §4.3, 12/10/2026; nhóm
+ * `dialog.*`, `asset.alreadyAssigned`, `signal.approval` trên BM thường,
+ * 14/10/2026, QA-REPORT-002); còn lại là suy luận từ Help Center, engine phải dừng nhẹ nhàng nếu trượt.
  */
 
 export type Label = {
@@ -69,7 +70,7 @@ export const LABELS: Record<LabelKey, Label> = {
       'Business portfolio ID',
       "Partner's business ID",
     ],
-    verified: false,
+    verified: true,
   },
   'partner.exists': {
     vi: ['Đã có mối quan hệ kinh doanh với đối tác'],
@@ -84,57 +85,57 @@ export const LABELS: Record<LabelKey, Label> = {
   'dialog.assetTypeAdAccounts': {
     vi: ['Tài khoản quảng cáo'],
     en: ['Ad accounts'],
-    verified: false,
+    verified: true,
   },
   'dialog.assetSearch': {
     vi: ['Tìm kiếm theo tên hoặc ID'],
     en: ['Search by name or ID'],
-    verified: false,
+    verified: true,
   },
   'dialog.accessPartial': {
     vi: ['Quyền truy cập một phần'],
     en: ['Partial access'],
-    verified: false,
+    verified: true,
   },
   'dialog.taskCampaigns': {
     vi: ['Quản lý chiến dịch'],
     en: ['Manage campaigns'],
-    verified: false,
+    verified: true,
   },
   'dialog.taskPerformance': {
     vi: ['Xem hiệu quả'],
     en: ['View performance'],
-    verified: false,
+    verified: true,
   },
   'dialog.taskCreative': {
     vi: ['Quản lý mẫu mô phỏng trong Creative Hub'],
     en: ['Manage Creative Hub mockups'],
-    verified: false,
+    verified: true,
   },
   'dialog.taskManage': {
     vi: ['Quản lý tài khoản quảng cáo'],
     en: ['Manage ad account'],
-    verified: false,
+    verified: true,
   },
   'dialog.assign': {
     vi: ['Chỉ định tài sản'],
     en: ['Assign assets'],
-    verified: false,
+    verified: true,
   },
   'dialog.cancel': {
     vi: ['Hủy', 'Huỷ'],
     en: ['Cancel'],
-    verified: false,
+    verified: true,
   },
   'dialog.close': {
     vi: ['Đóng'],
     en: ['Close'],
-    verified: false,
+    verified: true,
   },
   'asset.alreadyAssigned': {
     vi: ['Đã được chỉ định', 'Đã chia sẻ'],
     en: ['Already assigned', 'Already shared'],
-    verified: false,
+    verified: true,
   },
   'asset.selectAll': {
     vi: ['Chọn tất cả'],
@@ -150,7 +151,7 @@ export const LABELS: Record<LabelKey, Label> = {
     // Chỉ cụm nhiều từ: từ đơn như "approval" xuất hiện cả trong văn bản trợ giúp của wizard.
     vi: ['cần được phê duyệt', 'cần phê duyệt', 'cần người khác duyệt'],
     en: ['may need to approve', 'needs to be approved', 'needs approval from'],
-    verified: false,
+    verified: true,
   },
 };
 
