@@ -75,9 +75,11 @@ describe('rateOf', () => {
     expect(rateOf(keys)).toBe(0.75);
   });
 
-  it('key dự phòng (dialog.close) không kéo rate xuống dù trượt', () => {
+  it('key dự phòng không kéo rate xuống dù trượt', () => {
     const keys = [
-      key({ key: 'dialog.cancel', hits: 20, samples: 20 }),
+      key({ key: 'dialog.taskManage', hits: 20, samples: 20 }),
+      key({ key: 'dialog.accessPartial', hits: 0, samples: 20 }),
+      key({ key: 'dialog.cancel', hits: 0, samples: 20 }),
       key({ key: 'dialog.close', hits: 0, samples: 20 }),
     ];
     expect(rateOf(keys)).toBe(1);

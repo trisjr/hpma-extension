@@ -23,12 +23,14 @@ Người đo: anh (14/10/2026). Phiên bản: v0.6.0 (build local). BM thường
 
 ## Kết luận
 
-- **Chưa qua gate R1.** Còn thiếu: màn `detail`, locale `en`, và hai key trượt ở `dialog-access`.
-- Hai key trượt đều đang `verified: true` và flow Assist đã chạy thành công ngày 14/10 (QA-REPORT-002), nên có thể là trạng thái màn lúc đo không khớp (xem việc tiếp theo), chưa phải nhãn sai.
+- **Chưa qua gate R1.** Còn thiếu: màn `detail` và locale `en`.
+- **Nguyên nhân hai key trượt (ảnh chụp bước quyền, 14/10):** UI hiện tại không có lựa chọn "Quyền truy cập một phần" (chỉ còn tiêu đề và các công tắc), và nút phụ ở bước này tên "Quay lại", không phải "Hủy". Không phải nhãn sai: flow dùng `tryResolve` cho `accessPartial` và `cancel ?? close` cho dọn dẹp (`dialog.close` trúng 20/20).
+- **Đã sửa probe:** `dialog.accessPartial` và `dialog.cancel` thành key dự phòng (không tính hit-rate); `dialog.cancel` hạ về `verified: false`. Với báo cáo này, `dialog-access` tính lại là 5/5 = 100%.
+- Chưa rõ "Quay lại" đóng hộp thoại hay lùi một bước, nên chưa thêm vào nhãn `dialog.cancel`.
+- Bốn công tắc `dialog.task*` trúng tầng 1, nên PRD §4.3 (blocker `dialog.accessPartial`, `dialog.taskManage*`) chỉ còn chờ xác nhận lại ở `en`.
 - `nav.users` trúng 20/20 tầng 1 trên `vi`: đủ cơ sở lật `verified`.
 
 ## Việc tiếp theo
 
-- Chụp DOM (hoặc ảnh) của vùng "Quyền truy cập một phần" và nút Hủy ở đúng trạng thái đã đo, để xác định nhãn đổi hay vùng tìm sai.
 - Đo `detail`, rồi lặp cả 6 màn với locale `en`.
 - Đo lại một lần có tự nhận diện (không chọn tay) để kiểm chứng `detectStage`.

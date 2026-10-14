@@ -89,9 +89,16 @@ export function stageOfKey(key: string): ProbeStage {
   return 'page';
 }
 
-// Key dự phòng (flow dùng `cancel ?? close`): vẫn đo và hiển thị, nhưng không kéo hit-rate
-// của màn xuống khi bước đó không có nút này.
-const OPTIONAL_KEYS: readonly string[] = ['dialog.close'];
+// Key dự phòng: vẫn đo và hiển thị, nhưng không kéo hit-rate của màn xuống.
+// - `dialog.accessPartial`: UI hiện tại chỉ còn tiêu đề "Quyền truy cập một phần", không có
+//   lựa chọn để bấm; flow dùng `tryResolve` nên vắng mặt là bình thường (QA-REPORT-003).
+// - `dialog.cancel` / `dialog.close`: flow dùng `cancel ?? close`; ở bước quyền nút phụ tên
+//   "Quay lại", không phải "Hủy", nên chỉ cần một trong hai khớp.
+const OPTIONAL_KEYS: readonly string[] = [
+  'dialog.accessPartial',
+  'dialog.cancel',
+  'dialog.close',
+];
 
 export const isOptionalKey = (key: string): boolean =>
   OPTIONAL_KEYS.includes(key);

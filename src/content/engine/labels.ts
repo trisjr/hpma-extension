@@ -123,9 +123,10 @@ export const LABELS: Record<LabelKey, Label> = {
     verified: true,
   },
   'dialog.cancel': {
+    // Bước quyền: nút phụ tên "Quay lại" (QA-REPORT-003), không khớp nhãn này; flow rơi về `dialog.close`.
     vi: ['Hủy', 'Huỷ'],
     en: ['Cancel'],
-    verified: true,
+    verified: false,
   },
   'dialog.close': {
     vi: ['Đóng'],
