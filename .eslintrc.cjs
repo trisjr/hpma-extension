@@ -24,6 +24,8 @@ module.exports = {
     'no-shadow': 'off',
     '@typescript-eslint/no-shadow': 'error',
     'import/no-extraneous-dependencies': 'off',
+    // Thứ tự import do Prettier sort-imports quyết định (.prettierrc); rule này mâu thuẫn với nó.
+    'import/order': 'off',
     'react/react-in-jsx-scope': 'off',
   },
   globals: {
