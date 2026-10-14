@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.7.0
+
+### What's Changed
+
+- feat(engine): New flow "Approve partner requests" for the second admin: scan Settings › Requests › Needs review for access requests from a partner BM (exact BM name match), review the list, then Dry-run or Assist (you click Approve yourself, the engine verifies the request left the list); Decline is never touched and Full stays locked
+- feat(probe): The probe now checks the Requests list and an opened request, so the readiness gate shows "incomplete" until both pages are probed once
+- fix(engine): The Needs review tab is located on the real Requests page, where its label is repeated in three spans
+
+Full Changelog: Compare v0.6.2...v0.7.0
+
 ## v0.6.2
 
 ### What's Changed
