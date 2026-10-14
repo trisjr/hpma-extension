@@ -264,6 +264,35 @@ describe('run.stop / run.assistDone / run.sync / run.clear', () => {
     });
   });
 
+  it('kill-switch (stopActiveRun) dừng run đang chạy không cần runId, không có run thì vô hại', async () => {
+    holdFlow();
+    vi.resetModules();
+    const { default: handle, stopActiveRun } = await import(
+      '@/content/engine/controller'
+    );
+    stopActiveRun();
+    await handle(startCommand('dry'));
+    stopActiveRun();
+    await settle();
+    const after = (await handle({ kind: 'run.sync' })) as SyncReply;
+    expect(after.run).toMatchObject({ status: 'stopped' });
+    stopActiveRun();
+  });
+
+  it('kill-switch bấm đúng lúc run đang khởi động vẫn dừng run ngay khi nó được tạo', async () => {
+    holdFlow();
+    vi.resetModules();
+    const { default: handle, stopActiveRun } = await import(
+      '@/content/engine/controller'
+    );
+    const starting = handle(startCommand('dry'));
+    stopActiveRun();
+    await starting;
+    await settle();
+    const after = (await handle({ kind: 'run.sync' })) as SyncReply;
+    expect(after.run).toMatchObject({ status: 'stopped' });
+  });
+
   it('clear khi đang chạy bị từ chối; clear xong thì xoá lastRun khỏi storage', async () => {
     const { release } = holdFlow();
     const handle = await load();

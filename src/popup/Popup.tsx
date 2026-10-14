@@ -6,6 +6,7 @@ import browser from 'webextension-polyfill';
 
 import curfewLabel from '@/shared/curfewLabel';
 import useConnection from '@/shared/hooks/useConnection';
+import useKillSwitch from '@/shared/hooks/useKillSwitch';
 import useLanguage from '@/shared/hooks/useLanguage';
 import { usePacingConfig } from '@/shared/hooks/useSettings';
 import useTheme from '@/shared/hooks/useTheme';
@@ -28,6 +29,7 @@ export default function Popup(): JSX.Element {
   const { connection } = useConnection();
   const { used, limit } = useWriteBudget();
   const { value: pacing } = usePacingConfig();
+  const { engaged: killEngaged, failed: killFailed, engage } = useKillSwitch();
   // Resolve windowId trước: open side panel đòi user gesture, không được await
   // trong onClick (docs/050-Research/21 §5.1).
   const [windowId, setWindowId] = useState<number>();
@@ -106,13 +108,25 @@ export default function Popup(): JSX.Element {
 
         <div className='flex-1' />
 
-        {/* Luôn hiển thị, không bao giờ disabled (DES-001). Handler nối ở M2. */}
+        {killFailed && (
+          <div role='alert' className='alert alert-error text-xs'>
+            {translate(lang, 'kill.failed')}
+          </div>
+        )}
+        {killEngaged && (
+          <div role='status' className='text-base-content/70 text-xs'>
+            {translate(lang, 'kill.engagedHint')}
+          </div>
+        )}
+
+        {/* Luôn hiển thị, không bao giờ disabled (DES-001); một lần bấm là dừng, không hỏi lại. */}
         <button
           type='button'
+          onClick={engage}
           className='flex h-10 items-center justify-center gap-1.5 rounded-md bg-red-700 text-sm font-semibold text-white'
         >
           <Icon name='stop' />
-          {translate(lang, 'popup.killAll')}
+          {translate(lang, killEngaged ? 'kill.engaged' : 'popup.killAll')}
         </button>
       </div>
     </div>

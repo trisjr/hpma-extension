@@ -9,7 +9,10 @@ import { BM_ID } from '../helpers/fixtures';
 
 // Cổng vào của content script: chỉ nhận lệnh từ extension page của chính mình.
 const handleRunCommand = vi.hoisted(() => vi.fn());
-vi.mock('@/content/engine/controller', () => ({ default: handleRunCommand }));
+vi.mock('@/content/engine/controller', () => ({
+  default: handleRunCommand,
+  stopActiveRun: vi.fn(),
+}));
 
 const fromPanel = {
   id: EXTENSION_ID,

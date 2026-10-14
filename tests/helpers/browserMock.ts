@@ -8,6 +8,11 @@ import { vi } from 'vitest';
 
 export type MessageListener = (message: unknown, sender: unknown) => unknown;
 type StorageKeys = string | string[] | Record<string, unknown> | null;
+type StorageChanges = Record<
+  string,
+  { oldValue?: unknown; newValue?: unknown }
+>;
+type StorageListener = (changes: StorageChanges, area: string) => void;
 
 export const EXTENSION_ID = 'hpma-test';
 export const EXTENSION_ORIGIN = `chrome-extension://${EXTENSION_ID}/`;
@@ -20,6 +25,12 @@ function createMock() {
     failSet: boolean;
   } = { data: {}, failGet: false, failSet: false };
   const messageListeners: MessageListener[] = [];
+  // `storage.onChanged`: `set`/`remove` gọi listener như trình duyệt thật (đồng bộ, area 'local').
+  const storageListeners: StorageListener[] = [];
+  const emitChanges = (changes: StorageChanges): void => {
+    if (Object.keys(changes).length === 0) return;
+    [...storageListeners].forEach((listener) => listener(changes, 'local'));
+  };
 
   const pickKeys = (keys: StorageKeys | undefined): string[] => {
     if (keys === null || keys === undefined) {
@@ -50,16 +61,34 @@ function createMock() {
 
   const set = vi.fn(async (items: Record<string, unknown>): Promise<void> => {
     if (storageState.failSet) throw new Error('storage set failed');
+    const changes: StorageChanges = {};
     Object.entries(items).forEach(([key, value]) => {
+      changes[key] = {
+        oldValue: storageState.data[key],
+        newValue: structuredClone(value),
+      };
       storageState.data[key] = structuredClone(value);
     });
+    emitChanges(changes);
   });
 
   const remove = vi.fn(async (keys: string | string[]): Promise<void> => {
     if (storageState.failSet) throw new Error('storage remove failed');
+    const changes: StorageChanges = {};
     [keys].flat().forEach((key) => {
+      if (key in storageState.data) {
+        changes[key] = { oldValue: storageState.data[key] };
+      }
       delete storageState.data[key];
     });
+    emitChanges(changes);
+  });
+  const addStorageListener = vi.fn((listener: StorageListener): void => {
+    storageListeners.push(listener);
+  });
+  const removeStorageListener = vi.fn((listener: StorageListener): void => {
+    const index = storageListeners.indexOf(listener);
+    if (index >= 0) storageListeners.splice(index, 1);
   });
 
   const sendMessage = vi.fn<(message: unknown) => Promise<unknown>>(
@@ -71,7 +100,13 @@ function createMock() {
   const contains = vi.fn(async (): Promise<boolean> => true);
 
   const browserMock = {
-    storage: { local: { get, set, remove } },
+    storage: {
+      local: { get, set, remove },
+      onChanged: {
+        addListener: addStorageListener,
+        removeListener: removeStorageListener,
+      },
+    },
     runtime: {
       id: EXTENSION_ID,
       getURL: (path: string): string => `${EXTENSION_ORIGIN}${path}`,
@@ -86,9 +121,17 @@ function createMock() {
     storageState.failGet = false;
     storageState.failSet = false;
     messageListeners.length = 0;
-    [get, set, remove, sendMessage, addListener, contains].forEach((fn) =>
-      fn.mockClear()
-    );
+    storageListeners.length = 0;
+    [
+      get,
+      set,
+      remove,
+      sendMessage,
+      addListener,
+      contains,
+      addStorageListener,
+      removeStorageListener,
+    ].forEach((fn) => fn.mockClear());
     sendMessage.mockImplementation(async () => undefined);
     contains.mockImplementation(async () => true);
   };

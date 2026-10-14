@@ -2,6 +2,7 @@ import { JSX } from 'react';
 import type { Lang } from '@/shared/i18n';
 
 import curfewLabel from '@/shared/curfewLabel';
+import useKillSwitch from '@/shared/hooks/useKillSwitch';
 import { usePacingConfig } from '@/shared/hooks/useSettings';
 import useWriteBudget from '@/shared/hooks/useWriteBudget';
 import { translate } from '@/shared/i18n';
@@ -13,6 +14,7 @@ type PanelFooterProps = { lang: Lang };
 export default function PanelFooter({ lang }: PanelFooterProps): JSX.Element {
   const { used, limit } = useWriteBudget();
   const { value: pacing } = usePacingConfig();
+  const { engaged, failed, engage } = useKillSwitch();
   const percent = Math.min(100, Math.round((used / limit) * 100));
 
   return (
@@ -32,14 +34,25 @@ export default function PanelFooter({ lang }: PanelFooterProps): JSX.Element {
           aria-label={translate(lang, 'footer.writes')}
         />
       </div>
-      {/* Luôn hiển thị, không bao giờ disabled (DES-001). Handler nối ở M2. */}
+      {/* Luôn hiển thị, không bao giờ disabled (DES-001); một lần bấm là dừng, không hỏi lại. */}
       <button
         type='button'
+        onClick={engage}
+        title={
+          engaged
+            ? `${translate(lang, 'kill.engaged')}. ${translate(lang, 'kill.engagedHint')}`
+            : undefined
+        }
         className='inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-red-700 px-3 text-[13px] font-semibold text-white'
       >
         <Icon name='stop' size={15} />
-        {translate(lang, 'footer.kill')}
+        {translate(lang, engaged ? 'kill.engaged' : 'footer.kill')}
       </button>
+      {failed && (
+        <span role='alert' className='sr-only'>
+          {translate(lang, 'kill.failed')}
+        </span>
+      )}
     </footer>
   );
 }

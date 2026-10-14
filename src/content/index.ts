@@ -16,10 +16,12 @@ import {
 import { isBusinessId } from '@/shared/surfaces';
 
 import readAdAccounts, { watchAccountScope } from './adAccounts';
-import handleRunCommand from './engine/controller';
+import handleRunCommand, { stopActiveRun } from './engine/controller';
+import watchKillSwitch from './engine/killSwitch';
 import handleProbe from './engine/probe';
 
 watchAccountScope();
+watchKillSwitch(stopActiveRun);
 
 browser.runtime.onMessage.addListener(
   (message: unknown, sender: browser.Runtime.MessageSender) => {

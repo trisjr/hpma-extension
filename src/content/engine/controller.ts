@@ -38,6 +38,15 @@ export function isRunBusy(): boolean {
   return active !== undefined || starting;
 }
 
+// Kill-switch bấm lúc run đang khởi động (chưa có `active`): ghi nhớ để dừng ngay khi run được tạo.
+let killRequested = false;
+
+// Kill-switch: dừng run đang chạy (nếu có) mà không cần `runId`.
+export function stopActiveRun(): void {
+  if (starting) killRequested = true;
+  active?.stop();
+}
+
 const reject = (code: EngineErrorCode): StartReply => ({ ok: false, code });
 
 async function start(command: RunStartCommand): Promise<StartReply> {
@@ -47,6 +56,7 @@ async function start(command: RunStartCommand): Promise<StartReply> {
   }
   if (active || starting) return reject('ERR_BUSY');
   starting = true;
+  killRequested = false;
   try {
     const now = Date.now();
     const [pacing, gates, logDetail] = await Promise.all([
@@ -72,6 +82,7 @@ async function start(command: RunStartCommand): Promise<StartReply> {
     });
     active = handle;
     finished = undefined;
+    if (killRequested) handle.stop();
     handle.done
       .then((run) => {
         finished = run;

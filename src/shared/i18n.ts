@@ -39,6 +39,10 @@ const vi = {
   'footer.curfew': 'Curfew {from}–{to}',
   'footer.curfewOff': 'Curfew tắt',
   'footer.kill': 'Kill-switch',
+  'kill.engaged': 'Đã dừng · Assist bị khoá',
+  'kill.engagedHint':
+    'Gỡ khoá ở Options › Devtest sau khi đã kiểm tra BM bằng tay.',
+  'kill.failed': 'Không ghi được lệnh dừng. Thử lại.',
   'soon.title': 'Đang xây dựng',
   'soon.body': 'Màn hình này chưa được dựng.',
   'soon.back': 'Quay lại Flows',
@@ -604,6 +608,10 @@ const en: Record<MessageKey, string> = {
   'footer.curfew': 'Curfew {from}–{to}',
   'footer.curfewOff': 'Curfew off',
   'footer.kill': 'Kill-switch',
+  'kill.engaged': 'Stopped · Assist locked',
+  'kill.engagedHint':
+    'Remove the lock in Options › Devtest after you have checked the BM by hand.',
+  'kill.failed': 'Could not record the stop. Try again.',
   'soon.title': 'Under construction',
   'soon.body': 'This screen has not been built yet.',
   'soon.back': 'Back to Flows',
