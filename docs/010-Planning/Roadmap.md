@@ -21,9 +21,9 @@ related:
 | Flow gán partner vào TKQC, gồm cả partner có sẵn (FR-04)                | In-progress  | Dry-run/Assist đã chạy thành công trên 1 BM thật (partner mới + cũ, 14/10); `Full` vẫn `FULL_LOCKED`; cờ `verified` trong `labels.ts` chưa cập nhật |
 | Audit log + trang Options (FR-07)                                       | In-progress  | SPEC-UI-004; chưa kiểm chứng trên BM thật                                                                                                           |
 | Load ad accounts vào side panel (một phần FR-08)                        | In-progress  | Graph API là optional permission trên Chrome và Firefox (≥ 128)                                                                                     |
-| Probe + SelectorRegistry (FR-02)                                        | In-progress  | Có locator/selectors/labels; chưa có probe P0 và báo cáo hit-rate                                                                                   |
+| Probe + SelectorRegistry (FR-02)                                        | In-progress  | Có locator/selectors/labels và Probe tab (6 màn, tự nhận diện hoặc chọn tay); chưa đo thực địa nên chưa có báo cáo hit-rate (QA-REPORT-003)         |
 | Test tự động                                                            | Có           | Vitest + jsdom, 290 test; `pnpm test` và pre-commit; không có CI                                                                                    |
-| Kill-switch, resync khi mất tab BM, nút Undo                            | Chưa làm     | SPEC-UI-003 §7 ghi "handler nối ở M2"; Undo hiện khoá chờ FR-09                                                                                     |
+| Kill-switch, guard đổi BM, nút Undo                                     | In-progress  | Kill-switch và guard `ERR_BM_CHANGED` đã có code + test (chưa thử tay); resync khi mất tab BM chưa làm; Undo hiện khoá chờ FR-09                    |
 
 > Trạng thái dùng thuật ngữ của PRD-001 §4.1 (đã cập nhật 13/10/2026): "Done" chỉ khi đã kiểm chứng; có code nhưng chưa chạy trên BM thật là "In-progress".
 
@@ -53,13 +53,16 @@ Mục tiêu: tài liệu khớp code, có nền test trước khi mở rộng.
 
 Mục tiêu: đủ bằng chứng để biết selector còn đúng và dừng được khi cần.
 
-- [ ] Probe P0 + báo cáo JSON (hit-rate từng key, kèm locale/phiên)
-- [ ] Probe lại ở trạng thái dialog-đã-chọn-asset để xác minh `dialog.accessPartial`, `dialog.taskManage*` (blocker duy nhất trước write, PRD §4.3)
-- [ ] **Kill-switch** ở footer side panel và popup, nối vào `run.stop`
-- [ ] **Mất kết nối tab BM giữa run:** trạng thái `paused`, `re-sync`, huỷ run nếu đổi BM (SPEC-UI-003 §7)
-- [ ] Xử lý trạng thái TKQC khác (tắt, chờ duyệt) trong SPEC-UI-002 Q3
+Chi tiết: [PLAN-R1](./Implementation-Plans/PLAN-R1-probe-and-safety.md). Mục tiêu 28/10/2026 (ước lượng).
 
-**Gate (PRD §8):** probe ≥ 95% trên EN/vi_VN × Chrome/Firefox; dry-run 100% bước 1–5 lặp lại được.
+- [x] Probe P0 + báo cáo JSON: code xong (6 màn, báo cáo kèm locale/trình duyệt); **chưa đo thực địa**
+- [ ] Đo thực địa 6 màn trên BM thật, gồm `dialog.accessPartial`, `dialog.taskManage*` (blocker duy nhất trước write, PRD §4.3) → QA-REPORT-003
+- [x] **Kill-switch** ở footer side panel và popup, khoá bằng cờ `EMERGENCY_KEY` (code xong; còn thử tay Chrome + Firefox)
+- [x] **Guard đổi BM giữa run:** `ERR_BM_CHANGED` (code xong). Còn follow-up M1/L1 (mốc BM theo panel) trước khi mở `Full`
+- [ ] Resync khi mất tab BM giữa run: trạng thái `paused`, `re-sync` (SPEC-UI-003 §7)
+- [x] Xử lý trạng thái TKQC khác (tắt, chờ duyệt) trong SPEC-UI-002 Q3: `account_status === 1` là active, còn lại `restricted` bị chặn
+
+**Gate R1:** probe ≥ 95% trên EN + vi_VN × **Chrome**; dry-run 100% bước 1–5 lặp lại được; thử tay kill-switch trên Chrome và Firefox. Firefox ≥ 95% dời sang gate ghi (R3), đã chốt 14/10.
 
 ### R2 — Write an toàn đầu tiên (FR-12, FR-08)
 
