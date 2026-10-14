@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.6.1
+
+### What's Changed
+
+- fix(flow): A partner with no assigned assets shows two "Assign assets" buttons; the flow now uses the one inside the verified partner details instead of stopping, and stops if the button is outside them
+- fix(probe): Partial-access and cancel keys no longer count against the dialog hit-rate, because the current Meta UI has no partial-access option and names the secondary button "Back"
+
+Full Changelog: Compare v0.6.0...v0.6.1
+
 ## v0.6.0
 
 ### What's Changed
