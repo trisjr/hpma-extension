@@ -10,12 +10,22 @@ export const PROBE_SAMPLE_GAP_MS = 250;
 export const PROBE_PASS_RATE = 0.95;
 export const PROBE_STORAGE_KEY = 'lastProbe';
 
-// Màn hình mà một key thuộc về: probe chỉ đo key của màn đang thấy.
-export type ProbeStage = 'page' | 'menu' | 'dialog' | 'detail';
+// Màn hình mà một key thuộc về: probe chỉ đo key của màn đang thấy. Hộp thoại gán partner
+// có 3 bước, mỗi bước chỉ hiện một phần key `dialog.*`; gộp chung thì key của bước khác
+// bị tính là trượt và hit-rate không bao giờ đạt ngưỡng.
+export type ProbeStage =
+  | 'page'
+  | 'menu'
+  | 'dialog-bm'
+  | 'dialog-assets'
+  | 'dialog-access'
+  | 'detail';
 export const PROBE_STAGES: readonly ProbeStage[] = [
   'page',
   'menu',
-  'dialog',
+  'dialog-bm',
+  'dialog-assets',
+  'dialog-access',
   'detail',
 ];
 
@@ -44,6 +54,8 @@ export type ProbeCore = {
   // Chỉ pathname, không có business_id.
   pathname: string;
   stage: ProbeStage;
+  // true: màn do user chọn tay, không qua nhận diện tự động.
+  manual?: boolean;
   samples: number;
   // Hit-rate (0..1) trên các key đã đo; undefined khi không đo được key nào.
   rate?: number;
@@ -54,22 +66,40 @@ export type ProbeReport = ProbeCore & { browser: 'chrome' | 'firefox' };
 
 export type ProbeReports = Partial<Record<ProbeStage, ProbeReport>>;
 
-export type ProbeErrorCode = 'ERR_BUSY' | 'ERR_INTERNAL';
+// ERR_UNKNOWN_SCREEN: có hộp thoại nhưng không nhận ra là bước nào (nhãn có thể đã đổi);
+// chọn bước thủ công trong panel.
+export type ProbeErrorCode = 'ERR_BUSY' | 'ERR_INTERNAL' | 'ERR_UNKNOWN_SCREEN';
 export type ProbeReply =
   | { ok: true; report: ProbeCore }
   | { ok: false; code: ProbeErrorCode };
 
-// Quy ước key → màn hình. `partner.*` (trang chi tiết partner) chưa có bộ nhận diện
-// màn, nên không bao giờ được đo: cổng vẫn đóng (PRD §4.3 điểm 4).
+// Quy ước key → màn hình (theo flow `partnerAssign`): bước nhập BM đối tác, bước chọn tài
+// sản, bước chọn quyền (có nút Chỉ định/Huỷ). `partner.*` là trang chi tiết partner.
+const DIALOG_STAGE: Record<string, ProbeStage> = {
+  'dialog.bmId': 'dialog-bm',
+  'dialog.next': 'dialog-bm',
+  'dialog.assetTypeAdAccounts': 'dialog-assets',
+  'dialog.assetSearch': 'dialog-assets',
+};
+
 export function stageOfKey(key: string): ProbeStage {
-  if (key.startsWith('dialog.')) return 'dialog';
+  if (key.startsWith('dialog.')) return DIALOG_STAGE[key] ?? 'dialog-access';
   if (key === 'partners.give') return 'menu';
   if (key.startsWith('partner.')) return 'detail';
   return 'page';
 }
 
+// Key dự phòng (flow dùng `cancel ?? close`): vẫn đo và hiển thị, nhưng không kéo hit-rate
+// của màn xuống khi bước đó không có nút này.
+const OPTIONAL_KEYS: readonly string[] = ['dialog.close'];
+
+export const isOptionalKey = (key: string): boolean =>
+  OPTIONAL_KEYS.includes(key);
+
 export function rateOf(keys: readonly ProbeKeyResult[]): number | undefined {
-  const measured = keys.filter((item) => item.measured);
+  const measured = keys.filter(
+    (item) => item.measured && !isOptionalKey(item.key)
+  );
   const samples = measured.reduce((sum, item) => sum + item.samples, 0);
   if (samples === 0) return undefined;
   return measured.reduce((sum, item) => sum + item.hits, 0) / samples;
@@ -99,7 +129,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isStage(value: unknown): value is ProbeStage {
+export function isStage(value: unknown): value is ProbeStage {
   return PROBE_STAGES.some((stage) => stage === value);
 }
 
@@ -132,6 +162,7 @@ export function isProbeCore(value: unknown): value is ProbeCore {
     typeof value.lang === 'string' &&
     typeof value.pathname === 'string' &&
     isStage(value.stage) &&
+    (value.manual === undefined || typeof value.manual === 'boolean') &&
     typeof value.samples === 'number' &&
     (value.rate === undefined || typeof value.rate === 'number') &&
     Array.isArray(value.keys) &&
@@ -164,6 +195,8 @@ export function isProbeReply(value: unknown): value is ProbeReply {
   if (value.ok === true) return isProbeCore(value.report);
   return (
     value.ok === false &&
-    (value.code === 'ERR_BUSY' || value.code === 'ERR_INTERNAL')
+    (value.code === 'ERR_BUSY' ||
+      value.code === 'ERR_INTERNAL' ||
+      value.code === 'ERR_UNKNOWN_SCREEN')
   );
 }

@@ -18,8 +18,45 @@ describe('detectStage', () => {
     expect(detectStage()).toBe('page');
     html('<div role="menu"><button>x</button></div>');
     expect(detectStage()).toBe('menu');
-    html('<div role="menu"></div><div role="dialog"><button>x</button></div>');
-    expect(detectStage()).toBe('dialog');
+    html(
+      '<div role="menu"></div><div role="dialog"><span role="radio" aria-label="Quản lý chiến dịch (quảng cáo)">Quản lý chiến dịch (quảng cáo)</span></div>'
+    );
+    expect(detectStage()).toBe('dialog-access');
+  });
+
+  it('nhận ra từng bước của hộp thoại bằng mỏ neo', () => {
+    html(
+      '<div role="dialog"><input aria-label="Nhập ID đối tác kinh doanh"><button aria-label="Tiếp">Tiếp</button></div>'
+    );
+    expect(detectStage()).toBe('dialog-bm');
+    html(
+      '<div role="dialog"><input aria-label="Tìm kiếm theo tên hoặc ID"></div>'
+    );
+    expect(detectStage()).toBe('dialog-assets');
+    html(
+      '<div role="dialog"><input aria-label="Tìm kiếm theo tên hoặc ID"><span role="radio" aria-label="Quyền truy cập một phần">Quyền truy cập một phần</span></div>'
+    );
+    // Đã chọn tài sản: bước quyền hiện cùng bước chọn tài sản, quyền thắng.
+    expect(detectStage()).toBe('dialog-access');
+  });
+
+  it('bước chọn tài sản chưa tick gì: nút Hủy và Chỉ định tài sản đã có sẵn nhưng không phải mỏ neo của bước quyền', () => {
+    html(
+      '<div role="dialog"><div>Tài khoản quảng cáo</div><input aria-label="Tìm kiếm theo tên hoặc ID"><button aria-label="Hủy">Hủy</button><button aria-label="Chỉ định tài sản">Chỉ định tài sản</button></div>'
+    );
+    expect(detectStage()).toBe('dialog-assets');
+  });
+
+  it('hộp thoại không khớp mỏ neo nào thì không đoán', () => {
+    html('<div role="dialog"><button aria-label="Hủy">Hủy</button></div>');
+    expect(detectStage()).toBeUndefined();
+  });
+
+  it('trang chi tiết partner nhận ra bằng nút Chỉ định tài sản trên trang', () => {
+    html(
+      '<div role="main"><button aria-label="Chỉ định tài sản">Chỉ định tài sản</button></div>'
+    );
+    expect(detectStage()).toBe('detail');
   });
 });
 
@@ -65,10 +102,63 @@ describe('runProbe', () => {
     expect(add?.missTiers).toEqual([1, 3]);
   });
 
-  it('trong dialog đo key dialog.*; vùng tìm chưa có thì không tính mẫu', async () => {
+  it('hộp thoại không nhận ra bước thì từ chối đo, trừ khi user chọn màn tay', async () => {
     html('<div role="dialog"><button aria-label="Hủy">Hủy</button></div>');
+    await expect(run()).rejects.toThrow('unknown screen');
+    const report = await runProbe(
+      'vi',
+      new AbortController().signal,
+      2,
+      0,
+      'dialog-access'
+    );
+    expect(report.stage).toBe('dialog-access');
+  });
+
+  it('chỉ key của bước đang xem được đo; key bước khác là chưa đo, không phải trượt', async () => {
+    html(
+      '<div role="dialog"><input aria-label="Nhập ID đối tác kinh doanh"><button aria-label="Tiếp">Tiếp</button></div>'
+    );
     const report = await run(2);
-    expect(report.stage).toBe('dialog');
+    const byKey = new Map(report.keys.map((item) => [item.key, item]));
+    expect(report.stage).toBe('dialog-bm');
+    expect(byKey.get('dialog.bmId')).toMatchObject({ measured: true, hits: 2 });
+    expect(byKey.get('dialog.next')).toMatchObject({ measured: true, hits: 2 });
+    expect(byKey.get('dialog.accessPartial')?.measured).toBe(false);
+    expect(byKey.get('dialog.assetSearch')?.measured).toBe(false);
+    expect(report.rate).toBe(1);
+  });
+
+  it('màn chọn tay được tôn trọng dù tự nhận diện ra màn khác', async () => {
+    html(
+      '<div role="dialog"><input aria-label="Tìm kiếm theo tên hoặc ID"></div>'
+    );
+    const report = await runProbe(
+      'vi',
+      new AbortController().signal,
+      2,
+      0,
+      'dialog-assets'
+    );
+    expect(report.stage).toBe('dialog-assets');
+    expect(
+      report.keys.find((item) => item.key === 'dialog.assetSearch')
+    ).toMatchObject({ measured: true, hits: 2 });
+  });
+
+  it('trong dialog đo key dialog.*; vùng tìm chưa có thì không tính mẫu', async () => {
+    html(
+      '<div role="dialog"><button aria-label="Hủy">Hủy</button><button aria-label="Chỉ định tài sản">Chỉ định tài sản</button></div>'
+    );
+    const report = await runProbe(
+      'vi',
+      new AbortController().signal,
+      2,
+      0,
+      'dialog-access'
+    );
+    expect(report.stage).toBe('dialog-access');
+    expect(report.manual).toBe(true);
     expect(
       report.keys.find((item) => item.key === 'dialog.cancel')
     ).toMatchObject({

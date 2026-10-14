@@ -46,7 +46,9 @@ browser.runtime.onMessage.addListener(
     }
     if (fromExtensionPage && isAccountsRead(message))
       return readAdAccounts(message);
-    if (fromExtensionPage && isProbeCommand(message)) return handleProbe();
+    if (fromExtensionPage && isProbeCommand(message)) {
+      return handleProbe(message);
+    }
     if (fromExtensionPage && isRunCommand(message)) {
       return handleRunCommand(message);
     }

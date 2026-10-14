@@ -4,9 +4,11 @@
  * Mọi đầu nhận kiểm `sender.id` và validate shape bằng type guard viết tay.
  */
 import type { AccountsRead } from '@/shared/adAccounts';
+import type { ProbeStage } from '@/shared/probe';
 import type { EngineErrorCode, RunMode, RunState } from '@/shared/run';
 import type { RunConfig } from '@/shared/runConfig';
 
+import { isStage } from '@/shared/probe';
 import { isRunState } from '@/shared/run';
 import { isBusinessId } from '@/shared/surfaces';
 
@@ -44,7 +46,8 @@ export type RunCommand =
   | RunClearCommand;
 
 // Panel → content script: đo hit-rate selector trên DOM sống (chỉ đọc, FR-02).
-export type ProbeCommand = { kind: 'probe.run' };
+// `stage` chọn tay màn cần đo; bỏ trống thì content script tự nhận diện.
+export type ProbeCommand = { kind: 'probe.run'; stage?: ProbeStage };
 
 export type ContentMessage =
   | PingMessage
@@ -115,7 +118,9 @@ export function isRunCommand(value: unknown): value is RunCommand {
 }
 
 export function isProbeCommand(value: unknown): value is ProbeCommand {
-  return kindOf(value) === 'probe.run';
+  if (kindOf(value) !== 'probe.run') return false;
+  const { stage } = value as { stage?: unknown };
+  return stage === undefined || isStage(stage);
 }
 
 export function isStartReply(value: unknown): value is StartReply {

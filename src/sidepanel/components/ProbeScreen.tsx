@@ -1,10 +1,10 @@
-import { JSX } from 'react';
+import { JSX, useId, useState } from 'react';
 import type { ProbeController } from '@/shared/hooks/useProbe';
 import type { Lang } from '@/shared/i18n';
-import type { ProbeKeyResult, ProbeReport } from '@/shared/probe';
+import type { ProbeKeyResult, ProbeReport, ProbeStage } from '@/shared/probe';
 
 import { translate } from '@/shared/i18n';
-import { PROBE_PASS_RATE, PROBE_STAGES } from '@/shared/probe';
+import { isOptionalKey, PROBE_PASS_RATE, PROBE_STAGES } from '@/shared/probe';
 
 import CopyButton from './run/CopyButton';
 import { formatClock } from './run/format';
@@ -15,6 +15,8 @@ type ProbeScreenProps = {
   // Tab BM chưa kết nối: chặn nút chạy.
   disabled: boolean;
 };
+
+type PickValue = ProbeStage | 'auto';
 
 const PCT = Math.round(PROBE_PASS_RATE * 100);
 
@@ -48,12 +50,14 @@ function KeyRow({
     );
   }
   const rate = item.samples > 0 ? item.hits / item.samples : 0;
-  let flag: 'miss' | 'weak' | undefined;
-  if (rate < 0.8) flag = 'miss';
+  let flag: 'miss' | 'weak' | 'optional' | undefined;
+  if (isOptionalKey(item.key) && rate < PROBE_PASS_RATE) flag = 'optional';
+  else if (rate < 0.8) flag = 'miss';
   else if (rate < PROBE_PASS_RATE) flag = 'weak';
   const tone = {
     miss: 'text-red-700 dark:text-red-300',
     weak: 'text-yellow-800 dark:text-yellow-300',
+    optional: 'text-base-content/70',
     none: 'text-green-700 dark:text-green-300',
   }[flag ?? 'none'];
   return (
@@ -105,6 +109,7 @@ function Report({
           samples: report.samples,
           stage: translate(lang, `probe.stage.${report.stage}`),
         })}
+        {report.manual ? ` · ${translate(lang, 'probe.manualNote')}` : ''}
       </p>
       <section className='border-base-content/15 rounded-md border bg-base-100 p-3'>
         <div className='text-base-content/70 text-xs'>
@@ -156,6 +161,8 @@ export default function ProbeScreen({
   disabled,
 }: ProbeScreenProps): JSX.Element {
   const { status, report, errorKey } = probe;
+  const [pick, setPick] = useState<PickValue>('auto');
+  const pickId = useId();
   const running = status === 'running';
   let runLabel = translate(lang, 'probe.run');
   if (running) runLabel = translate(lang, 'probe.running');
@@ -179,11 +186,29 @@ export default function ProbeScreen({
           {translate(lang, 'probe.empty')}
         </p>
       )}
+      <div className='flex flex-col gap-1 text-xs'>
+        <label htmlFor={pickId} className='text-base-content/70'>
+          {translate(lang, 'probe.pick.label')}
+        </label>
+        <select
+          id={pickId}
+          value={pick}
+          onChange={(event) => setPick(event.target.value as PickValue)}
+          className='border-base-content/20 h-9 rounded-md border bg-base-100 px-2 text-[13px]'
+        >
+          <option value='auto'>{translate(lang, 'probe.pick.auto')}</option>
+          {PROBE_STAGES.map((stage) => (
+            <option key={stage} value={stage}>
+              {translate(lang, `probe.stage.${stage}`)}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className='flex flex-wrap gap-2'>
         <button
           type='button'
           disabled={running || disabled}
-          onClick={probe.run}
+          onClick={() => probe.run(pick === 'auto' ? undefined : pick)}
           className='inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-3 text-[13px] font-semibold text-white disabled:opacity-50'
         >
           {runLabel}
@@ -193,6 +218,13 @@ export default function ProbeScreen({
             lang={lang}
             text={JSON.stringify(report, null, 2)}
             label={translate(lang, 'probe.copy')}
+          />
+        ) : null}
+        {report ? (
+          <CopyButton
+            lang={lang}
+            text={JSON.stringify(probe.reports, null, 2)}
+            label={translate(lang, 'probe.copyAll')}
           />
         ) : null}
       </div>

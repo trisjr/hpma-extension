@@ -43,9 +43,25 @@ describe('stageOfKey', () => {
     expect(stageOfKey('nav.partners')).toBe('page');
     expect(stageOfKey('partners.add')).toBe('page');
     expect(stageOfKey('partners.give')).toBe('menu');
-    expect(stageOfKey('dialog.assign')).toBe('dialog');
     expect(stageOfKey('partner.assign')).toBe('detail');
     expect(stageOfKey('partner.assignedAssets')).toBe('detail');
+  });
+
+  it('chia hộp thoại theo bước của flow để key bước khác không bị tính là trượt', () => {
+    expect(stageOfKey('dialog.bmId')).toBe('dialog-bm');
+    expect(stageOfKey('dialog.next')).toBe('dialog-bm');
+    expect(stageOfKey('dialog.assetTypeAdAccounts')).toBe('dialog-assets');
+    expect(stageOfKey('dialog.assetSearch')).toBe('dialog-assets');
+    [
+      'dialog.accessPartial',
+      'dialog.taskCampaigns',
+      'dialog.taskPerformance',
+      'dialog.taskCreative',
+      'dialog.taskManage',
+      'dialog.assign',
+      'dialog.cancel',
+      'dialog.close',
+    ].forEach((name) => expect(stageOfKey(name)).toBe('dialog-access'));
   });
 });
 
@@ -57,6 +73,14 @@ describe('rateOf', () => {
       key({ measured: false, hits: 0, samples: 0 }),
     ];
     expect(rateOf(keys)).toBe(0.75);
+  });
+
+  it('key dự phòng (dialog.close) không kéo rate xuống dù trượt', () => {
+    const keys = [
+      key({ key: 'dialog.cancel', hits: 20, samples: 20 }),
+      key({ key: 'dialog.close', hits: 0, samples: 20 }),
+    ];
+    expect(rateOf(keys)).toBe(1);
   });
 
   it('không đo được key nào thì không có rate', () => {
@@ -87,7 +111,7 @@ describe('gateStatus', () => {
     expect(
       gateStatus({
         ...all(1),
-        dialog: report({ stage: 'dialog', rate: undefined }),
+        'dialog-bm': report({ stage: 'dialog-bm', rate: undefined }),
       })
     ).toBe('below');
   });
@@ -98,9 +122,9 @@ describe('latestReport', () => {
     expect(
       latestReport({
         page: report({ at: 1 }),
-        dialog: report({ stage: 'dialog', at: 5 }),
+        'dialog-access': report({ stage: 'dialog-access', at: 5 }),
       })?.stage
-    ).toBe('dialog');
+    ).toBe('dialog-access');
     expect(latestReport({})).toBeUndefined();
   });
 });
@@ -129,6 +153,7 @@ describe('type guard', () => {
     expect(isProbeReply({ ok: true, report: core })).toBe(true);
     expect(isProbeReply({ ok: true, report: { version: 2 } })).toBe(false);
     expect(isProbeReply({ ok: false, code: 'ERR_BUSY' })).toBe(true);
+    expect(isProbeReply({ ok: false, code: 'ERR_UNKNOWN_SCREEN' })).toBe(true);
     expect(isProbeReply({ ok: false, code: 'ERR_X' })).toBe(false);
     expect(isProbeReply(undefined)).toBe(false);
   });
@@ -138,8 +163,10 @@ describe('parseProbeReports', () => {
   it('bỏ mục hỏng hoặc đặt sai màn, giữ mục hợp lệ', () => {
     const parsed = parseProbeReports({
       page: report(),
-      dialog: report({ stage: 'page' }),
+      'dialog-bm': report({ stage: 'page' }),
       menu: { junk: true },
+      // Báo cáo lưu từ bản cũ (stage `dialog` chung) không còn khớp màn nào: bỏ.
+      dialog: report({ stage: 'page' }),
     });
     expect(Object.keys(parsed)).toEqual(['page']);
     expect(parseProbeReports(undefined)).toEqual({});
