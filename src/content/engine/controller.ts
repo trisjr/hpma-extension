@@ -73,6 +73,10 @@ function parseStart(command: RunStartCommand): ParsedStart | undefined {
 async function start(command: RunStartCommand): Promise<StartReply> {
   const parsed = parseStart(command);
   if (!parsed) return reject('ERR_INVALID_CONFIG');
+  // Full chỉ có ở flow duyệt/từ chối request; flow Gán partner coi mọi mode khác Dry là Assist.
+  if (command.mode === 'full' && parsed.flow !== 'partner-approve') {
+    return reject('ERR_INVALID_CONFIG');
+  }
   if (active || starting) return reject('ERR_BUSY');
   // Tab phải đang ở đúng BM mà panel đã chọn TKQC: BM khác thì danh sách TKQC không còn khớp.
   const urlBusinessId =
@@ -88,7 +92,8 @@ async function start(command: RunStartCommand): Promise<StartReply> {
       loadGates(now),
       loadLogDetail(),
     ]);
-    if (command.mode === 'assist') {
+    // Assist và Full đều ghi lên Meta nên cùng qua mọi cổng an toàn; chỉ Dry được bỏ qua.
+    if (command.mode !== 'dry') {
       if (gates.emergency) return reject('ERR_EMERGENCY');
       if (gates.rateLimited) return reject('ERR_RATE_LIMITED');
       if (isCurfew(new Date(now), pacing.curfew)) return reject('ERR_CURFEW');

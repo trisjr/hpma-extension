@@ -145,7 +145,7 @@ const SELECTORS = {
     label: 'dialog.close',
     scope: 'dialog',
   },
-  // Settings › Requests (SPEC-ENG-002). Không có spec nào cho nút Decline: engine không bao giờ tìm nó.
+  // Settings › Requests (SPEC-ENG-002). Engine chỉ định vị nút khớp quyết định user đã chọn.
   requestsNeedsReview: {
     key: 'requests.needsReview',
     css: `${CLICKABLE}, div, span`,
@@ -158,6 +158,14 @@ const SELECTORS = {
     key: 'request.approve',
     css: BUTTON,
     label: 'request.approve',
+    scope: 'main',
+  },
+  // Nhãn `Decline` chưa kiểm chứng trên DOM thật: Dry-run với quyết định Decline là cách duy nhất
+  // để thử selector này trước khi Full bấm nó.
+  requestDecline: {
+    key: 'request.decline',
+    css: BUTTON,
+    label: 'request.decline',
     scope: 'main',
   },
 } satisfies Record<string, LocatorSpec>;

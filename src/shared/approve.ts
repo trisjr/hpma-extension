@@ -1,5 +1,5 @@
 /**
- * approve.ts — hợp đồng dữ liệu của flow "Duyệt request cấp quyền TKQC" (SPEC-ENG-002):
+ * approve.ts — hợp đồng dữ liệu của flow "Confirm request cấp quyền TKQC" (SPEC-ENG-002):
  * cấu hình run, lệnh quét chỉ-đọc `requests.read` và phản hồi. Thuần dữ liệu, dùng ở cả
  * side panel lẫn content script; engine không tin dữ liệu từ panel nên validate lại ở đây.
  */
@@ -9,9 +9,19 @@ import { isBusinessId } from '@/shared/surfaces';
 // Một request cấp quyền TKQC đang chờ duyệt, như hiện ở danh sách Needs review.
 export type ApproveRequest = { requester: string; account: string };
 
+// Quyết định user chọn cho cả lượt quét: Approve hoặc Decline mọi request trong danh sách.
+export type ApproveAction = 'approve' | 'decline';
+export const APPROVE_ACTIONS: readonly ApproveAction[] = ['approve', 'decline'];
+
+export function isApproveAction(value: unknown): value is ApproveAction {
+  return APPROVE_ACTIONS.some((action) => action === value);
+}
+
 export type ApproveConfig = {
   // Tên BM đối tác user nhập; engine so khớp chính xác (sau chuẩn hoá) với tên trong request.
   partnerName: string;
+  // Bắt buộc: không có mặc định ngầm ở engine (Decline không đảo ngược được).
+  action: ApproveAction;
   // Danh sách đã quét và user đã xem: engine không duyệt gì ngoài danh sách này.
   requests: ApproveRequest[];
 };
@@ -63,6 +73,7 @@ function parseRequest(raw: unknown): ApproveRequest | undefined {
 export function parseApproveConfig(raw: unknown): ApproveConfig | undefined {
   if (!isRecord(raw) || typeof raw.partnerName !== 'string') return undefined;
   if (validatePartnerName(raw.partnerName) !== undefined) return undefined;
+  if (!isApproveAction(raw.action)) return undefined;
   const { requests } = raw;
   if (!Array.isArray(requests) || requests.length === 0) return undefined;
   if (requests.length > MAX_APPROVE_REQUESTS) return undefined;
@@ -72,7 +83,11 @@ export function parseApproveConfig(raw: unknown): ApproveConfig | undefined {
     if (!request) return undefined;
     parsed.push(request);
   }
-  return { partnerName: cleanPartnerName(raw.partnerName), requests: parsed };
+  return {
+    partnerName: cleanPartnerName(raw.partnerName),
+    action: raw.action,
+    requests: parsed,
+  };
 }
 
 // ---- Quét chỉ-đọc: panel → content script -----------------------------------

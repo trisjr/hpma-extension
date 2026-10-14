@@ -21,6 +21,7 @@ import { drive } from '../helpers/timers';
 
 const CONFIG: ApproveConfig = {
   partnerName: PARTNER_NAME,
+  action: 'approve',
   requests: [{ requester: SEED.requester, account: SEED.account }],
 };
 
@@ -179,7 +180,7 @@ describe('Dry-run không bao giờ ghi', () => {
 
   it('hai request trùng hệt nhau: mỗi request đọc đúng một hàng riêng', async () => {
     const config: ApproveConfig = {
-      partnerName: PARTNER_NAME,
+      ...CONFIG,
       requests: [CONFIG.requests[0], CONFIG.requests[0]],
     };
     const result = await run([SEED, SEED], { mode: 'dry', config });
@@ -356,7 +357,7 @@ describe('Assist: engine không chạm Approve/Decline', () => {
 
   it('hai request trùng hệt nhau có định danh khác nhau (khoá React không trùng)', async () => {
     const config: ApproveConfig = {
-      partnerName: PARTNER_NAME,
+      ...CONFIG,
       requests: [CONFIG.requests[0], CONFIG.requests[0]],
     };
     const result = await run([SEED, SEED], { mode: 'dry', config });
@@ -364,9 +365,9 @@ describe('Assist: engine không chạm Approve/Decline', () => {
     expect(new Set(ids).size).toBe(2);
   });
 
-  it('user bấm Decline -> failed ERR_NOT_APPROVED và dừng run', async () => {
+  it('chọn Approve nhưng user bấm Decline -> failed ERR_WRONG_ACTION và dừng run', async () => {
     const config: ApproveConfig = {
-      partnerName: PARTNER_NAME,
+      ...CONFIG,
       requests: [CONFIG.requests[0], { requester: 'Duc TNM', account: 'BB' }],
     };
     const result = await run([SEED, { ...SEED, account: 'BB' }], {
@@ -376,7 +377,7 @@ describe('Assist: engine không chạm Approve/Decline', () => {
     });
     expect(result.targets[0]).toMatchObject({
       outcome: 'failed',
-      code: 'ERR_NOT_APPROVED',
+      code: 'ERR_WRONG_ACTION',
     });
     expect(result.targets[1].outcome).toBe('queued');
     expect(result.page.counters).toMatchObject({ approves: 0, declines: 1 });
@@ -415,5 +416,171 @@ describe('Assist: engine không chạm Approve/Decline', () => {
     });
     expect(result.targets[0].outcome).toBe('unverified');
     expect(approveOrDecline(result.pressed)).toEqual([]);
+  });
+});
+
+const DECLINE: ApproveConfig = { ...CONFIG, action: 'decline' };
+
+describe('quyết định Decline', () => {
+  it('Dry-run: định vị nút Decline, không bấm gì', async () => {
+    const result = await run([SEED], { mode: 'dry', config: DECLINE });
+    expect(result.error).toBeUndefined();
+    expect(result.steps).toEqual([1, 2, 3, 4, 5]);
+    expect(result.targets[0].outcome).toBe('done');
+    expect(result.page.counters).toMatchObject({ approves: 0, declines: 0 });
+    expect(approveOrDecline(result.pressed)).toEqual([]);
+  });
+
+  it('Assist: user bấm Decline, request rời Needs review -> done', async () => {
+    const result = await run([SEED], {
+      mode: 'assist',
+      config: DECLINE,
+      overrides: userAction('#decline')(),
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.targets[0].outcome).toBe('done');
+    expect(result.page.counters).toMatchObject({ approves: 0, declines: 1 });
+    expect(approveOrDecline(result.pressed)).toEqual([]);
+  });
+
+  it('Assist: chọn Decline nhưng user bấm Approve -> ERR_WRONG_ACTION', async () => {
+    const result = await run([SEED], {
+      mode: 'assist',
+      config: DECLINE,
+      overrides: userAction('#approve')(),
+    });
+    expect(result.targets[0]).toMatchObject({
+      outcome: 'failed',
+      code: 'ERR_WRONG_ACTION',
+    });
+    expect(result.page.counters).toMatchObject({ approves: 1, declines: 0 });
+  });
+});
+
+describe('Full: engine tự bấm đúng nút đã chọn', () => {
+  it('chọn Approve: bấm đúng một lần Approve, không bao giờ Decline, rồi verify -> done', async () => {
+    const result = await run([SEED], { mode: 'full' });
+    expect(result.error).toBeUndefined();
+    expect(result.steps).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(result.targets[0].outcome).toBe('done');
+    expect(approveOrDecline(result.pressed)).toEqual(['approve|Approve']);
+    expect(result.page.counters).toMatchObject({ approves: 1, declines: 0 });
+    expect(result.writeMarks()).toBe(1);
+  });
+
+  it('chọn Decline: bấm đúng một lần Decline, không bao giờ Approve -> done', async () => {
+    const result = await run([SEED], { mode: 'full', config: DECLINE });
+    expect(result.error).toBeUndefined();
+    expect(result.targets[0].outcome).toBe('done');
+    expect(approveOrDecline(result.pressed)).toEqual(['decline|Decline']);
+    expect(result.page.counters).toMatchObject({ approves: 0, declines: 1 });
+    expect(result.writeMarks()).toBe(1);
+  });
+
+  it('không dừng chờ user (không setWaiting)', async () => {
+    const waits: boolean[] = [];
+    await run([SEED], {
+      mode: 'full',
+      overrides: { setWaiting: (waiting) => waits.push(waiting) },
+    });
+    expect(waits).toEqual([]);
+  });
+
+  it('nhiều request: bấm lần lượt từng request, mỗi request một lần', async () => {
+    const config: ApproveConfig = {
+      ...CONFIG,
+      requests: [CONFIG.requests[0], { requester: 'Duc TNM', account: 'BB' }],
+    };
+    const result = await run([SEED, { ...SEED, account: 'BB' }], {
+      mode: 'full',
+      config,
+    });
+    expect(result.targets.map((item) => item.outcome)).toEqual([
+      'done',
+      'done',
+    ]);
+    expect(approveOrDecline(result.pressed)).toEqual([
+      'approve|Approve',
+      'approve|Approve',
+    ]);
+    expect(result.writeMarks()).toBe(2);
+  });
+
+  it('hộp thoại lạ hiện ra sau cú bấm mà request chưa rời: dừng ERR_UNEXPECTED_DIALOG, không bấm xuyên qua', async () => {
+    const page = mountRequestsPage([SEED], { approveDelayMs: 120_000 });
+    document.addEventListener(
+      'pointerdown',
+      (event) => {
+        if ((event.target as HTMLElement).id !== 'approve') return;
+        page.root.insertAdjacentHTML(
+          'beforeend',
+          '<div role="dialog"><button id="confirm">Confirm</button></div>'
+        );
+      },
+      true
+    );
+    const pressed = recordEnginePresses();
+    const fake = makeApproveContext(CONFIG, { mode: 'full' });
+    await expect(drive(partnerApproveFlow(fake.ctx))).rejects.toMatchObject({
+      code: 'ERR_UNEXPECTED_DIALOG',
+    });
+    expect(fake.writeMarks()).toBe(1);
+    expect(pressed.filter((entry) => entry.startsWith('confirm'))).toEqual([]);
+    expect(approveOrDecline(pressed)).toEqual(['approve|Approve']);
+  });
+
+  it('khung chi tiết không còn khớp request ngay trước khi bấm: không bấm gì', async () => {
+    const result = await run([SEED], {
+      mode: 'full',
+      overrides: {
+        // Trang đổi sang request khác giữa bước 5 và bước 6.
+        pause: async (kind) => {
+          if (kind !== 'write') return;
+          document.querySelector('#detail p')!.textContent =
+            'Mallory requested to give Evil BM access to the ZZ ad account.';
+        },
+      },
+    });
+    expect(result.error?.code).toBe('ERR_TARGET_NOT_FOUND');
+    expect(approveOrDecline(result.pressed)).toEqual([]);
+    expect(result.writeMarks()).toBe(0);
+  });
+
+  it('user tự bấm nút ngược trong lúc tạm dừng trước bước ghi: engine không bấm thêm, ERR_WRONG_ACTION', async () => {
+    const result = await run([SEED], {
+      mode: 'full',
+      overrides: {
+        pause: async (kind) => {
+          if (kind !== 'write') return;
+          document.querySelector<HTMLElement>('#decline')?.click();
+        },
+      },
+    });
+    expect(result.targets[0]).toMatchObject({
+      outcome: 'failed',
+      code: 'ERR_WRONG_ACTION',
+    });
+    expect(result.page.counters).toMatchObject({ approves: 0, declines: 1 });
+    expect(approveOrDecline(result.pressed)).toEqual([]);
+    expect(result.writeMarks()).toBe(0);
+  });
+
+  it('trang đổi sang request khác giữa lúc nhấn và lúc nhả: không phát cú bấm, không tính ghi', async () => {
+    const page = mountRequestsPage([SEED]);
+    document.addEventListener(
+      'pointerdown',
+      (event) => {
+        if ((event.target as HTMLElement).id !== 'approve') return;
+        document.querySelector('#detail p')!.textContent =
+          'Mallory requested to give Evil BM access to the ZZ ad account.';
+      },
+      true
+    );
+    const fake = makeApproveContext(CONFIG, { mode: 'full' });
+    await expect(drive(partnerApproveFlow(fake.ctx))).rejects.toMatchObject({
+      code: 'ERR_TARGET_NOT_FOUND',
+    });
+    expect(page.counters).toMatchObject({ approves: 0, declines: 0 });
+    expect(fake.writeMarks()).toBe(0);
   });
 });

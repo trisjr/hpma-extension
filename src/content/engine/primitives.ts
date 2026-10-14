@@ -138,9 +138,12 @@ function pointIn(el: HTMLElement): { x: number; y: number } {
 }
 
 // Chuỗi sự kiện như người bấm thật; không cố giả mạo `isTrusted`.
+// `guard` (nếu có) chạy sau mọi lần chờ, ngay trước lúc nhấn và lại ngay trước lúc nhả/`click`;
+// ném lỗi ở đây thì không phát sự kiện nào nữa (dùng để đối chiếu lại trạng thái trang).
 export async function click(
   el: HTMLElement,
-  ctx: ActionContext
+  ctx: ActionContext,
+  guard?: (phase: 'press' | 'release') => void
 ): Promise<void> {
   await ctx.gate();
   await waitFor(() => (el.isConnected && isEnabled(el) ? true : undefined), {
@@ -150,6 +153,7 @@ export async function click(
       ? new EngineError('ERR_STEP_TIMEOUT', 'disabled')
       : error;
   });
+  guard?.('press');
   el.scrollIntoView({ block: 'center' });
   const { x, y } = pointIn(el);
   const pointer: ConstructorParameters<typeof PointerEvent>[1] = {
@@ -177,6 +181,7 @@ export async function click(
   fire('pointerdown');
   fire('mousedown');
   await sleep(clickGapMs(), ctx.signal);
+  guard?.('release');
   el.focus({ preventScroll: true });
   fire('pointerup');
   fire('mouseup');

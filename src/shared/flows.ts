@@ -85,10 +85,10 @@ export const FLOWS: readonly FlowDef[] = [
   {
     id: 'partner-approve',
     risk: 'sensitive',
-    name: { vi: 'Duyệt request partner', en: 'Approve partner requests' },
+    name: { vi: 'Confirm request partner', en: 'Confirm partner requests' },
     desc: {
-      vi: 'Admin thứ 2 duyệt request cấp quyền TKQC cho BM đối tác',
-      en: 'Second admin approves requests granting a partner BM ad account access',
+      vi: 'Admin thứ 2 chọn Approve hoặc Decline cho request cấp quyền TKQC của BM đối tác',
+      en: 'Second admin approves or declines requests granting a partner BM ad account access',
     },
     locked: false,
     hasConfig: true,

@@ -118,7 +118,7 @@ function AccountList({
       );
     }
     return (
-      <div className='border-base-content/12 flex flex-col overflow-hidden rounded-md border'>
+      <div className='border-base-content/12 flex shrink-0 flex-col overflow-hidden rounded-md border'>
         {visible.map((account) => {
           const blocked = account.status === 'restricted';
           const view = STATUS_VIEW[account.status];

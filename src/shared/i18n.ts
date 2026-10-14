@@ -291,9 +291,20 @@ const vi = {
   'approve.step.5': 'Tìm nút Approve',
   'approve.step.6': 'Bấm Approve',
   'approve.step.7': 'Verify: request rời Needs review',
-  'approve.title': 'Duyệt request partner',
+  'approve.step.5.decline': 'Tìm nút Decline',
+  'approve.step.6.decline': 'Bấm Decline',
+  'approve.step.7.decline': 'Verify: request rời Needs review',
+  'approve.title': 'Confirm request partner',
   'approve.desc':
-    'Dành cho admin thứ 2: duyệt các request cấp quyền TKQC cho BM đối tác đang chờ ở Cài đặt BM › Yêu cầu (Needs review).',
+    'Dành cho admin thứ 2: xác nhận (Approve hoặc Decline) các request cấp quyền TKQC cho BM đối tác đang chờ ở Cài đặt BM › Yêu cầu (Needs review).',
+  'approve.action.label': 'Quyết định cho các request tìm thấy',
+  'approve.action.approve': 'Approve',
+  'approve.action.decline': 'Decline',
+  'approve.action.approve.desc': 'Cấp quyền TKQC cho BM đối tác.',
+  'approve.action.decline.desc':
+    'Từ chối request. Không đảo ngược được: BM đối tác phải gửi lại request mới.',
+  'approve.action.help':
+    'Một quyết định áp dụng cho mọi request tìm thấy. Muốn trộn Approve và Decline thì chạy hai lượt.',
   'approve.name.label': 'Tên BM đối tác',
   'approve.name.placeholder': 'Ví dụ: Tris BM',
   'approve.name.help':
@@ -317,30 +328,33 @@ const vi = {
     'Không đọc được danh sách Needs review (trang chưa nạp hoặc nhãn lạ). Tải lại tab hoặc chạy Probe.',
   'approve.err.busy': 'Đang có run chạy trên tab này. Chờ run xong rồi quét.',
   'approve.run.dry': 'Chạy thử (Dry-run)',
-  'approve.run.assist': 'Bắt đầu Assist',
+  'approve.run.assist': 'Bắt đầu Confirm (Assist)',
+  'approve.run.full': 'Thực thi Confirm (Full)',
   'approve.run.hintDry':
-    'Dry-run mở từng request để đối chiếu, không bấm Approve.',
+    'Dry-run mở từng request để đối chiếu và tìm nút {action}, không bấm gì.',
   'approve.run.hintAssist':
-    'Assist dừng trước Approve để bạn tự bấm. Đối chiếu BM ID trong chi tiết trước khi bấm.',
+    'Assist dừng trước {action} để bạn tự bấm. Đối chiếu BM ID trong chi tiết trước khi bấm.',
+  'approve.run.hintFull':
+    'Full tự bấm {action} cho từng request đã quét, rồi verify. Dừng ngay nếu có gì lạ.',
   'approve.note':
-    'Duyệt request là cấp quyền TKQC cho BM ngoài và khó đảo ngược. Tên BM có thể trùng: luôn đối chiếu BM ID, và đừng duyệt khi chưa chắc chắn về cảnh báo của Meta.',
+    'Confirm request là cấp quyền TKQC cho BM ngoài (Approve) hoặc từ chối (Decline) và đều khó đảo ngược. Tên BM có thể trùng: luôn đối chiếu BM ID, và đừng xác nhận khi chưa chắc chắn về cảnh báo của Meta.',
   'approve.sim':
     'Simulator (Devtest) chưa hỗ trợ flow này. Tắt simulator để chạy engine thật.',
   'approve.progress': 'Request {i}/{n} · {name}',
-  'approve.next.title': 'Bấm Approve trong tab BM',
+  'approve.next.title': 'Bấm {action} trong tab BM',
   'approve.next.1': 'Chuyển sang tab BM đang bám.',
   'approve.next.2':
     'Kiểm tra request ở khung chi tiết: BM {bm}, đúng BM ID bạn tin cậy.',
   'approve.next.3':
-    'Bấm Approve (không bấm Decline). Engine tự verify khi request rời Needs review.',
-  'approve.next.waiting': 'Đang chờ bạn bấm Approve…',
-  'approve.next.engineDone': 'Tôi đã bấm Approve, kiểm tra ngay',
-  'approve.willDo.line': 'Sẽ duyệt: {name}',
-  'approve.result.title.done.dry': 'Chạy thử xong · {w} request sẽ duyệt',
-  'approve.result.title.done': 'Hoàn tất · đã duyệt {w} request',
+    'Bấm {action} (không bấm {other}). Engine tự verify khi request rời Needs review.',
+  'approve.next.waiting': 'Đang chờ bạn bấm {action}…',
+  'approve.next.engineDone': 'Tôi đã bấm {action}, kiểm tra ngay',
+  'approve.willDo.line': 'Sẽ {action}: {name}',
+  'approve.result.title.done.dry': 'Chạy thử xong · {w} request sẽ {action}',
+  'approve.result.title.done': 'Hoàn tất · đã {action} {w} request',
   'approve.result.sub.failed': 'Request {i}/{n} · {runId} · {time}',
-  'approve.result.o.doneDry': 'sẽ duyệt · không ghi',
-  'approve.result.o.done': 'đã duyệt · verify khớp',
+  'approve.result.o.doneDry': 'sẽ {action} · không ghi',
+  'approve.result.o.done': 'đã {action} · verify khớp',
   'run.stepState.pending': 'chờ',
   'run.stepState.running': 'đang chạy',
   'run.stepState.ok': 'ok',
@@ -537,7 +551,7 @@ const vi = {
   'opt.audit.loading': 'Đang tải audit log…',
   'opt.flow.all': 'Tất cả flow',
   'opt.flow.partner-assign': 'Gán partner',
-  'opt.flow.partner-approve': 'Duyệt request partner',
+  'opt.flow.partner-approve': 'Confirm request partner',
   'opt.flow.partner-remove': 'Gỡ partner',
   'opt.flow.rename': 'Đổi tên TKQC',
   'opt.flow.inventory': 'Kiểm kê tài sản',
@@ -645,7 +659,9 @@ const vi = {
   'err.ERR_BM_CHANGED':
     'Tab BM đang ở BM khác với BM bạn đã chọn TKQC, hoặc đã rời BM đó giữa chừng nên run không bắt đầu hoặc đã dừng. Nếu đang chạy giữa chừng, kiểm tra tay cả hai BM xem đã có thay đổi chưa. Sau đó quay lại bước chọn TKQC để tải lại danh sách của BM hiện tại.',
   'err.ERR_NOT_APPROVED':
-    'Request không được duyệt: không thấy cú bấm Approve (có thể bạn đã bấm Decline) hoặc request vẫn còn ở Needs review. Kiểm tra tay trên BM rồi quét lại.',
+    'Request chưa được xác nhận: không thấy cú bấm đúng quyết định đã chọn hoặc request vẫn còn ở Needs review. Kiểm tra tay trên BM rồi quét lại.',
+  'err.ERR_WRONG_ACTION':
+    'Nút được bấm ngược với quyết định đã chọn (vd. chọn Approve nhưng bấm Decline). Thao tác đó đã ghi lên Meta và run đã dừng: kiểm tra tay trạng thái request trên BM.',
   'err.ERR_INTERNAL': 'Lỗi nội bộ của engine. Sao chép mã lỗi gửi cho dev.',
 } as const;
 
@@ -938,9 +954,21 @@ const en: Record<MessageKey, string> = {
   'approve.step.5': 'Locate the Approve button',
   'approve.step.6': 'Click Approve',
   'approve.step.7': 'Verify: request left Needs review',
-  'approve.title': 'Approve partner requests',
+  'approve.step.5.decline': 'Locate the Decline button',
+  'approve.step.6.decline': 'Click Decline',
+  'approve.step.7.decline': 'Verify: request left Needs review',
+  'approve.title': 'Confirm partner requests',
   'approve.desc':
-    'For the second admin: approve the pending requests that give a partner BM access to ad accounts, under BM settings › Requests (Needs review).',
+    'For the second admin: confirm (Approve or Decline) the pending requests that give a partner BM access to ad accounts, under BM settings › Requests (Needs review).',
+  'approve.action.label': 'Decision for the requests found',
+  'approve.action.approve': 'Approve',
+  'approve.action.decline': 'Decline',
+  'approve.action.approve.desc':
+    'Grants the partner BM access to the ad account.',
+  'approve.action.decline.desc':
+    'Rejects the request. Cannot be undone: the partner BM has to send a new request.',
+  'approve.action.help':
+    'One decision applies to every request found. To mix Approve and Decline, run twice.',
   'approve.name.label': 'Partner BM name',
   'approve.name.placeholder': 'Example: Tris BM',
   'approve.name.help':
@@ -966,31 +994,34 @@ const en: Record<MessageKey, string> = {
   'approve.err.busy':
     'A run is active on this tab. Wait for it to finish, then scan.',
   'approve.run.dry': 'Dry-run',
-  'approve.run.assist': 'Start Assist',
+  'approve.run.assist': 'Start Confirm (Assist)',
+  'approve.run.full': 'Execute Confirm (Full)',
   'approve.run.hintDry':
-    'Dry-run opens each request to cross-check it and never clicks Approve.',
+    'Dry-run opens each request to cross-check it and locate the {action} button, and clicks nothing.',
   'approve.run.hintAssist':
-    'Assist stops before Approve so you click it yourself. Cross-check the BM ID in the details first.',
+    'Assist stops before {action} so you click it yourself. Cross-check the BM ID in the details first.',
+  'approve.run.hintFull':
+    'Full clicks {action} for each scanned request, then verifies. It stops at anything unexpected.',
   'approve.note':
-    'Approving a request grants an outside BM access to ad accounts and is hard to undo. BM names can collide: always cross-check the BM ID, and do not approve if Meta’s warnings make you doubt it.',
+    'Confirming a request either grants an outside BM access to ad accounts (Approve) or rejects it (Decline), and both are hard to undo. BM names can collide: always cross-check the BM ID, and do not confirm if Meta’s warnings make you doubt it.',
   'approve.sim':
     'The Devtest simulator does not support this flow. Turn the simulator off to run the real engine.',
   'approve.progress': 'Request {i}/{n} · {name}',
-  'approve.next.title': 'Click Approve in the BM tab',
+  'approve.next.title': 'Click {action} in the BM tab',
   'approve.next.1': 'Switch to the attached BM tab.',
   'approve.next.2':
     'Check the request in the details pane: BM {bm}, and a BM ID you trust.',
   'approve.next.3':
-    'Click Approve (not Decline). The engine verifies once the request leaves Needs review.',
-  'approve.next.waiting': 'Waiting for you to click Approve…',
-  'approve.next.engineDone': 'I clicked Approve, check now',
-  'approve.willDo.line': 'Will approve: {name}',
+    'Click {action} (not {other}). The engine verifies once the request leaves Needs review.',
+  'approve.next.waiting': 'Waiting for you to click {action}…',
+  'approve.next.engineDone': 'I clicked {action}, check now',
+  'approve.willDo.line': 'Will {action}: {name}',
   'approve.result.title.done.dry':
-    'Dry-run finished · {w} requests would be approved',
-  'approve.result.title.done': 'Done · approved {w} requests',
+    'Dry-run finished · {w} requests would be handled with {action}',
+  'approve.result.title.done': 'Done · {action} on {w} requests',
   'approve.result.sub.failed': 'Request {i}/{n} · {runId} · {time}',
-  'approve.result.o.doneDry': 'would approve · no write',
-  'approve.result.o.done': 'approved · verified',
+  'approve.result.o.doneDry': 'would {action} · no write',
+  'approve.result.o.done': '{action} done · verified',
   'run.stepState.pending': 'waiting',
   'run.stepState.running': 'running',
   'run.stepState.ok': 'ok',
@@ -1193,7 +1224,7 @@ const en: Record<MessageKey, string> = {
   'opt.audit.loading': 'Loading audit log…',
   'opt.flow.all': 'All flows',
   'opt.flow.partner-assign': 'Assign partner',
-  'opt.flow.partner-approve': 'Approve partner requests',
+  'opt.flow.partner-approve': 'Confirm partner requests',
   'opt.flow.partner-remove': 'Remove partner',
   'opt.flow.rename': 'Rename ad account',
   'opt.flow.inventory': 'Asset inventory',
@@ -1301,7 +1332,9 @@ const en: Record<MessageKey, string> = {
   'err.ERR_BM_CHANGED':
     'The BM tab is on a different BM than the one you picked ad accounts for, or it left that BM mid-run, so the run did not start or stopped. If it was mid-run, check both BMs by hand for changes first. Then go back to the ad accounts step to reload the list for the current BM.',
   'err.ERR_NOT_APPROVED':
-    'The request was not approved: no Approve click was seen (you may have clicked Decline) or the request is still in Needs review. Check by hand on the BM, then scan again.',
+    'The request was not confirmed: no click on the chosen button was seen or the request is still in Needs review. Check by hand on the BM, then scan again.',
+  'err.ERR_WRONG_ACTION':
+    'The button clicked was the opposite of the chosen decision (e.g. you chose Approve but clicked Decline). That action was written to Meta and the run stopped: check the request status by hand on the BM.',
   'err.ERR_INTERNAL':
     'Internal engine error. Copy the error code and send it to the dev.',
 };

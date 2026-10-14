@@ -3,12 +3,15 @@
  * (SPEC-UI-003). Chưa có engine thật: `advance` là hàm thuần dùng cho simulator,
  * không gửi message nào tới content script và không chạm DOM trang BM.
  */
+import type { ApproveAction } from '@/shared/approve';
 import type { MessageKey } from '@/shared/i18n';
 import type {
   AdAccount,
   PartnerAssignConfig,
   PartnerTask,
 } from '@/shared/partnerAssign';
+
+import { isApproveAction } from '@/shared/approve';
 
 export const STEP_COUNT = 7;
 export const WRITE_STEP = 6;
@@ -38,11 +41,19 @@ export const APPROVE_STEP_TITLE_KEYS: readonly MessageKey[] = [
   'approve.step.7',
 ];
 
+// Bước 5–7 đổi theo quyết định user chọn (Approve hoặc Decline); bước 1–4 giống nhau.
+export const DECLINE_STEP_TITLE_KEYS: readonly MessageKey[] = [
+  ...APPROVE_STEP_TITLE_KEYS.slice(0, 4),
+  'approve.step.5.decline',
+  'approve.step.6.decline',
+  'approve.step.7.decline',
+];
+
 export function isApproveRun(run: { flow?: RunFlow }): boolean {
   return run.flow === 'partner-approve';
 }
 
-export type RunMode = 'dry' | 'assist';
+export type RunMode = 'dry' | 'assist' | 'full';
 export type RunPhase = 'locate' | 'act' | 'verify';
 export const RUN_PHASES: readonly RunPhase[] = ['locate', 'act', 'verify'];
 export type PhaseState = 'idle' | 'run' | 'done' | 'skip' | 'fail';
@@ -109,8 +120,11 @@ export type EngineErrorCode =
   | 'ERR_LOGGED_OUT'
   | 'ERR_TAB_RELOADED'
   | 'ERR_BM_CHANGED'
-  // Flow duyệt: request rời Needs review mà không phải do Approve (Decline, hoặc không đổi).
+  // Flow duyệt: không thấy cú bấm đúng quyết định đã chọn và request vẫn ở Needs review.
   | 'ERR_NOT_APPROVED'
+  // Flow duyệt: nút bấm là nút ngược với quyết định đã chọn (vd. chọn Approve nhưng bấm Decline).
+  // Vẫn là một lần ghi thật lên Meta nên được tính vào ngân sách và audit.
+  | 'ERR_WRONG_ACTION'
   | 'ERR_INTERNAL';
 
 export type RunStatus =
@@ -186,6 +200,8 @@ export type RunState = {
   flow?: RunFlow;
   // Flow duyệt: tên BM đối tác (thay cho `partnerBmId`, luôn '' ở flow duyệt).
   partnerName?: string;
+  // Flow duyệt: quyết định user chọn cho cả lượt (vắng ở run cũ = 'approve').
+  action?: ApproveAction;
   partnerBmId: string;
   tasks: PartnerTask[];
   targets: RunTarget[];
@@ -311,9 +327,15 @@ export function newRunId(): string {
   return `run_${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
 
-export function pendingSteps(flow: RunFlow = 'partner-assign'): RunStep[] {
-  const titleKeys =
-    flow === 'partner-approve' ? APPROVE_STEP_TITLE_KEYS : STEP_TITLE_KEYS;
+export function pendingSteps(
+  flow: RunFlow = 'partner-assign',
+  action: ApproveAction = 'approve'
+): RunStep[] {
+  let titleKeys = STEP_TITLE_KEYS;
+  if (flow === 'partner-approve') {
+    titleKeys =
+      action === 'decline' ? DECLINE_STEP_TITLE_KEYS : APPROVE_STEP_TITLE_KEYS;
+  }
   return titleKeys.map((titleKey, i) => ({
     index: i + 1,
     titleKey,
@@ -397,7 +419,7 @@ function failTargetIndex(run: RunState): number {
 }
 
 function failStepIndex(mode: RunMode): number {
-  return mode === 'assist' ? WRITE_STEP : 4;
+  return mode !== 'dry' ? WRITE_STEP : 4;
 }
 
 export function finish(
@@ -465,7 +487,7 @@ function startStep(run: RunState, now: number): RunState {
     currentTarget === failTargetIndex(run) &&
     stepIndex === failStepIndex(mode)
   ) {
-    const code = mode === 'assist' ? 'ERR_ACT_REJECTED' : 'ERR_LOCATE_TIMEOUT';
+    const code = mode !== 'dry' ? 'ERR_ACT_REJECTED' : 'ERR_LOCATE_TIMEOUT';
     return finish(
       logStep(
         {
@@ -608,7 +630,7 @@ export function isRunState(value: unknown): value is RunState {
   return (
     typeof run.runId === 'string' &&
     typeof run.status === 'string' &&
-    (run.mode === 'dry' || run.mode === 'assist') &&
+    (run.mode === 'dry' || run.mode === 'assist' || run.mode === 'full') &&
     Array.isArray(run.targets) &&
     Array.isArray(run.steps) &&
     Array.isArray(run.tasks) &&
@@ -616,6 +638,7 @@ export function isRunState(value: unknown): value is RunState {
       run.flow === 'partner-assign' ||
       run.flow === 'partner-approve') &&
     (run.partnerName === undefined || typeof run.partnerName === 'string') &&
+    (run.action === undefined || isApproveAction(run.action)) &&
     typeof run.startedAt === 'number'
   );
 }

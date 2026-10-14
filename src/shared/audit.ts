@@ -380,9 +380,19 @@ function auditTarget(
   detail: AuditDetail
 ): string {
   const approve = run.flow === 'partner-approve';
-  if (detail === 'off') return `${approve ? 'Request' : 'TKQC'} #${index + 1}`;
-  if (detail === 'basic') return target.name;
-  return `${target.name} → ${approve ? run.partnerName ?? '' : run.partnerBmId}`;
+  // Flow duyệt luôn kèm quyết định đã chọn (không PII) để audit không nhầm Decline với Approve.
+  // `ERR_WRONG_ACTION`: nút đã bấm là nút ngược quyết định, nên ghi hành động thực sự xảy ra.
+  const chosen = run.action ?? 'approve';
+  const done =
+    target.code === 'ERR_WRONG_ACTION'
+      ? `${chosen === 'approve' ? 'decline' : 'approve'} (wrong-action)`
+      : chosen;
+  const action = approve ? ` · ${done}` : '';
+  if (detail === 'off') {
+    return `${approve ? 'Request' : 'TKQC'} #${index + 1}${action}`;
+  }
+  if (detail === 'basic') return `${target.name}${action}`;
+  return `${target.name} → ${approve ? run.partnerName ?? '' : run.partnerBmId}${action}`;
 }
 
 // Mặc định không PII: tên TKQC chỉ khi `basic`, ID partner chỉ khi `verbose`.

@@ -1,10 +1,17 @@
 /**
- * partnerApprove.ts — flow "Duyệt request cấp quyền TKQC" (SPEC-ENG-002): admin thứ 2 duyệt, ở
+ * partnerApprove.ts — flow "Confirm request cấp quyền TKQC" (SPEC-ENG-002): admin thứ 2 xử lý, ở
  * Settings › Requests › Needs review, các request cấp quyền TKQC cho BM đối tác sau khi flow
- * Gán partner trả `pending-approval`. Mỗi request đã quét là một mẻ 1 target, đi bộ 7 bước.
- * Chỉ Dry-run/Assist: engine không bao giờ bấm Approve, và không bao giờ định vị nút Decline.
+ * Gán partner trả `pending-approval`. User chọn một quyết định (Approve hoặc Decline) cho cả lượt;
+ * mỗi request đã quét là một mẻ 1 target, đi bộ 7 bước.
+ * Dry-run: chỉ định vị nút của quyết định đã chọn. Assist: user tự bấm, engine chờ rồi verify.
+ * Full: engine tự bấm đúng nút đã chọn (không bao giờ nút còn lại), rồi verify.
  */
-import type { ApproveConfig, ApproveRequest } from '@/shared/approve';
+import type {
+  ApproveAction,
+  ApproveConfig,
+  ApproveRequest,
+} from '@/shared/approve';
+import type { LocatorSpec } from '../engine/locator';
 import type { FlowContext } from '../engine/runner';
 import type { ListedRequest } from './requestList';
 
@@ -201,44 +208,45 @@ function verifyDetail(ctx: Ctx, index: number, acted: () => void): void {
   ctx.setTargetId(index, `${request.requester} → ${partner} · #${index + 1}`);
 }
 
-// ---- Bước 5: nút Approve ----------------------------------------------------
+// ---- Bước 5: nút của quyết định đã chọn -------------------------------------
+
+const specOf = (action: ApproveAction): LocatorSpec =>
+  action === 'decline' ? SELECTORS.requestDecline : SELECTORS.requestApprove;
 
 // Chỉ định vị để biết nút có mặt; không bấm, và không cố bật nó khi nó đang mờ (user tự xử lý).
-async function locateApprove(ctx: Ctx, acted: () => void): Promise<void> {
-  const button = await locate(SELECTORS.requestApprove, ctx);
+// Chỉ nút khớp quyết định đã chọn được định vị: nút còn lại không bao giờ được tìm hay bấm.
+async function locateAction(ctx: Ctx, acted: () => void): Promise<HTMLElement> {
+  const spec = specOf(ctx.config.action);
+  const button = await locate(spec, ctx);
   if (button.closest('[role="dialog"]')) {
-    throw new EngineError(
-      'ERR_UNEXPECTED_DIALOG',
-      SELECTORS.requestApprove.key
-    );
+    throw new EngineError('ERR_UNEXPECTED_DIALOG', spec.key);
   }
   acted();
+  return button;
 }
 
-// ---- Bước 6: chờ user quyết định (Assist) -----------------------------------
+// ---- Bước 6: chờ user quyết định (Assist) hoặc engine bấm (Full) ------------
 
 type Decision = {
   decided: Promise<void>;
-  approved: () => boolean;
-  declined: () => boolean;
+  // Nút user đã bấm đầu tiên (Approve hoặc Decline); undefined nếu chưa bấm gì.
+  clicked: () => ApproveAction | undefined;
   stop: () => void;
 };
 
 // Chỉ nghe sự kiện click ở pha capture để biết user bấm Approve hay Decline; không chặn gì,
-// không đổi gì trên trang. Engine chỉ bấm tab Needs review và nút Respond (nhãn khác), không
-// bao giờ bấm Approve/Decline. Chỉ tính cú bấm nằm trong khung chi tiết của request đang mở,
+// không đổi gì trên trang. Chỉ tính cú bấm nằm trong khung chi tiết của request đang mở,
 // và chốt quyết định đầu tiên: các cú bấm sau (vd. Decline ở request khác) không đè lên nó.
 function observeDecision(lang: string): Decision {
   const approve = labelsOf('request.approve', lang).map(normalizeText);
   const decline = labelsOf('request.decline', lang).map(normalizeText);
-  let approved = false;
-  let declined = false;
+  let clicked: ApproveAction | undefined;
   let notify: () => void = () => undefined;
   const decided = new Promise<void>((resolve) => {
     notify = resolve;
   });
   const onClick = (event: Event): void => {
-    if (approved || declined) return;
+    if (clicked) return;
     const { target } = event;
     if (!(target instanceof Element)) return;
     const button = target.closest<HTMLElement>('button, [role="button"]');
@@ -246,23 +254,23 @@ function observeDecision(lang: string): Decision {
     if (!button || !isEnabled(button)) return;
     if (!detailPane(lang)?.contains(button)) return;
     const label = normalizeText(button.textContent ?? '');
-    if (approve.includes(label)) approved = true;
-    else if (decline.includes(label)) declined = true;
+    if (approve.includes(label)) clicked = 'approve';
+    else if (decline.includes(label)) clicked = 'decline';
     else return;
     notify();
   };
   document.addEventListener('click', onClick, true);
   return {
     decided,
-    approved: () => approved,
-    declined: () => declined,
+    clicked: () => clicked,
     stop: () => document.removeEventListener('click', onClick, true),
   };
 }
 
-// Chờ user bấm Approve/Decline (hoặc báo xong). Sau cú bấm Approve, nếu Meta đòi bước xác nhận
-// hay đăng nhập lại thì user cần thời gian: chờ tiếp tới khi request rời danh sách (`gone`), user
-// báo xong, hoặc hết hạn chờ Assist; không để cửa sổ verify ngắn cắt ngang rồi dừng cả run.
+// Chờ user bấm Approve/Decline (hoặc báo xong). Sau cú bấm đúng quyết định đã chọn, nếu Meta đòi
+// bước xác nhận hay đăng nhập lại thì user cần thời gian: chờ tiếp tới khi request rời danh sách
+// (`gone`), user báo xong, hoặc hết hạn chờ Assist; không để cửa sổ verify ngắn cắt ngang rồi dừng
+// cả run. Cú bấm nút ngược quyết định thì không chờ thêm: run dừng với `ERR_WRONG_ACTION`.
 async function waitForDecision(
   ctx: Ctx,
   decision: Decision,
@@ -280,7 +288,7 @@ async function waitForDecision(
   });
   try {
     await Promise.race([decision.decided, userSaidDone, timeout]);
-    if (decision.approved() && !userDone) {
+    if (decision.clicked() === ctx.config.action && !userDone) {
       await Promise.race([
         waitFor(() => (gone() ? true : undefined), {
           signal: local.signal,
@@ -298,13 +306,15 @@ async function waitForDecision(
 
 // ---- Bước 7: verify ---------------------------------------------------------
 
-// `done` cần cả hai bằng chứng: đã thấy cú bấm Approve VÀ request đã rời Needs review.
-// Chỉ một trong hai thì không chứng minh được gì (có thể đã ghi): `unverified`, không bao giờ retry.
-async function verifyApproved(
+// `done` cần cả hai bằng chứng: đã có cú bấm ĐÚNG quyết định đã chọn (user bấm ở Assist, engine
+// bấm ở Full) VÀ request đã rời Needs review. Chỉ một trong hai thì không chứng minh được gì (có
+// thể đã ghi): `unverified`, không bao giờ retry. Cú bấm là nút ngược quyết định đã chọn là một lần
+// ghi thật nhưng sai ý user: `failed` `ERR_WRONG_ACTION` (vẫn tính ngân sách và audit).
+async function verifyOutcome(
   ctx: Ctx,
   index: number,
   before: number,
-  decision: Decision,
+  clicked: ApproveAction | undefined,
   acted: () => void
 ): Promise<boolean> {
   acted();
@@ -322,20 +332,74 @@ async function verifyApproved(
     await sleep(STABLE_MS, ctx.signal);
     left = isGone();
   }
-  if (decision.declined()) {
-    ctx.setTarget(index, 'failed', 'ERR_NOT_APPROVED');
+  if (clicked !== undefined && clicked !== ctx.config.action) {
+    ctx.setTarget(index, 'failed', 'ERR_WRONG_ACTION');
     return false;
   }
-  if (decision.approved() && left) {
+  if (clicked && left) {
     ctx.setTarget(index, 'done');
     return true;
   }
-  if (decision.approved() || left) {
+  if (clicked || left) {
     ctx.setTarget(index, 'unverified');
     return false;
   }
   ctx.setTarget(index, 'failed', 'ERR_NOT_APPROVED');
   return false;
+}
+
+// ---- Bước 6 (Full): engine tự bấm -------------------------------------------
+
+// Chỉ bấm đúng nút của quyết định đã chọn, không bao giờ nút còn lại. Định vị lại và đối chiếu
+// lại khung chi tiết ngay trước khi bấm (trang có thể đã đổi từ bước 4). Sau cú bấm, nếu một hộp
+// thoại lạ hiện ra (vd. bước xác nhận của Meta, chưa từng được quan sát) mà request chưa rời
+// danh sách thì dừng: engine không bấm xuyên qua hộp thoại nó không nhận ra. Target còn `running`
+// sẽ thành `unverified` (đã tính là một lần ghi).
+class Superseded extends Error {}
+
+async function clickAction(
+  ctx: Ctx,
+  index: number,
+  before: number,
+  decision: Decision
+): Promise<void> {
+  const request = ctx.config.requests[index];
+  const spec = specOf(ctx.config.action);
+  // User đã tự bấm (trong lúc tạm dừng hoặc giữa lúc nhấn và nhả): engine không bấm thêm cú nào,
+  // verify sẽ dùng đúng cú bấm đó (có thể là `ERR_WRONG_ACTION`).
+  const superseded = (): boolean => decision.clicked() !== undefined;
+  if (superseded()) return;
+  // Nút phải nằm trong khung chi tiết của đúng request này, và khung đó phải còn khớp: kiểm lại
+  // ngay trước khi nhấn và trước khi nhả (giữa hai lần kiểm có chờ gate/nút mờ/khoảng nghỉ).
+  const verifyTarget = (button: HTMLElement): void => {
+    if (superseded()) throw new Superseded();
+    if (
+      !detailMatches(readDetail(), ctx.config.partnerName, request) ||
+      !detailPane(ctx.lang)?.contains(button)
+    ) {
+      notFound(ctx, index);
+    }
+  };
+  try {
+    const button = await locate(spec, ctx);
+    if (button.closest('[role="dialog"]') || activeDialog()) {
+      throw new EngineError('ERR_UNEXPECTED_DIALOG', spec.key);
+    }
+    verifyTarget(button);
+    await click(button, ctx, (phase) => {
+      verifyTarget(button);
+      // Chỉ tính một lần ghi khi sắp phát cú bấm thật, không phải lúc mới định vị.
+      if (phase === 'release') ctx.markWriteStarted();
+    });
+  } catch (error) {
+    if (error instanceof Superseded) return;
+    throw error;
+  }
+  // Trang cần vài giây để cập nhật danh sách sau khi bấm.
+  await sleep(SETTLE_MS, ctx.signal);
+  if (activeDialog() && !leftNeedsReview(ctx, request, before)) {
+    throw new EngineError('ERR_UNEXPECTED_DIALOG', spec.key);
+  }
 }
 
 // ---- Một request ------------------------------------------------------------
@@ -357,37 +421,47 @@ async function runRequest(
   await ctx.pause('step');
   await ctx.step(4, async (h) => verifyDetail(ctx, index, h.acted));
   await ctx.pause('step');
-  await ctx.step(5, (h) => locateApprove(ctx, h.acted));
+  await ctx.step(5, (h) => locateAction(ctx, h.acted));
   const before = matchingRows(ctx.config.partnerName, request).length;
-  await ctx.pause('write');
-
-  if (ctx.mode === 'dry') {
-    // Dry-run không bao giờ thực thi bước ghi (FR-03): dừng ở việc nút Approve có mặt.
-    ctx.skipStep(6, { locate: 'done', act: 'skip', verify: 'skip' });
-    ctx.setTarget(index, 'done');
-    ctx.skipStep(7, { locate: 'skip', act: 'skip', verify: 'skip' });
-    return 'continue';
-  }
-
-  // Assist: engine không chạm Approve/Decline; chờ user bấm một trong hai rồi verify.
+  // Cả hai mode đều nghe cú bấm thực sự xảy ra (của user ở Assist, của engine hoặc user ở Full),
+  // bắt đầu từ trước `pause('write')`: verify dựa trên nút đã bấm thật, không dựa trên quyết định
+  // đã chọn, và cú bấm tay của user trong lúc tạm dừng không bị bỏ sót.
   const decision = observeDecision(ctx.lang);
   try {
-    await ctx.step(6, async (h) => {
-      h.acted();
-      ctx.setWaiting(true);
-      try {
-        await waitForDecision(ctx, decision, () =>
-          leftNeedsReview(ctx, request, before)
-        );
-      } finally {
-        ctx.setWaiting(false);
-      }
-      // Trang cần vài giây để cập nhật danh sách sau khi duyệt.
-      await sleep(SETTLE_MS, ctx.signal);
-    });
+    await ctx.pause('write');
+
+    if (ctx.mode === 'dry') {
+      // Dry-run không bao giờ thực thi bước ghi (FR-03): dừng ở việc nút đã chọn có mặt.
+      ctx.skipStep(6, { locate: 'done', act: 'skip', verify: 'skip' });
+      ctx.setTarget(index, 'done');
+      ctx.skipStep(7, { locate: 'skip', act: 'skip', verify: 'skip' });
+      return 'continue';
+    }
+
+    if (ctx.mode === 'full') {
+      await ctx.step(6, async (h) => {
+        h.acted();
+        await clickAction(ctx, index, before, decision);
+      });
+    } else {
+      // Assist: engine không chạm Approve/Decline; chờ user bấm một trong hai rồi verify.
+      await ctx.step(6, async (h) => {
+        h.acted();
+        ctx.setWaiting(true);
+        try {
+          await waitForDecision(ctx, decision, () =>
+            leftNeedsReview(ctx, request, before)
+          );
+        } finally {
+          ctx.setWaiting(false);
+        }
+        // Trang cần vài giây để cập nhật danh sách sau khi duyệt.
+        await sleep(SETTLE_MS, ctx.signal);
+      });
+    }
     await ctx.pause('step');
     const ok = await ctx.step(7, (h) =>
-      verifyApproved(ctx, index, before, decision, h.acted)
+      verifyOutcome(ctx, index, before, decision.clicked(), h.acted)
     );
     return ok ? 'continue' : 'stop';
   } finally {

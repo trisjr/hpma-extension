@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ApproveAction } from '@/shared/approve';
 import browser from 'webextension-polyfill';
 
 import { MAX_PARTNER_NAME_LENGTH } from '@/shared/approve';
@@ -12,6 +13,10 @@ export type ApproveDraftApi = {
   ready: boolean;
   partnerName: string;
   setPartnerName: (name: string) => void;
+  // Quyết định Approve/Decline chỉ giữ trong bộ nhớ panel, không lưu storage: Decline không đảo
+  // ngược được nên mỗi lần mở panel mới phải chọn lại (mặc định Approve).
+  action: ApproveAction;
+  setAction: (action: ApproveAction) => void;
   clearDraft: () => void;
 };
 
@@ -24,6 +29,7 @@ function parseStored(value: unknown): string {
 export default function useApproveDraft(): ApproveDraftApi {
   const [ready, setReady] = useState(false);
   const [partnerName, setPartnerName] = useState('');
+  const [action, setAction] = useState<ApproveAction>('approve');
 
   useEffect(() => {
     browser.storage.local
@@ -45,8 +51,9 @@ export default function useApproveDraft(): ApproveDraftApi {
 
   const clearDraft = useCallback(() => {
     setPartnerName('');
+    setAction('approve');
     browser.storage.local.remove(STORAGE_KEY).catch(() => undefined);
   }, []);
 
-  return { ready, partnerName, setPartnerName, clearDraft };
+  return { ready, partnerName, setPartnerName, action, setAction, clearDraft };
 }

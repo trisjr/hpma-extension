@@ -99,6 +99,7 @@ export default function makeFlowContext(options: Options = {}): FakeFlow {
         /* pending */
       }),
     setWaiting: () => undefined,
+    markWriteStarted: () => undefined,
     ...options.overrides,
   };
   return { ctx, targets, steps, skipped, controller };

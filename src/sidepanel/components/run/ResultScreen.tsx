@@ -5,10 +5,12 @@ import type { RunState, RunTarget, TargetOutcome } from '@/shared/run';
 import { isMessageKey, translate } from '@/shared/i18n';
 import {
   APPROVE_STEP_TITLE_KEYS,
+  DECLINE_STEP_TITLE_KEYS,
   isApproveRun,
   STEP_TITLE_KEYS,
 } from '@/shared/run';
 
+import actionParams from '../approve/actionText';
 import Icon from '../Icon';
 import CopyButton from './CopyButton';
 import { formatClock } from './format';
@@ -65,7 +67,8 @@ function outcomeLabel(lang: Lang, run: RunState, target: RunTarget): string {
   if (target.outcome === 'done' && isApproveRun(run)) {
     return translate(
       lang,
-      run.mode === 'dry' ? 'approve.result.o.doneDry' : 'approve.result.o.done'
+      run.mode === 'dry' ? 'approve.result.o.doneDry' : 'approve.result.o.done',
+      actionParams(lang, run.action)
     );
   }
   if (target.outcome === 'done' && run.mode === 'dry') {
@@ -93,7 +96,11 @@ export default function ResultScreen({
   const tone = TONE[status];
   // Flow duyệt request: cùng 7 bước nhưng câu chữ riêng; không có readback/undo/cấu hình lại.
   const approve = isApproveRun(run);
-  const stepKeys = approve ? APPROVE_STEP_TITLE_KEYS : STEP_TITLE_KEYS;
+  const approveKeys =
+    run.action === 'decline'
+      ? DECLINE_STEP_TITLE_KEYS
+      : APPROVE_STEP_TITLE_KEYS;
+  const stepKeys = approve ? approveKeys : STEP_TITLE_KEYS;
   const endedAt = run.endedAt ?? run.startedAt;
   const written = run.targets.filter(
     (item) => item.plan === 'run' && item.outcome === 'done'
@@ -143,7 +150,7 @@ export default function ResultScreen({
         run.mode === 'dry'
           ? 'approve.result.title.done.dry'
           : 'approve.result.title.done',
-        { w: written.length }
+        { w: written.length, ...actionParams(lang, run.action) }
       );
     }
     return translate(
@@ -296,7 +303,7 @@ export default function ResultScreen({
 
       <section
         aria-label={translate(lang, 'result.targets')}
-        className='border-base-content/12 overflow-hidden rounded-md border bg-base-100'
+        className='border-base-content/12 shrink-0 overflow-hidden rounded-md border bg-base-100'
       >
         <ul className='m-0 flex list-none flex-col p-0'>
           {run.targets.map((item) => (

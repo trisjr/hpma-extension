@@ -121,6 +121,7 @@ function failedApproveRun(params: {
       startedAt: now,
       flow: 'partner-approve',
       partnerName: config.partnerName,
+      action: config.action,
       partnerBmId: '',
       tasks: [],
       targets: config.requests.map((request, index) => ({
@@ -131,7 +132,7 @@ function failedApproveRun(params: {
         ...(index === 0 ? { code } : {}),
       })),
       currentTarget: 0,
-      steps: pendingSteps('partner-approve'),
+      steps: pendingSteps('partner-approve', config.action),
       stepIndex: 1,
       sub: 0,
       disconnectDone: false,

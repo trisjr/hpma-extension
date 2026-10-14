@@ -176,7 +176,7 @@ export const LABELS: Record<LabelKey, Label> = {
     en: ['Approve'],
     verified: false,
   },
-  // Không bao giờ được định vị hay bấm: chỉ để nhận ra user đã bấm Decline (SPEC-ENG-002).
+  // Chỉ định vị/bấm khi user chọn quyết định Decline; luôn dùng để nhận ra cú bấm Decline (SPEC-ENG-002).
   'request.decline': {
     vi: ['Từ chối'],
     en: ['Decline'],

@@ -138,7 +138,7 @@ export default function DiffScreen({
 
       <section
         aria-label={translate(lang, 'diff.table')}
-        className='border-base-content/12 overflow-hidden rounded-md border bg-base-100'
+        className='border-base-content/12 shrink-0 overflow-hidden rounded-md border bg-base-100'
       >
         <div className='border-base-content/8 flex items-center justify-between gap-2 border-b px-3 py-2'>
           <span className='text-base-content/70 text-xs'>

@@ -49,7 +49,7 @@ export default function StepPerms({
       <div
         role='group'
         aria-label={translate(lang, 'pa.perm.title')}
-        className='border-base-content/12 flex flex-col overflow-hidden rounded-md border'
+        className='border-base-content/12 flex shrink-0 flex-col overflow-hidden rounded-md border'
       >
         {PARTNER_TASKS.map((item) => (
           <label

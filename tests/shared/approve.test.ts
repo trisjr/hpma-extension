@@ -14,7 +14,11 @@ import { isApproveRun, isRunState, STEP_COUNT } from '@/shared/run';
 import { isOnSurface } from '@/shared/surfaces';
 
 const request = { requester: 'Duc TNM', account: 'AA' };
-const config = { partnerName: 'Tris BM', requests: [request] };
+const config = {
+  partnerName: 'Tris BM',
+  action: 'approve' as const,
+  requests: [request],
+};
 
 describe('validatePartnerName / parseApproveConfig', () => {
   it('tên rỗng hoặc quá dài bị từ chối', () => {
@@ -27,22 +31,33 @@ describe('validatePartnerName / parseApproveConfig', () => {
     expect(
       parseApproveConfig({
         partnerName: '  Tris   BM ',
+        action: 'decline',
         requests: [{ requester: ' Duc  TNM', account: 'AA' }],
       })
     ).toEqual({
       partnerName: 'Tris BM',
+      action: 'decline',
       requests: [{ requester: 'Duc TNM', account: 'AA' }],
     });
   });
 
   it.each([
     ['không phải object', 'x'],
-    ['thiếu tên', { requests: [request] }],
-    ['không có request', { partnerName: 'Tris BM', requests: [] }],
+    ['thiếu tên', { action: 'approve', requests: [request] }],
+    ['thiếu action', { partnerName: 'Tris BM', requests: [request] }],
+    [
+      'action lạ',
+      { partnerName: 'Tris BM', action: 'reject', requests: [request] },
+    ],
+    [
+      'không có request',
+      { partnerName: 'Tris BM', action: 'approve', requests: [] },
+    ],
     [
       'quá nhiều request',
       {
         partnerName: 'Tris BM',
+        action: 'approve',
         requests: Array.from(
           { length: MAX_APPROVE_REQUESTS + 1 },
           () => request
@@ -51,11 +66,19 @@ describe('validatePartnerName / parseApproveConfig', () => {
     ],
     [
       'request thiếu TKQC',
-      { partnerName: 'Tris BM', requests: [{ requester: 'Duc TNM' }] },
+      {
+        partnerName: 'Tris BM',
+        action: 'approve',
+        requests: [{ requester: 'Duc TNM' }],
+      },
     ],
     [
       'request sai kiểu',
-      { partnerName: 'Tris BM', requests: [{ requester: 1, account: 'AA' }] },
+      {
+        partnerName: 'Tris BM',
+        action: 'approve',
+        requests: [{ requester: 1, account: 'AA' }],
+      },
     ],
   ])('từ chối cấu hình: %s', (_label, raw) => {
     expect(parseApproveConfig(raw)).toBeUndefined();
@@ -100,6 +123,19 @@ describe('guard message', () => {
     expect(isRunCommand({ ...base, flow: 'partner-assign' })).toBe(true);
     expect(isRunCommand({ ...base, flow: 'rename' })).toBe(false);
   });
+
+  it('mode full chỉ hợp lệ với flow duyệt/từ chối request', () => {
+    const base = {
+      kind: 'run.start',
+      requestId: 'r1',
+      mode: 'full',
+      businessId: '123',
+      config: {},
+    };
+    expect(isRunCommand({ ...base, flow: 'partner-approve' })).toBe(true);
+    expect(isRunCommand({ ...base, flow: 'partner-assign' })).toBe(false);
+    expect(isRunCommand(base)).toBe(false);
+  });
 });
 
 describe('run duyệt request', () => {
@@ -129,7 +165,7 @@ describe('run duyệt request', () => {
     const [off] = rowsFromRun(done, 'off');
     expect(off).toMatchObject({
       flow: 'partner-approve',
-      target: 'Request #1',
+      target: 'Request #1 · approve',
     });
     // Mức basic chỉ có tên TKQC (như flow Gán partner): không BM đối tác, không BM ID.
     const withId = {
@@ -142,17 +178,59 @@ describe('run duyệt request', () => {
       ],
     };
     const [basic] = rowsFromRun(withId, 'basic');
-    expect(basic.target).toBe('AA');
+    expect(basic.target).toBe('AA · approve');
     expect(JSON.stringify(basic)).not.toContain('4680448748947419');
     expect(JSON.stringify(basic)).not.toContain('Tris BM');
     const [verbose] = rowsFromRun(done, 'verbose');
-    expect(verbose.target).toBe('AA → Tris BM');
+    expect(verbose.target).toBe('AA → Tris BM · approve');
+  });
+
+  it('audit ghi rõ Decline, không nhầm với Approve; Full ghi mode full', () => {
+    const declined = createApproveRun({
+      mode: 'full',
+      config: { ...config, action: 'decline' },
+      now: 1,
+      runId: 'run_decl',
+    });
+    const done = {
+      ...declined,
+      targets: [{ ...declined.targets[0], outcome: 'done' as const }],
+    };
+    const [row] = rowsFromRun(done, 'off');
+    expect(row).toMatchObject({
+      mode: 'full',
+      result: 'done',
+      target: 'Request #1 · decline',
+    });
+    expect(declined.steps[5].titleKey).toBe('approve.step.6.decline');
+    expect(isRunState(declined)).toBe(true);
+  });
+
+  it('ERR_WRONG_ACTION: audit ghi hành động thực sự đã bấm, không phải quyết định đã chọn', () => {
+    const chosen = createApproveRun({
+      mode: 'assist',
+      config: { ...config, action: 'decline' },
+      now: 1,
+      runId: 'run_wrong',
+    });
+    const wrong = {
+      ...chosen,
+      targets: [
+        {
+          ...chosen.targets[0],
+          outcome: 'failed' as const,
+          code: 'ERR_WRONG_ACTION' as const,
+        },
+      ],
+    };
+    const [row] = rowsFromRun(wrong, 'off');
+    expect(row.target).toBe('Request #1 · approve (wrong-action)');
   });
 
   it('mỗi target có accountId riêng dù request trùng hệt nhau', () => {
     const twice = createApproveRun({
       mode: 'dry',
-      config: { partnerName: 'Tris BM', requests: [request, request] },
+      config: { ...config, requests: [request, request] },
       now: 1,
       runId: 'run_dup',
     });

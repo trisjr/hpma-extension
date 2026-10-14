@@ -5,6 +5,7 @@ import type { RunState, RunTarget } from '@/shared/run';
 import { translate } from '@/shared/i18n';
 import { isApproveRun, STEP_COUNT } from '@/shared/run';
 
+import actionParams from '../approve/actionText';
 import Icon from '../Icon';
 import { MODE_STYLES } from '../riskStyles';
 import { formatClock, formatElapsed, taskLabels } from './format';
@@ -64,9 +65,13 @@ export default function RunScreen({
   const tasks = taskLabels(lang, run.tasks);
   // Flow duyệt request dùng cùng bộ 7 bước nhưng câu chữ riêng (Approve thay cho Assign).
   const approve = isApproveRun(run);
+  const actionText = actionParams(lang, run.action);
   const willDoLine = (item: RunTarget): string => {
     if (approve) {
-      return translate(lang, 'approve.willDo.line', { name: item.name });
+      return translate(lang, 'approve.willDo.line', {
+        name: item.name,
+        ...actionText,
+      });
     }
     if (item.plan === 'skip') {
       return `${item.name} · ${translate(lang, 'diff.noteSkip')}`;
@@ -257,7 +262,11 @@ export default function RunScreen({
             {translate(lang, 'run.next.label')}
           </div>
           <h2 id='next-step-title' className='m-0 text-sm font-semibold'>
-            {translate(lang, approve ? 'approve.next.title' : 'run.next.title')}
+            {translate(
+              lang,
+              approve ? 'approve.next.title' : 'run.next.title',
+              actionText
+            )}
           </h2>
           <ol className='m-0 flex list-decimal flex-col gap-1 pl-4 text-[13px]'>
             <li>
@@ -274,7 +283,11 @@ export default function RunScreen({
                   })}
             </li>
             <li>
-              {translate(lang, approve ? 'approve.next.3' : 'run.next.3')}
+              {translate(
+                lang,
+                approve ? 'approve.next.3' : 'run.next.3',
+                actionText
+              )}
             </li>
           </ol>
           <div
@@ -285,7 +298,8 @@ export default function RunScreen({
             <span>
               {translate(
                 lang,
-                approve ? 'approve.next.waiting' : 'run.next.waiting'
+                approve ? 'approve.next.waiting' : 'run.next.waiting',
+                actionText
               )}
             </span>
           </div>
@@ -303,7 +317,8 @@ export default function RunScreen({
                 ? 'approve.next.engineDone'
                 : simulated
                   ? 'run.next.simulate'
-                  : 'run.next.engineDone'
+                  : 'run.next.engineDone',
+              actionText
             )}
           </button>
         </section>

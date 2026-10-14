@@ -113,7 +113,10 @@ export function isRunCommand(value: unknown): value is RunCommand {
         (value.flow === undefined ||
           value.flow === 'partner-assign' ||
           value.flow === 'partner-approve') &&
-        (value.mode === 'dry' || value.mode === 'assist') &&
+        // Full chỉ có ở flow duyệt/từ chối request: flow Gán partner coi mọi mode khác Dry là Assist.
+        (value.mode === 'dry' ||
+          value.mode === 'assist' ||
+          (value.mode === 'full' && value.flow === 'partner-approve')) &&
         isBusinessId(value.businessId) &&
         isRecord(value.config)
       );

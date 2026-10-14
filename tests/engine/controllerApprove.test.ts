@@ -23,6 +23,7 @@ async function load(): Promise<Handle> {
 const TAB_BM = '104536928206688';
 const approveConfig = {
   partnerName: 'Tris BM',
+  action: 'approve',
   requests: [{ requester: 'Duc TNM', account: 'AA' }],
 };
 const command = (overrides: Record<string, unknown> = {}): RunCommand =>
@@ -71,6 +72,49 @@ describe('controller: flow partner-approve', () => {
       code: 'ERR_INVALID_CONFIG',
     });
     expect(approveFlow).not.toHaveBeenCalled();
+  });
+
+  it('thiếu hoặc sai action bị từ chối ERR_INVALID_CONFIG (không có mặc định ngầm)', async () => {
+    const handle = await load();
+    const noAction = { ...approveConfig, action: undefined };
+    expect(await handle(command({ config: noAction }))).toEqual({
+      ok: false,
+      code: 'ERR_INVALID_CONFIG',
+    });
+    expect(
+      await handle(command({ config: { ...approveConfig, action: 'reject' } }))
+    ).toEqual({ ok: false, code: 'ERR_INVALID_CONFIG' });
+    expect(approveFlow).not.toHaveBeenCalled();
+  });
+
+  it('Full: qua cùng cổng ngân sách như Assist, và chỉ chạy flow duyệt', async () => {
+    const requests = [
+      { requester: 'Duc TNM', account: 'AA' },
+      { requester: 'Duc TNM', account: 'BB' },
+    ];
+    storageState.data[WRITE_BUDGET_KEY] = { day: localDay(NOON_VN), used: 19 };
+    const handle = await load();
+    expect(
+      await handle(
+        command({ mode: 'full', config: { ...approveConfig, requests } })
+      )
+    ).toEqual({ ok: false, code: 'ERR_BUDGET' });
+    expect(approveFlow).not.toHaveBeenCalled();
+    // Flow Gán partner không có đường Full: controller từ chối dù lệnh đã lọt qua type guard.
+    expect(
+      await handle(
+        command({
+          flow: 'partner-assign',
+          mode: 'full',
+          config: {
+            partnerBmId: '1451597353550362',
+            queries: ['x'],
+            tasks: ['ANALYZE'],
+          },
+        })
+      )
+    ).toEqual({ ok: false, code: 'ERR_INVALID_CONFIG' });
+    expect(assignFlow).not.toHaveBeenCalled();
   });
 
   it('config của Gán partner gửi kèm flow duyệt không được chấp nhận', async () => {

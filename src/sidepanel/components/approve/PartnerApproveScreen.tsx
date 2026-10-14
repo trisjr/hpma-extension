@@ -6,6 +6,7 @@ import type { Lang, MessageKey } from '@/shared/i18n';
 import type { RunMode } from '../riskStyles';
 
 import {
+  APPROVE_ACTIONS,
   cleanPartnerName,
   MAX_PARTNER_NAME_LENGTH,
   validatePartnerName,
@@ -17,11 +18,14 @@ import { isCurfew } from '@/shared/settings';
 
 import Icon from '../Icon';
 import { RISK_STYLES } from '../riskStyles';
+import actionParams from './actionText';
 
 type PartnerApproveScreenProps = {
   lang: Lang;
   connection: ConnectionState;
   mode: RunMode;
+  // Cổng ghi (PRD §8) chưa mở: Full bị khoá, luôn chạy như Dry-run.
+  fullLocked: boolean;
   // false: simulator Devtest đang bật, flow này chỉ chạy bằng engine thật.
   engineMode: boolean;
   banner: ReactNode;
@@ -32,7 +36,7 @@ type PartnerApproveScreenProps = {
 };
 
 const RUN_VIEW: Record<
-  'dry' | 'assist',
+  RunMode,
   { labelKey: MessageKey; hintKey: MessageKey; button: string }
 > = {
   dry: {
@@ -44,6 +48,11 @@ const RUN_VIEW: Record<
     labelKey: 'approve.run.assist',
     hintKey: 'approve.run.hintAssist',
     button: 'bg-yellow-400 text-yellow-950',
+  },
+  full: {
+    labelKey: 'approve.run.full',
+    hintKey: 'approve.run.hintFull',
+    button: 'bg-orange-700 text-white',
   },
 };
 
@@ -65,6 +74,7 @@ export default function PartnerApproveScreen({
   lang,
   connection,
   mode,
+  fullLocked,
   engineMode,
   banner,
   draft,
@@ -72,11 +82,12 @@ export default function PartnerApproveScreen({
   onExit,
   onRun,
 }: PartnerApproveScreenProps): JSX.Element {
-  const { partnerName, setPartnerName } = draft;
+  const { partnerName, setPartnerName, action, setAction } = draft;
   const { used, limit } = useWriteBudget();
   const { value: pacing } = usePacingConfig();
-  // Full chưa mở khoá (cổng ghi, PRD §8) nên không bao giờ chạy Full: coi như Dry-run.
-  const effectiveMode: 'dry' | 'assist' = mode === 'assist' ? 'assist' : 'dry';
+  // Full chưa mở khoá (cổng ghi, PRD §8) thì coi như Dry-run.
+  const effectiveMode: RunMode = mode === 'full' && fullLocked ? 'dry' : mode;
+  const actionText = actionParams(lang, action);
   const nameIssue = validatePartnerName(partnerName);
   const connected = connection.status === 'connected';
   const { state } = scan;
@@ -107,7 +118,7 @@ export default function PartnerApproveScreen({
       return { text: translate(lang, 'approve.scan.note'), error: false };
     }
     return {
-      text: translate(lang, RUN_VIEW[effectiveMode].hintKey),
+      text: translate(lang, RUN_VIEW[effectiveMode].hintKey, actionText),
       error: false,
     };
   })();
@@ -235,6 +246,44 @@ export default function PartnerApproveScreen({
                     </li>
                   ))}
                 </ul>
+                <fieldset className='border-base-content/12 m-0 mt-1 flex min-w-0 flex-col gap-2 border-0 border-t p-0 pt-3'>
+                  <legend className='mb-1 p-0 text-[13px] font-medium'>
+                    {translate(lang, 'approve.action.label')}
+                  </legend>
+                  {APPROVE_ACTIONS.map((item) => (
+                    <label
+                      key={item}
+                      htmlFor={`approve-action-${item}`}
+                      className='flex min-h-11 cursor-pointer items-start gap-2.5'
+                    >
+                      <input
+                        id={`approve-action-${item}`}
+                        type='radio'
+                        name='approve-action'
+                        className='radio radio-sm mt-0.5 shrink-0'
+                        checked={action === item}
+                        onChange={() => setAction(item)}
+                      />
+                      <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
+                        <span className='text-[13px] font-semibold'>
+                          {translate(lang, `approve.action.${item}`)}
+                        </span>
+                        <span
+                          className={`text-xs ${
+                            item === 'decline'
+                              ? 'text-red-700 dark:text-red-300'
+                              : 'text-base-content/70'
+                          }`}
+                        >
+                          {translate(lang, `approve.action.${item}.desc`)}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                  <p className='text-base-content/70 m-0 text-xs'>
+                    {translate(lang, 'approve.action.help')}
+                  </p>
+                </fieldset>
               </>
             )}
           </section>

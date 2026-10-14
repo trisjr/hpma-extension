@@ -135,9 +135,11 @@ export default function SidePanel(): JSX.Element {
     const scanned = requestsScan.state;
     if (scanned.status !== 'ok') return;
     controller.startApprove({
-      mode: runnableMode,
+      // Full chỉ chạy được khi cổng ghi mở: flow này là nơi duy nhất engine tự bấm.
+      mode: mode === 'full' && !FULL_LOCKED ? 'full' : runnableMode,
       config: {
         partnerName: scanned.partnerName,
+        action: approveDraft.action,
         requests: scanned.requests,
       },
       businessId: scanned.businessId,
@@ -293,6 +295,7 @@ export default function SidePanel(): JSX.Element {
           lang={lang}
           connection={connection}
           mode={mode}
+          fullLocked={FULL_LOCKED}
           engineMode={engineMode}
           banner={notice}
           draft={approveDraft}

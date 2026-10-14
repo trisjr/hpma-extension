@@ -70,6 +70,9 @@ export type FlowContext<C = RunConfig> = ActionContext & {
   // Assist: dừng chờ user; trả về khi user báo `assistDone` (hoặc huỷ run).
   waitForAssistDone: () => Promise<void>;
   setWaiting: (waiting: boolean) => void;
+  // Full: gọi ngay trước khi engine tự bấm nút ghi. Từ đây một lần ghi có thể đã tới Meta dù
+  // run kết thúc bất thường (như Assist sau `setWaiting(true)`): target còn `running` thành `unverified`.
+  markWriteStarted: () => void;
 };
 
 export type Flow<C = RunConfig> = (ctx: FlowContext<C>) => Promise<void>;
@@ -183,10 +186,10 @@ function launch<C>(
       });
     });
 
-  // Cổng trước mỗi hành động: curfew (chỉ Assist, vì Dry không ghi) và tab hiển thị.
+  // Cổng trước mỗi hành động: curfew (Assist và Full, vì Dry không ghi) và tab hiển thị.
   const gate = async (): Promise<void> => {
     throwIfAborted(signal);
-    if (mode === 'assist' && isCurfew(new Date(), pacing.curfew)) {
+    if (mode !== 'dry' && isCurfew(new Date(), pacing.curfew)) {
       throw new EngineError('ERR_CURFEW');
     }
     if (document.visibilityState === 'visible') return;
@@ -347,6 +350,9 @@ function launch<C>(
         signal.addEventListener('abort', onAbort, { once: true });
       }),
     // Chờ user bấm Assign: bước ghi hiện "chờ bạn", xong thì trở lại đang chạy.
+    markWriteStarted: () => {
+      reachedAssign = true;
+    },
     setWaiting: (waiting) => {
       if (waiting) reachedAssign = true;
       update((run) => ({
@@ -418,11 +424,16 @@ function launch<C>(
 
     // Assist đã tới bước user bấm Assign thì tính một lần ghi (đếm thừa an toàn hơn đếm thiếu):
     // `done`, `pending-approval` và `unverified` đều có thể đã gửi yêu cầu tới Meta.
-    // Flow duyệt: mỗi request là một lần ghi riêng lên Meta nên tính theo từng target.
+    // Flow duyệt: mỗi request là một lần ghi riêng lên Meta nên tính theo từng target; user bấm nút
+    // ngược quyết định đã chọn (`ERR_WRONG_ACTION`) vẫn là một lần ghi thật. Full tính như Assist.
     const written =
-      mode === 'assist'
-        ? final.targets.filter((item) =>
-            ['done', 'pending-approval', 'unverified'].includes(item.outcome)
+      mode !== 'dry'
+        ? final.targets.filter(
+            (item) =>
+              ['done', 'pending-approval', 'unverified'].includes(
+                item.outcome
+              ) ||
+              (item.outcome === 'failed' && item.code === 'ERR_WRONG_ACTION')
           ).length
         : 0;
     const writes = final.flow === 'partner-approve' ? written : +(written > 0);

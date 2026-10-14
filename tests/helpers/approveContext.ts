@@ -12,6 +12,8 @@ export type FakeApproveFlow = {
   targets: RunTarget[];
   steps: number[];
   skipped: number[];
+  // Số lần flow báo sắp bấm nút ghi (Full).
+  writeMarks: () => number;
 };
 
 // FlowContext đầy đủ kiểu cho flow duyệt, không có runner thật.
@@ -31,6 +33,7 @@ export default function makeApproveContext(
   }));
   const steps: number[] = [];
   const skipped: number[] = [];
+  let marks = 0;
   const state = (): RunState => ({
     runId: 'run_test',
     mode: options.mode ?? 'dry',
@@ -42,11 +45,12 @@ export default function makeApproveContext(
     startedAt: 0,
     flow: 'partner-approve',
     partnerName: config.partnerName,
+    action: config.action,
     partnerBmId: '',
     tasks: [],
     targets,
     currentTarget: 0,
-    steps: pendingSteps('partner-approve'),
+    steps: pendingSteps('partner-approve', config.action),
     stepIndex: 1,
     sub: 0,
     disconnectDone: false,
@@ -86,7 +90,10 @@ export default function makeApproveContext(
         /* pending */
       }),
     setWaiting: () => undefined,
+    markWriteStarted: () => {
+      marks += 1;
+    },
     ...options.overrides,
   };
-  return { ctx, targets, steps, skipped };
+  return { ctx, targets, steps, skipped, writeMarks: () => marks };
 }

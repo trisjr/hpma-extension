@@ -92,7 +92,7 @@ export default function StepList({ lang, steps }: StepListProps): JSX.Element {
   return (
     <section
       aria-label={translate(lang, 'run.steps')}
-      className='border-base-content/12 overflow-hidden rounded-md border bg-base-100'
+      className='border-base-content/12 shrink-0 overflow-hidden rounded-md border bg-base-100'
     >
       <ol className='m-0 flex list-none flex-col p-0'>
         {steps.map((step) => (
