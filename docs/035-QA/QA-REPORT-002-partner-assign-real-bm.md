@@ -14,17 +14,17 @@ Người thử: anh (thử tay, 14/10/2026). Phiên bản: v0.5.0.
 
 - Mode: Dry-run và Assist.
 - Trường hợp: gán partner **mới** và partner **có sẵn**.
-- Môi trường: **1 BM** thật. Loại BM, locale, số TKQC và trình duyệt chưa ghi nhận.
+- Môi trường: **1 BM thường** thật, locale giao diện Meta Business **`vi`**. Số TKQC và trình duyệt chưa ghi nhận.
 - Kết quả: thành công.
 
 ## Chưa kiểm chứng
 
 - Mode `Full` (vẫn `FULL_LOCKED`).
-- Nhiều BM, nhiều loại BM, locale `en`, Firefox.
+- Nhiều BM, loại BM khác (ngoài BM thường), locale `en`, Firefox.
 - Từng nhãn/selector `dialog.*`, `asset.alreadyAssigned`, `signal.approval`: chưa đối chiếu nên cờ `verified` trong `src/content/engine/labels.ts` chưa đổi.
 - Tình huống `pending-approval`, `unverified`, Cancel giữa chừng, mất tab BM.
 
 ## Việc tiếp theo
 
 - Đối chiếu nhãn đã chạy đúng rồi chuyển `verified: true`.
-- Bổ sung loại BM, locale và số TKQC vào báo cáo này.
+- Bổ sung số TKQC và trình duyệt vào báo cáo này.
