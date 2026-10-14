@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.6.2
+
+### What's Changed
+
+- feat(safety): The BM guard is bound to the Business Manager the ad accounts were picked for; a run is refused (Dry-run and Assist) if the tab is on another BM, and the panel no longer sends it when the loaded BM differs
+- feat(safety): A run stops with `ERR_BM_CHANGED` when `business_id` stays missing from the URL for about 3 seconds
+- fix(safety): The saved draft remembers the BM of the selected ad accounts and drops an older selection that belongs to another BM
+
+Full Changelog: Compare v0.6.1...v0.6.2
+
 ## v0.6.1
 
 ### What's Changed
