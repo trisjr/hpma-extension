@@ -83,6 +83,18 @@ export const FLOWS: readonly FlowDef[] = [
     surface: 'settings',
   },
   {
+    id: 'partner-approve',
+    risk: 'sensitive',
+    name: { vi: 'Duyệt request partner', en: 'Approve partner requests' },
+    desc: {
+      vi: 'Admin thứ 2 duyệt request cấp quyền TKQC cho BM đối tác',
+      en: 'Second admin approves requests granting a partner BM ad account access',
+    },
+    locked: false,
+    hasConfig: true,
+    surface: 'requests',
+  },
+  {
     id: 'partner-remove',
     risk: 'sensitive',
     name: { vi: 'Gỡ partner', en: 'Remove partner' },

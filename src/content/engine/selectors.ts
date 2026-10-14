@@ -145,6 +145,19 @@ const SELECTORS = {
     label: 'dialog.close',
     scope: 'dialog',
   },
+  // Settings › Requests (SPEC-ENG-002). Không có spec nào cho nút Decline: engine không bao giờ tìm nó.
+  requestsNeedsReview: {
+    key: 'requests.needsReview',
+    css: `${CLICKABLE}, div, span`,
+    label: 'requests.needsReview',
+    scope: 'main',
+  },
+  requestApprove: {
+    key: 'request.approve',
+    css: BUTTON,
+    label: 'request.approve',
+    scope: 'main',
+  },
 } satisfies Record<string, LocatorSpec>;
 
 export default SELECTORS;

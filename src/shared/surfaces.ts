@@ -4,7 +4,7 @@
  * nên hai bên không bao giờ lệch định nghĩa "đúng trang".
  */
 
-export type Surface = 'settings';
+export type Surface = 'settings' | 'requests';
 
 const BM_ORIGIN = 'https://business.facebook.com';
 const BUSINESS_ID = /^\d{1,30}$/;
@@ -19,6 +19,11 @@ const SURFACES: Record<Surface, SurfaceDef> = {
   settings: {
     path: '/latest/settings',
     match: (pathname) => pathname.includes('/settings'),
+  },
+  // `settings` khớp mọi trang cài đặt, nên Requests cần predicate hẹp hơn.
+  requests: {
+    path: '/latest/settings/requests',
+    match: (pathname) => pathname.includes('/settings/requests'),
   },
 };
 

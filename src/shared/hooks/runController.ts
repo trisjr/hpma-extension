@@ -1,3 +1,4 @@
+import type { ApproveConfig } from '@/shared/approve';
 import type { PartnerAssignConfig } from '@/shared/partnerAssign';
 import type { DiffRow, RunMode, RunState } from '@/shared/run';
 import type { Surface } from '@/shared/surfaces';
@@ -13,6 +14,12 @@ export type RunController = {
     // Trang flow cần; engine thật kiểm lại ngay trước khi chạy (user có thể đã rời trang).
     surface?: Surface;
     // BM của danh sách TKQC đã chọn; thiếu thì engine thật không chạy (simulator bỏ qua).
+    businessId: string | undefined;
+  }) => void;
+  // Flow duyệt request (SPEC-ENG-002): chỉ có ở engine thật; simulator không làm gì.
+  startApprove: (params: {
+    mode: RunMode;
+    config: ApproveConfig;
     businessId: string | undefined;
   }) => void;
   stop: () => void;

@@ -3,6 +3,7 @@
  * guard từ side panel, kiểm cổng an toàn, giữ đúng MỘT run (SPEC-ENG-001 §4, §7).
  * State run nằm ở đây (không ở panel/service worker): đóng panel không mất run.
  */
+import type { ApproveConfig } from '@/shared/approve';
 import type {
   AckReply,
   RunCommand,
@@ -12,15 +13,18 @@ import type {
   SyncReply,
 } from '@/shared/messaging';
 import type { EngineErrorCode, RunState } from '@/shared/run';
+import type { RunConfig } from '@/shared/runConfig';
 import browser from 'webextension-polyfill';
 
+import { parseApproveConfig } from '@/shared/approve';
 import { parseRunConfig } from '@/shared/runConfig';
 import { isCurfew } from '@/shared/settings';
 import { isBusinessId } from '@/shared/surfaces';
 
+import partnerApproveFlow from '../flows/partnerApprove';
 import partnerAssignFlow from '../flows/partnerAssign';
 import { uiTaskKeys } from '../flows/partnerTasks';
-import { RunHandle, startRun } from './runner';
+import { RunHandle, startApproveRun, startRun } from './runner';
 import { clearLastRun, loadGates, loadLogDetail, loadPacing } from './store';
 
 let active: RunHandle | undefined;
@@ -50,11 +54,25 @@ export function stopActiveRun(): void {
 
 const reject = (code: EngineErrorCode): StartReply => ({ ok: false, code });
 
-async function start(command: RunStartCommand): Promise<StartReply> {
-  const config = parseRunConfig(command.config);
-  if (!config || uiTaskKeys(config.tasks) === undefined) {
-    return reject('ERR_INVALID_CONFIG');
+// Config đã validate theo flow; `undefined` = từ chối cả lệnh.
+type ParsedStart =
+  | { flow: 'partner-assign'; config: RunConfig }
+  | { flow: 'partner-approve'; config: ApproveConfig };
+
+function parseStart(command: RunStartCommand): ParsedStart | undefined {
+  if (command.flow === 'partner-approve') {
+    const config = parseApproveConfig(command.config);
+    return config ? { flow: 'partner-approve', config } : undefined;
   }
+  const config = parseRunConfig(command.config);
+  return config && uiTaskKeys(config.tasks) !== undefined
+    ? { flow: 'partner-assign', config }
+    : undefined;
+}
+
+async function start(command: RunStartCommand): Promise<StartReply> {
+  const parsed = parseStart(command);
+  if (!parsed) return reject('ERR_INVALID_CONFIG');
   if (active || starting) return reject('ERR_BUSY');
   // Tab phải đang ở đúng BM mà panel đã chọn TKQC: BM khác thì danh sách TKQC không còn khớp.
   const urlBusinessId =
@@ -74,19 +92,33 @@ async function start(command: RunStartCommand): Promise<StartReply> {
       if (gates.emergency) return reject('ERR_EMERGENCY');
       if (gates.rateLimited) return reject('ERR_RATE_LIMITED');
       if (isCurfew(new Date(now), pacing.curfew)) return reject('ERR_CURFEW');
-      if (gates.writesToday >= pacing.limits.standard.writesPerDay) {
+      // Flow duyệt: mỗi request là một lần ghi, nên cả danh sách phải nằm gọn trong ngân sách còn lại
+      // (không cắt bớt âm thầm). Flow Gán partner: một run tính một lần ghi.
+      const needed =
+        parsed.flow === 'partner-approve' ? parsed.config.requests.length : 1;
+      if (gates.writesToday + needed > pacing.limits.standard.writesPerDay) {
         return reject('ERR_BUDGET');
       }
     }
-    const handle = startRun({
+    const common = {
       mode: command.mode,
-      config,
       businessId: command.businessId,
       pacing,
       logDetail,
-      flow: partnerAssignFlow,
       onState: emit,
-    });
+    };
+    const handle =
+      parsed.flow === 'partner-approve'
+        ? startApproveRun({
+            ...common,
+            config: parsed.config,
+            flow: partnerApproveFlow,
+          })
+        : startRun({
+            ...common,
+            config: parsed.config,
+            flow: partnerAssignFlow,
+          });
     active = handle;
     finished = undefined;
     if (killRequested) handle.stop();

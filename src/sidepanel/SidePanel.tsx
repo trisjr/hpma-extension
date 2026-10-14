@@ -5,11 +5,13 @@ import type { PanelTab } from './components/TabNav';
 
 import { FLOWS } from '@/shared/flows';
 import useAdAccounts from '@/shared/hooks/useAdAccounts';
+import useApproveDraft from '@/shared/hooks/useApproveDraft';
 import useConnection from '@/shared/hooks/useConnection';
 import useFlowSurface from '@/shared/hooks/useFlowSurface';
 import useLanguage from '@/shared/hooks/useLanguage';
 import usePartnerDraft from '@/shared/hooks/usePartnerDraft';
 import useProbe from '@/shared/hooks/useProbe';
+import useRequestsScan from '@/shared/hooks/useRequestsScan';
 import useRunEngine from '@/shared/hooks/useRunEngine';
 import useRunSimulator from '@/shared/hooks/useRunSimulator';
 import { useDevtestSettings } from '@/shared/hooks/useSettings';
@@ -17,8 +19,14 @@ import useTheme from '@/shared/hooks/useTheme';
 import useWriteBudget from '@/shared/hooks/useWriteBudget';
 import { translate } from '@/shared/i18n';
 import { pickedBusinessId } from '@/shared/partnerAssign';
-import { buildDiff, isRunActive, isRunFinished } from '@/shared/run';
+import {
+  buildDiff,
+  isApproveRun,
+  isRunActive,
+  isRunFinished,
+} from '@/shared/run';
 
+import PartnerApproveScreen from './components/approve/PartnerApproveScreen';
 import ComingSoon from './components/ComingSoon';
 import FlowsScreen from './components/FlowsScreen';
 import LogScreen from './components/LogScreen';
@@ -34,6 +42,7 @@ import RunScreen from './components/run/RunScreen';
 // Full chỉ mở sau cổng probe ≥ 95% + dry-run pass (PRD §4.1b, M3).
 const FULL_LOCKED = true;
 const PARTNER_FLOW_ID = 'partner-assign';
+const APPROVE_FLOW_ID = 'partner-approve';
 
 export default function SidePanel(): JSX.Element {
   const theme = useTheme();
@@ -60,10 +69,14 @@ export default function SidePanel(): JSX.Element {
   const [openFlow, setOpenFlow] = useState<FlowDef | undefined>();
   const [diffOpen, setDiffOpen] = useState(false);
   const wizardOpen = tab === 'flows' && openFlow?.id === PARTNER_FLOW_ID;
+  const approveOpen = tab === 'flows' && openFlow?.id === APPROVE_FLOW_ID;
+  const approveDraft = useApproveDraft();
+  const requestsScan = useRequestsScan(tabId, devtest.ready && engineMode);
+  const flowScreenOpen = wizardOpen || approveOpen;
   // Mở flow có `surface` thì tự đưa tab BM tới trang đó (engine thật mới cần).
   const { state: surfaceState, retry: retrySurface } = useFlowSurface(
     tabId,
-    wizardOpen ? openFlow?.surface : undefined,
+    flowScreenOpen ? openFlow?.surface : undefined,
     devtest.ready && engineMode
   );
   const surfaceReady = !openFlow?.surface || surfaceState.status === 'ready';
@@ -82,6 +95,8 @@ export default function SidePanel(): JSX.Element {
   const runnableMode = mode === 'assist' ? 'assist' : 'dry';
 
   const goToFlows = (): void => {
+    // Danh sách request đã quét chỉ đúng tại lúc quét: rời flow thì bỏ, lần sau quét lại.
+    requestsScan.reset();
     setOpenFlow(undefined);
     setDiffOpen(false);
     setTab('flows');
@@ -116,9 +131,26 @@ export default function SidePanel(): JSX.Element {
     setTab('run');
   };
 
+  const startApproveRun = (): void => {
+    const scanned = requestsScan.state;
+    if (scanned.status !== 'ok') return;
+    controller.startApprove({
+      mode: runnableMode,
+      config: {
+        partnerName: scanned.partnerName,
+        requests: scanned.requests,
+      },
+      businessId: scanned.businessId,
+    });
+    setDiffOpen(false);
+    setTab('run');
+  };
+
   const finishRun = (): void => {
+    const approve = run !== undefined && isApproveRun(run);
     controller.clear();
-    draft.clearDraft();
+    // Flow duyệt giữ tên BM đã nhập (goToFlows bỏ danh sách đã quét); flow Gán partner xoá nháp.
+    if (!approve) draft.clearDraft();
     goToFlows();
   };
 
@@ -209,13 +241,13 @@ export default function SidePanel(): JSX.Element {
     ) : null;
 
   let surfaceNotice: JSX.Element | null = null;
-  if (wizardOpen && surfaceState.status === 'moving') {
+  if (flowScreenOpen && surfaceState.status === 'moving') {
     surfaceNotice = (
       <div role='status' className='alert alert-info text-[13px]'>
         <span>{translate(lang, 'surface.moving')}</span>
       </div>
     );
-  } else if (wizardOpen && surfaceState.status === 'error') {
+  } else if (flowScreenOpen && surfaceState.status === 'error') {
     surfaceNotice = (
       <div role='status' className='alert alert-warning text-[13px]'>
         <span>{translate(lang, `err.${surfaceState.code}`)}</span>
@@ -237,7 +269,46 @@ export default function SidePanel(): JSX.Element {
     </>
   );
 
-  const showWizard = wizardOpen;
+  const renderBody = (): JSX.Element => {
+    if (wizardOpen) {
+      return (
+        <PartnerAssignWizard
+          lang={lang}
+          connection={connection}
+          mode={mode}
+          fullLocked={FULL_LOCKED}
+          engineMode={engineMode}
+          banner={notice}
+          draft={draft}
+          source={source}
+          onExit={goToFlows}
+          onOpenDiff={openDiff}
+          onRun={startRun}
+        />
+      );
+    }
+    if (approveOpen) {
+      return (
+        <PartnerApproveScreen
+          lang={lang}
+          connection={connection}
+          mode={mode}
+          engineMode={engineMode}
+          banner={notice}
+          draft={approveDraft}
+          scan={requestsScan}
+          onExit={goToFlows}
+          onRun={startApproveRun}
+        />
+      );
+    }
+    return (
+      <main className='flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto p-4'>
+        {notice}
+        {renderScreen()}
+      </main>
+    );
+  };
 
   return (
     // PostCSS prefix `#my-ext ` chỉ khớp phần tử con, không khớp chính root →
@@ -256,26 +327,7 @@ export default function SidePanel(): JSX.Element {
           onModeChange={setMode}
           onTabChange={changeTab}
         />
-        {showWizard ? (
-          <PartnerAssignWizard
-            lang={lang}
-            connection={connection}
-            mode={mode}
-            fullLocked={FULL_LOCKED}
-            engineMode={engineMode}
-            banner={notice}
-            draft={draft}
-            source={source}
-            onExit={goToFlows}
-            onOpenDiff={openDiff}
-            onRun={startRun}
-          />
-        ) : (
-          <main className='flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto p-4'>
-            {notice}
-            {renderScreen()}
-          </main>
-        )}
+        {renderBody()}
         <PanelFooter lang={lang} />
       </div>
     </div>

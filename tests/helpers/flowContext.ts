@@ -90,6 +90,9 @@ export default function makeFlowContext(options: Options = {}): FakeFlow {
       Object.assign(targets[index], { outcome });
       if (code !== undefined) Object.assign(targets[index], { code });
     },
+    setTargetId: (index, accountId) => {
+      Object.assign(targets[index], { accountId });
+    },
     // Không bao giờ tự xong: test quyết định khi nào user "báo xong".
     waitForAssistDone: () =>
       new Promise<void>(() => {

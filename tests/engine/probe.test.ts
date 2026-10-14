@@ -52,6 +52,20 @@ describe('detectStage', () => {
     expect(detectStage()).toBeUndefined();
   });
 
+  it('trang Requests nhận ra bằng đường dẫn, không lẫn với trang Partners', () => {
+    window.history.pushState({}, '', '/latest/settings/requests');
+    html('<div role="main"></div>');
+    expect(detectStage()).toBe('requests');
+    // Khung chi tiết đang mở (có nút Approve) là màn riêng.
+    html(
+      '<div role="main"><button aria-label="Approve">Approve</button></div>'
+    );
+    expect(detectStage()).toBe('request-detail');
+    window.history.pushState({}, '', '/latest/settings/partners');
+    expect(detectStage()).toBe('page');
+    window.history.pushState({}, '', '/');
+  });
+
   it('trang chi tiết partner nhận ra bằng nút Chỉ định tài sản trên trang', () => {
     html(
       '<div role="main"><button aria-label="Chỉ định tài sản">Chỉ định tài sản</button></div>'

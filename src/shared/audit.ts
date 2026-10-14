@@ -9,11 +9,13 @@ import type { RunState, RunTarget } from '@/shared/run';
 
 export type AuditFlow =
   | 'partner-assign'
+  | 'partner-approve'
   | 'partner-remove'
   | 'rename'
   | 'inventory';
 export const AUDIT_FLOWS: readonly AuditFlow[] = [
   'partner-assign',
+  'partner-approve',
   'partner-remove',
   'rename',
   'inventory',
@@ -377,9 +379,10 @@ function auditTarget(
   index: number,
   detail: AuditDetail
 ): string {
-  if (detail === 'off') return `TKQC #${index + 1}`;
+  const approve = run.flow === 'partner-approve';
+  if (detail === 'off') return `${approve ? 'Request' : 'TKQC'} #${index + 1}`;
   if (detail === 'basic') return target.name;
-  return `${target.name} → ${run.partnerBmId}`;
+  return `${target.name} → ${approve ? run.partnerName ?? '' : run.partnerBmId}`;
 }
 
 // Mặc định không PII: tên TKQC chỉ khi `basic`, ID partner chỉ khi `verbose`.
@@ -390,7 +393,10 @@ export function rowsFromRun(run: RunState, detail: AuditDetail): AuditRow[] {
       ? [
           {
             time,
-            flow: 'partner-assign' as const,
+            flow:
+              run.flow === 'partner-approve'
+                ? ('partner-approve' as const)
+                : ('partner-assign' as const),
             bm: SOURCE_BM_LABEL,
             target: auditTarget(run, target, index, detail),
             mode: run.mode,

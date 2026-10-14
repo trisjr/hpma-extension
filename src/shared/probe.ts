@@ -19,7 +19,12 @@ export type ProbeStage =
   | 'dialog-bm'
   | 'dialog-assets'
   | 'dialog-access'
-  | 'detail';
+  | 'detail'
+  // Settings › Requests (flow duyệt request, SPEC-ENG-002): key `request*` chỉ có ở trang này nên
+  // không được tính vào hit-rate của trang Partners. Nút Approve chỉ có khi khung chi tiết đang
+  // mở, vì vậy danh sách và chi tiết là hai màn riêng (mỗi màn một báo cáo).
+  | 'requests'
+  | 'request-detail';
 export const PROBE_STAGES: readonly ProbeStage[] = [
   'page',
   'menu',
@@ -27,6 +32,8 @@ export const PROBE_STAGES: readonly ProbeStage[] = [
   'dialog-assets',
   'dialog-access',
   'detail',
+  'requests',
+  'request-detail',
 ];
 
 export type ProbeScope = 'document' | 'main' | 'dialog';
@@ -86,6 +93,8 @@ export function stageOfKey(key: string): ProbeStage {
   if (key.startsWith('dialog.')) return DIALOG_STAGE[key] ?? 'dialog-access';
   if (key === 'partners.give') return 'menu';
   if (key.startsWith('partner.')) return 'detail';
+  if (key.startsWith('requests.')) return 'requests';
+  if (key.startsWith('request.')) return 'request-detail';
   return 'page';
 }
 

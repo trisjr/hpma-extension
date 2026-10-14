@@ -2,6 +2,7 @@
  * runState.ts — dựng và chốt `RunState` cho engine thật (thuần, không DOM/storage).
  * Hợp đồng `RunState` dùng chung với simulator (src/shared/run.ts).
  */
+import type { ApproveConfig } from '@/shared/approve';
 import type {
   RunError,
   RunMode,
@@ -11,6 +12,7 @@ import type {
 } from '@/shared/run';
 import type { RunConfig } from '@/shared/runConfig';
 
+import { approveTargetId } from '@/shared/approve';
 import { pendingSteps, startEntry, VERIFY_STEP } from '@/shared/run';
 
 const SELECT_STEP = 4;
@@ -66,6 +68,44 @@ export function createEngineRun(params: {
   };
 }
 
+// Run duyệt request (SPEC-ENG-002): mỗi request đã quét là một target; `tasks` và
+// `partnerBmId` để rỗng nhưng vẫn có mặt để `isRunState` không loại snapshot.
+export function createApproveRun(params: {
+  mode: RunMode;
+  config: ApproveConfig;
+  now: number;
+  runId: string;
+}): RunState {
+  const { mode, config, now, runId } = params;
+  const targets: RunTarget[] = config.requests.map((request, index) => ({
+    accountId: approveTargetId(request, index),
+    name: request.account,
+    plan: 'run',
+    outcome: 'queued',
+  }));
+  return {
+    runId,
+    mode,
+    status: 'running',
+    simulated: false,
+    batch: { index: 1, total: targets.length },
+    auditFailed: false,
+    scenario: 'done',
+    startedAt: now,
+    flow: 'partner-approve',
+    partnerName: config.partnerName,
+    partnerBmId: '',
+    tasks: [],
+    targets,
+    currentTarget: 0,
+    steps: pendingSteps('partner-approve'),
+    stepIndex: 1,
+    sub: 0,
+    disconnectDone: false,
+    log: [startEntry(now)],
+  };
+}
+
 // Chốt trạng thái run khi flow chạy hết mà không ném lỗi.
 export function settle(run: RunState): {
   status: RunStatus;
@@ -88,7 +128,11 @@ export function settle(run: RunState): {
     const failed = targets.find((item) => item.outcome === 'failed');
     return {
       status: 'failed',
-      error: { code: failed?.code ?? 'ERR_NO_TARGETS', stepIndex: SELECT_STEP },
+      error: {
+        code: failed?.code ?? 'ERR_NO_TARGETS',
+        // Flow duyệt không có bước "chọn TKQC": báo đúng bước đang dừng.
+        stepIndex: run.flow === 'partner-approve' ? run.stepIndex : SELECT_STEP,
+      },
     };
   }
   return { status: 'done' };

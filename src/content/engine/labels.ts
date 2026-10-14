@@ -33,7 +33,11 @@ export type LabelKey =
   | 'asset.alreadyAssigned'
   | 'asset.selectAll'
   | 'partner.assignedAssets'
-  | 'signal.approval';
+  | 'signal.approval'
+  | 'requests.needsReview'
+  | 'request.respond'
+  | 'request.approve'
+  | 'request.decline';
 
 export const LABELS: Record<LabelKey, Label> = {
   'nav.users': {
@@ -154,6 +158,29 @@ export const LABELS: Record<LabelKey, Label> = {
     vi: ['cần được phê duyệt', 'cần phê duyệt', 'cần người khác duyệt'],
     en: ['may need to approve', 'needs to be approved', 'needs approval from'],
     verified: true,
+  },
+  // Nhóm `request*`: Settings › Requests (SPEC-ENG-002). `en` theo ảnh chụp 14/10/2026;
+  // `vi` là suy luận từ Help Center, cần probe trên BM tiếng Việt.
+  'requests.needsReview': {
+    vi: ['Cần xem xét', 'Cần xem lại'],
+    en: ['Needs review'],
+    verified: false,
+  },
+  'request.respond': {
+    vi: ['Phản hồi'],
+    en: ['Respond'],
+    verified: false,
+  },
+  'request.approve': {
+    vi: ['Phê duyệt', 'Duyệt'],
+    en: ['Approve'],
+    verified: false,
+  },
+  // Không bao giờ được định vị hay bấm: chỉ để nhận ra user đã bấm Decline (SPEC-ENG-002).
+  'request.decline': {
+    vi: ['Từ chối'],
+    en: ['Decline'],
+    verified: false,
   },
 };
 

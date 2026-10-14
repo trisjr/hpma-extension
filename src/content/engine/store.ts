@@ -80,10 +80,12 @@ export async function raiseRateLimit(now: number): Promise<void> {
     .catch(() => undefined);
 }
 
-export async function bumpWriteBudget(now: number): Promise<void> {
+export async function bumpWriteBudget(now: number, count = 1): Promise<void> {
   const stored = await read([WRITE_BUDGET_KEY]);
   await browser.storage.local
-    .set({ [WRITE_BUDGET_KEY]: nextBudget(stored[WRITE_BUDGET_KEY], now) })
+    .set({
+      [WRITE_BUDGET_KEY]: nextBudget(stored[WRITE_BUDGET_KEY], now, count),
+    })
     .catch(() => undefined);
 }
 

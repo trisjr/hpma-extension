@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { RunScenario, RunState } from '@/shared/run';
+import type { RunController } from './runController';
 import browser from 'webextension-polyfill';
 
 import {
@@ -13,7 +14,6 @@ import {
   stopRun,
 } from '@/shared/run';
 import { DEVTEST_KEY, parseDevtest } from '@/shared/settings';
-import type { RunController } from './runController';
 
 // Chỉ simulator: không có message nào tới content script/tab BM (NFR-02).
 // SPEC-UI-003 §2, §8.5.
@@ -103,5 +103,14 @@ export default function useRunSimulator(enabled: boolean): RunController {
     browser.storage.local.remove(STORAGE_KEY).catch(() => undefined);
   }, [enabled]);
 
-  return { run, start, stop, confirmAssist: confirm, resync, clear };
+  return {
+    run,
+    start,
+    // Simulator chỉ mô phỏng flow Gán partner; flow duyệt cần engine thật.
+    startApprove: () => undefined,
+    stop,
+    confirmAssist: confirm,
+    resync,
+    clear,
+  };
 }

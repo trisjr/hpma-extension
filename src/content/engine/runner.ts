@@ -3,6 +3,7 @@
  * Giữ `RunState` (nguồn sự thật, phát snapshot mỗi lần đổi), cổng curfew/visibility,
  * nhịp nghỉ, watcher nguy hiểm, và chốt kết quả + audit + ngân sách khi kết thúc.
  */
+import type { ApproveConfig } from '@/shared/approve';
 import type { AuditDetail } from '@/shared/audit';
 import type {
   LogCode,
@@ -28,7 +29,12 @@ import { isCurfew } from '@/shared/settings';
 import { computeDelayMs } from './delay';
 import EngineError from './errors';
 import { sleep } from './primitives';
-import { createEngineRun, newEngineRunId, settle } from './runState';
+import {
+  createApproveRun,
+  createEngineRun,
+  newEngineRunId,
+  settle,
+} from './runState';
 import RunStopped, { throwIfAborted } from './stop';
 import {
   appendAudit,
@@ -44,9 +50,9 @@ export type StepHandle = {
   acted: () => void;
 };
 
-export type FlowContext = ActionContext & {
+export type FlowContext<C = RunConfig> = ActionContext & {
   mode: RunMode;
-  config: RunConfig;
+  config: C;
   batchSize: number;
   pacing: PacingConfig;
   state: () => RunState;
@@ -58,12 +64,15 @@ export type FlowContext = ActionContext & {
   ) => Promise<T>;
   skipStep: (index: number, phases: Record<RunPhase, PhaseState>) => void;
   setTarget: (index: number, outcome: TargetOutcome, code?: string) => void;
+  // Đổi dòng định danh (phụ) của target khi flow đọc được thêm thông tin (vd. BM ID của request).
+  // Không đổi `name`: `name` là thứ audit ghi ở mức `basic`, nên không được chứa ID đối tác.
+  setTargetId: (index: number, accountId: string) => void;
   // Assist: dừng chờ user; trả về khi user báo `assistDone` (hoặc huỷ run).
   waitForAssistDone: () => Promise<void>;
   setWaiting: (waiting: boolean) => void;
 };
 
-export type Flow = (ctx: FlowContext) => Promise<void>;
+export type Flow<C = RunConfig> = (ctx: FlowContext<C>) => Promise<void>;
 
 export type RunHandle = {
   stop: () => void;
@@ -72,16 +81,24 @@ export type RunHandle = {
   done: Promise<RunState>;
 };
 
-type StartParams = {
+type StartParams<C = RunConfig> = {
   mode: RunMode;
-  config: RunConfig;
+  config: C;
   // Mốc cho guard đổi BM: BM panel đã chọn (đã khớp URL lúc start).
   businessId: string;
   pacing: PacingConfig;
   logDetail: AuditDetail;
-  flow: Flow;
+  flow: Flow<C>;
   onState: (run: RunState) => void;
 };
+
+// Dựng RunState khởi đầu: mỗi flow có dạng target riêng.
+type InitialState = (seed: {
+  mode: RunMode;
+  batchSize: number;
+  now: number;
+  runId: string;
+}) => RunState;
 
 function toError(
   error: unknown,
@@ -107,18 +124,23 @@ function toError(
 // hay BM ID đối tác (cùng cam kết "không PII mặc định" như audit). Snapshot trong bộ nhớ giữ nguyên.
 function redactForStorage(run: RunState, logDetail: AuditDetail): RunState {
   if (logDetail !== 'off') return run;
+  const label = run.flow === 'partner-approve' ? 'Request' : 'TKQC';
   return {
     ...run,
     partnerBmId: '',
+    ...(run.partnerName === undefined ? {} : { partnerName: '' }),
     targets: run.targets.map((item, i) => ({
       ...item,
-      accountId: `TKQC #${i + 1}`,
-      name: `TKQC #${i + 1}`,
+      accountId: `${label} #${i + 1}`,
+      name: `${label} #${i + 1}`,
     })),
   };
 }
 
-export function startRun(params: StartParams): RunHandle {
+function launch<C>(
+  params: StartParams<C>,
+  initialState: InitialState
+): RunHandle {
   const { mode, config, businessId, pacing, logDetail, flow, onState } = params;
   const abort = new AbortController();
   const { signal } = abort;
@@ -126,9 +148,8 @@ export function startRun(params: StartParams): RunHandle {
   const rawLang = document.documentElement.lang ?? '';
   const lang = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(rawLang) ? rawLang : '';
   const batchSize = Math.min(10, pacing.limits.standard.maxBatch);
-  let state = createEngineRun({
+  let state = initialState({
     mode,
-    config,
     batchSize,
     now: Date.now(),
     runId: newEngineRunId(),
@@ -194,7 +215,7 @@ export function startRun(params: StartParams): RunHandle {
     update((run) => ({ ...run, status: 'running', pauseReason: undefined }));
   };
 
-  const ctx: FlowContext = {
+  const ctx: FlowContext<C> = {
     signal,
     lang,
     gate,
@@ -308,6 +329,13 @@ export function startRun(params: StartParams): RunHandle {
             : item
         ),
       })),
+    setTargetId: (index, accountId) =>
+      update((run) => ({
+        ...run,
+        targets: run.targets.map((item, i) =>
+          i === index ? { ...item, accountId } : item
+        ),
+      })),
     waitForAssistDone: () =>
       new Promise<void>((resolve, reject) => {
         const onAbort = (): void => reject(new RunStopped());
@@ -390,14 +418,17 @@ export function startRun(params: StartParams): RunHandle {
 
     // Assist đã tới bước user bấm Assign thì tính một lần ghi (đếm thừa an toàn hơn đếm thiếu):
     // `done`, `pending-approval` và `unverified` đều có thể đã gửi yêu cầu tới Meta.
-    const wrote =
-      mode === 'assist' &&
-      final.targets.some((item) =>
-        ['done', 'pending-approval', 'unverified'].includes(item.outcome)
-      );
+    // Flow duyệt: mỗi request là một lần ghi riêng lên Meta nên tính theo từng target.
+    const written =
+      mode === 'assist'
+        ? final.targets.filter((item) =>
+            ['done', 'pending-approval', 'unverified'].includes(item.outcome)
+          ).length
+        : 0;
+    const writes = final.flow === 'partner-approve' ? written : +(written > 0);
     const auditOk = await appendAudit(rowsFromRun(final, logDetail), now);
     if (!auditOk) final = { ...final, auditFailed: true };
-    if (wrote) await bumpWriteBudget(now);
+    if (writes > 0) await bumpWriteBudget(now, writes);
     // Chỉ checkpoint/danh tính mới khoá khẩn cấp; mất phiên chỉ dừng run (file 19 §6.1).
     if (danger === 'ERR_RATE_LIMITED') await raiseRateLimit(now);
     else if (danger === 'ERR_CHECKPOINT') await raiseEmergency(now);
@@ -417,4 +448,17 @@ export function startRun(params: StartParams): RunHandle {
     snapshot: () => state,
     done,
   };
+}
+
+export function startRun(params: StartParams): RunHandle {
+  return launch(params, (seed) =>
+    createEngineRun({ ...seed, config: params.config })
+  );
+}
+
+// Flow duyệt request (SPEC-ENG-002): cùng bộ máy, khác dạng target.
+export function startApproveRun(params: StartParams<ApproveConfig>): RunHandle {
+  return launch(params, ({ mode, now, runId }) =>
+    createApproveRun({ mode, now, runId, config: params.config })
+  );
 }

@@ -7,6 +7,7 @@ import type { LocationReply, PongMessage } from '@/shared/messaging';
 import browser from 'webextension-polyfill';
 
 import { isAccountsRead } from '@/shared/adAccounts';
+import { isRequestsRead } from '@/shared/approve';
 import {
   isLocationRead,
   isPingMessage,
@@ -19,6 +20,7 @@ import readAdAccounts, { watchAccountScope } from './adAccounts';
 import handleRunCommand, { stopActiveRun } from './engine/controller';
 import watchKillSwitch from './engine/killSwitch';
 import handleProbe from './engine/probe';
+import readRequests from './requests';
 
 watchAccountScope();
 watchKillSwitch(stopActiveRun);
@@ -46,6 +48,9 @@ browser.runtime.onMessage.addListener(
     }
     if (fromExtensionPage && isAccountsRead(message))
       return readAdAccounts(message);
+    if (fromExtensionPage && isRequestsRead(message)) {
+      return Promise.resolve(readRequests(message));
+    }
     if (fromExtensionPage && isProbeCommand(message)) {
       return handleProbe(message);
     }

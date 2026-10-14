@@ -14,6 +14,9 @@ export const STEP_COUNT = 7;
 export const WRITE_STEP = 6;
 export const VERIFY_STEP = 7;
 
+// Flow của run; vắng trong `RunState` (run cũ, simulator) nghĩa là 'partner-assign'.
+export type RunFlow = 'partner-assign' | 'partner-approve';
+
 export const STEP_TITLE_KEYS: readonly MessageKey[] = [
   'run.step.1',
   'run.step.2',
@@ -23,6 +26,21 @@ export const STEP_TITLE_KEYS: readonly MessageKey[] = [
   'run.step.6',
   'run.step.7',
 ];
+
+// Cùng bộ 7 bước (bước 6 ghi, bước 7 verify) nhưng tiêu đề riêng cho flow duyệt request.
+export const APPROVE_STEP_TITLE_KEYS: readonly MessageKey[] = [
+  'approve.step.1',
+  'approve.step.2',
+  'approve.step.3',
+  'approve.step.4',
+  'approve.step.5',
+  'approve.step.6',
+  'approve.step.7',
+];
+
+export function isApproveRun(run: { flow?: RunFlow }): boolean {
+  return run.flow === 'partner-approve';
+}
 
 export type RunMode = 'dry' | 'assist';
 export type RunPhase = 'locate' | 'act' | 'verify';
@@ -91,6 +109,8 @@ export type EngineErrorCode =
   | 'ERR_LOGGED_OUT'
   | 'ERR_TAB_RELOADED'
   | 'ERR_BM_CHANGED'
+  // Flow duyệt: request rời Needs review mà không phải do Approve (Decline, hoặc không đổi).
+  | 'ERR_NOT_APPROVED'
   | 'ERR_INTERNAL';
 
 export type RunStatus =
@@ -162,6 +182,10 @@ export type RunState = {
   scenario: RunScenario;
   startedAt: number;
   endedAt?: number;
+  // Tuỳ chọn để `lastRun` lưu bởi bản cũ vẫn parse được; vắng = 'partner-assign'.
+  flow?: RunFlow;
+  // Flow duyệt: tên BM đối tác (thay cho `partnerBmId`, luôn '' ở flow duyệt).
+  partnerName?: string;
   partnerBmId: string;
   tasks: PartnerTask[];
   targets: RunTarget[];
@@ -287,8 +311,10 @@ export function newRunId(): string {
   return `run_${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
 
-export function pendingSteps(): RunStep[] {
-  return STEP_TITLE_KEYS.map((titleKey, i) => ({
+export function pendingSteps(flow: RunFlow = 'partner-assign'): RunStep[] {
+  const titleKeys =
+    flow === 'partner-approve' ? APPROVE_STEP_TITLE_KEYS : STEP_TITLE_KEYS;
+  return titleKeys.map((titleKey, i) => ({
     index: i + 1,
     titleKey,
     state: 'pending',
@@ -586,6 +612,10 @@ export function isRunState(value: unknown): value is RunState {
     Array.isArray(run.targets) &&
     Array.isArray(run.steps) &&
     Array.isArray(run.tasks) &&
+    (run.flow === undefined ||
+      run.flow === 'partner-assign' ||
+      run.flow === 'partner-approve') &&
+    (run.partnerName === undefined || typeof run.partnerName === 'string') &&
     typeof run.startedAt === 'number'
   );
 }

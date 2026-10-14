@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ApproveConfig } from '@/shared/approve';
 import type { RunCommand, RunStartCommand } from '@/shared/messaging';
 import type { PartnerAssignConfig } from '@/shared/partnerAssign';
 import type { DiffRow, EngineErrorCode, RunMode, RunState } from '@/shared/run';
+import type { Surface } from '@/shared/surfaces';
 import type { SurfaceResult } from './ensureSurface';
 import type { RunController } from './runController';
 import browser from 'webextension-polyfill';
 
+import { approveTargetId } from '@/shared/approve';
 import {
   isAckReply,
   isRunEvent,
@@ -18,7 +21,10 @@ import {
   isRunActive,
   isRunFinished,
   isRunState,
+  newRunId,
   patchStep,
+  pendingSteps,
+  startEntry,
   stopRun,
 } from '@/shared/run';
 import { isBusinessId } from '@/shared/surfaces';
@@ -32,6 +38,38 @@ const STORAGE_KEY = 'lastRun';
 // Mọi lỗi gửi (tab đóng, chưa có content script) thành `undefined`, không throw.
 function send(tabId: number, command: RunCommand): Promise<unknown> {
   return browser.tabs.sendMessage(tabId, command).catch(() => undefined);
+}
+
+// Đưa tab tới trang flow cần (nếu có) rồi gửi `run.start`; mọi lỗi quy về `fail(mã)`.
+function dispatchStart(
+  tabId: number,
+  command: RunStartCommand,
+  surface: Surface | undefined,
+  fail: (code: EngineErrorCode) => void
+): void {
+  const ensured: Promise<SurfaceResult> = surface
+    ? ensureSurface(tabId, surface)
+    : Promise.resolve({ ok: true });
+  ensured
+    .then((surfaceResult) => {
+      if (!surfaceResult.ok) {
+        fail(surfaceResult.code);
+        return undefined;
+      }
+      return send(tabId, command).then((reply) => {
+        if (reply === undefined) {
+          fail('ERR_TAB_RELOADED');
+          return;
+        }
+        if (!isStartReply(reply)) {
+          fail('ERR_INTERNAL');
+          return;
+        }
+        // Thành công thì snapshot đầu tiên tới qua `run.state`.
+        if (!reply.ok) fail(reply.code);
+      });
+    })
+    .catch(() => fail('ERR_INTERNAL'));
 }
 
 // Run đã kết thúc `failed` dựng cục bộ để màn Result vẫn hiện được mã lỗi khi
@@ -57,6 +95,48 @@ function failedRun(params: {
         phases: { locate: 'fail', act: 'idle', verify: 'idle' },
       }),
       error: { code, stepIndex: 1 },
+    },
+    'failed',
+    now
+  );
+}
+
+// Như `failedRun` cho flow duyệt request (SPEC-ENG-002): dựng cục bộ để màn Result hiện mã lỗi.
+function failedApproveRun(params: {
+  mode: RunMode;
+  config: ApproveConfig;
+  code: string;
+}): RunState {
+  const { mode, config, code } = params;
+  const now = Date.now();
+  return finish(
+    {
+      runId: newRunId(),
+      mode,
+      status: 'running',
+      simulated: false,
+      batch: { index: 1, total: config.requests.length },
+      auditFailed: false,
+      scenario: 'done',
+      startedAt: now,
+      flow: 'partner-approve',
+      partnerName: config.partnerName,
+      partnerBmId: '',
+      tasks: [],
+      targets: config.requests.map((request, index) => ({
+        accountId: approveTargetId(request, index),
+        name: request.account,
+        plan: 'run' as const,
+        outcome: index === 0 ? ('failed' as const) : ('queued' as const),
+        ...(index === 0 ? { code } : {}),
+      })),
+      currentTarget: 0,
+      steps: pendingSteps('partner-approve'),
+      stepIndex: 1,
+      sub: 0,
+      disconnectDone: false,
+      error: { code, stepIndex: 1 },
+      log: [startEntry(now)],
     },
     'failed',
     now
@@ -168,29 +248,34 @@ export default function useRunEngine(
           tasks: config.tasks,
         },
       };
-      const ensured: Promise<SurfaceResult> = surface
-        ? ensureSurface(tabId, surface)
-        : Promise.resolve({ ok: true });
-      ensured
-        .then((surfaceResult) => {
-          if (!surfaceResult.ok) {
-            fail(surfaceResult.code);
-            return undefined;
-          }
-          return send(tabId, command).then((reply) => {
-            if (reply === undefined) {
-              fail('ERR_TAB_RELOADED');
-              return;
-            }
-            if (!isStartReply(reply)) {
-              fail('ERR_INTERNAL');
-              return;
-            }
-            // Thành công thì snapshot đầu tiên tới qua `run.state`.
-            if (!reply.ok) fail(reply.code);
-          });
-        })
-        .catch(() => fail('ERR_INTERNAL'));
+      dispatchStart(tabId, command, surface, fail);
+    },
+    [enabled, tabId]
+  );
+
+  const startApprove = useCallback<RunController['startApprove']>(
+    ({ mode, config, businessId }) => {
+      if (!enabled) return;
+      const fail = (code: EngineErrorCode): void =>
+        setRun(failedApproveRun({ mode, config, code }));
+      if (tabId === undefined) {
+        fail('ERR_TAB_RELOADED');
+        return;
+      }
+      // BM của lần quét: thiếu thì không gửi, nếu không guard đổi BM sẽ tắt im lặng.
+      if (!isBusinessId(businessId)) {
+        fail('ERR_BM_CHANGED');
+        return;
+      }
+      const command: RunStartCommand = {
+        kind: 'run.start',
+        requestId: crypto.randomUUID(),
+        flow: 'partner-approve',
+        mode,
+        businessId,
+        config,
+      };
+      dispatchStart(tabId, command, 'requests', fail);
     },
     [enabled, tabId]
   );
@@ -232,5 +317,5 @@ export default function useRunEngine(
     browser.storage.local.remove(STORAGE_KEY).catch(() => undefined);
   }, [enabled, tabId]);
 
-  return { run, start, stop, confirmAssist, resync, clear };
+  return { run, start, startApprove, stop, confirmAssist, resync, clear };
 }

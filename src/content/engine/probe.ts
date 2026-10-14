@@ -20,6 +20,7 @@ import {
   rateOf,
   stageOfKey,
 } from '@/shared/probe';
+import { isOnSurface } from '@/shared/surfaces';
 
 import { isRunBusy } from './controller';
 import { activeDialog, isVisible, tierHits } from './locator';
@@ -82,6 +83,13 @@ export function detectStage(lang = pageLang()): ProbeStage | undefined {
       return 'dialog-assets';
     }
     return anchored([SELECTORS.bmIdInput], lang) ? 'dialog-bm' : undefined;
+  }
+  // Trang Requests có bộ key riêng; không lẫn vào các màn của flow Gán partner. Nút Approve có
+  // mặt nghĩa là khung chi tiết đang mở.
+  if (isOnSurface('requests', window.location.pathname)) {
+    return anchored([SELECTORS.requestApprove], lang)
+      ? 'request-detail'
+      : 'requests';
   }
   const menu = document.querySelector<HTMLElement>('[role="menu"]');
   if (menu && isVisible(menu)) return 'menu';

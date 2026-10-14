@@ -35,8 +35,12 @@ export function budgetUsed(raw: unknown, now: number): number {
   return value !== undefined && value.day === localDay(now) ? value.used : 0;
 }
 
-export function nextBudget(raw: unknown, now: number): WriteBudgetValue {
-  return { day: localDay(now), used: budgetUsed(raw, now) + 1 };
+export function nextBudget(
+  raw: unknown,
+  now: number,
+  count = 1
+): WriteBudgetValue {
+  return { day: localDay(now), used: budgetUsed(raw, now) + count };
 }
 
 export function isEmergency(raw: unknown): boolean {

@@ -3,7 +3,11 @@ import type { Lang, MessageKey } from '@/shared/i18n';
 import type { RunState, RunTarget, TargetOutcome } from '@/shared/run';
 
 import { isMessageKey, translate } from '@/shared/i18n';
-import { STEP_TITLE_KEYS } from '@/shared/run';
+import {
+  APPROVE_STEP_TITLE_KEYS,
+  isApproveRun,
+  STEP_TITLE_KEYS,
+} from '@/shared/run';
 
 import Icon from '../Icon';
 import CopyButton from './CopyButton';
@@ -58,6 +62,12 @@ const DOT: Record<TargetOutcome, string> = {
 };
 
 function outcomeLabel(lang: Lang, run: RunState, target: RunTarget): string {
+  if (target.outcome === 'done' && isApproveRun(run)) {
+    return translate(
+      lang,
+      run.mode === 'dry' ? 'approve.result.o.doneDry' : 'approve.result.o.done'
+    );
+  }
   if (target.outcome === 'done' && run.mode === 'dry') {
     return translate(lang, 'result.o.doneDry');
   }
@@ -81,6 +91,9 @@ export default function ResultScreen({
       ? run.status
       : 'done';
   const tone = TONE[status];
+  // Flow duyệt request: cùng 7 bước nhưng câu chữ riêng; không có readback/undo/cấu hình lại.
+  const approve = isApproveRun(run);
+  const stepKeys = approve ? APPROVE_STEP_TITLE_KEYS : STEP_TITLE_KEYS;
   const endedAt = run.endedAt ?? run.startedAt;
   const written = run.targets.filter(
     (item) => item.plan === 'run' && item.outcome === 'done'
@@ -104,7 +117,7 @@ export default function ResultScreen({
   // Kẹp vào 1..7 để tra tiêu đề bước không bao giờ ra ngoài mảng.
   const failedStep = Math.min(
     Math.max(run.error?.stepIndex ?? 1, 1),
-    STEP_TITLE_KEYS.length
+    stepKeys.length
   );
 
   const titleFor = (): string => {
@@ -121,8 +134,17 @@ export default function ResultScreen({
     if (status === 'failed') {
       return translate(lang, 'result.title.failed', {
         k: failedStep,
-        name: translate(lang, STEP_TITLE_KEYS[failedStep - 1]),
+        name: translate(lang, stepKeys[failedStep - 1]),
       });
+    }
+    if (approve) {
+      return translate(
+        lang,
+        run.mode === 'dry'
+          ? 'approve.result.title.done.dry'
+          : 'approve.result.title.done',
+        { w: written.length }
+      );
     }
     return translate(
       lang,
@@ -133,12 +155,16 @@ export default function ResultScreen({
 
   const subFor = (): string => {
     if (status === 'failed') {
-      return translate(lang, 'result.sub.failed', {
-        i: run.currentTarget + 1,
-        n: run.targets.length,
-        runId: run.runId,
-        time: formatClock(endedAt),
-      });
+      return translate(
+        lang,
+        approve ? 'approve.result.sub.failed' : 'result.sub.failed',
+        {
+          i: run.currentTarget + 1,
+          n: run.targets.length,
+          runId: run.runId,
+          time: formatClock(endedAt),
+        }
+      );
     }
     return translate(lang, 'result.range', {
       runId: run.runId,
@@ -303,30 +329,33 @@ export default function ResultScreen({
         </ul>
       </section>
 
-      {status === 'done' && run.mode === 'assist' && readbackTarget && (
-        <section
-          aria-label={translate(lang, 'result.readback.title', {
-            name: readbackTarget.name,
-          })}
-          className='border-base-content/12 flex flex-col gap-2 rounded-md border bg-base-100 p-3'
-        >
-          <div className='flex items-center justify-between gap-2'>
-            <h2 className='m-0 text-[13px] font-semibold'>
-              {translate(lang, 'result.readback.title', {
-                name: readbackTarget.name,
-              })}
-            </h2>
-            <CopyButton
-              lang={lang}
-              text={readback}
-              label={translate(lang, 'result.copy')}
-            />
-          </div>
-          <pre className='m-0 overflow-x-auto whitespace-pre-wrap break-words rounded-md bg-base-200 p-2 text-xs'>
-            {readback}
-          </pre>
-        </section>
-      )}
+      {status === 'done' &&
+        run.mode === 'assist' &&
+        readbackTarget &&
+        !approve && (
+          <section
+            aria-label={translate(lang, 'result.readback.title', {
+              name: readbackTarget.name,
+            })}
+            className='border-base-content/12 flex flex-col gap-2 rounded-md border bg-base-100 p-3'
+          >
+            <div className='flex items-center justify-between gap-2'>
+              <h2 className='m-0 text-[13px] font-semibold'>
+                {translate(lang, 'result.readback.title', {
+                  name: readbackTarget.name,
+                })}
+              </h2>
+              <CopyButton
+                lang={lang}
+                text={readback}
+                label={translate(lang, 'result.copy')}
+              />
+            </div>
+            <pre className='m-0 overflow-x-auto whitespace-pre-wrap break-words rounded-md bg-base-200 p-2 text-xs'>
+              {readback}
+            </pre>
+          </section>
+        )}
 
       {status === 'pending-approval' && (
         <div className='flex flex-col gap-1.5'>
@@ -363,7 +392,7 @@ export default function ResultScreen({
               <span>{translate(lang, 'result.failed.hint')}</span>
             </div>
           )}
-          {unfinished.length > 0 && (
+          {unfinished.length > 0 && !approve && (
             <button
               type='button'
               onClick={() =>
@@ -387,7 +416,7 @@ export default function ResultScreen({
         {translate(lang, 'result.done.btn')}
       </button>
 
-      {run.mode === 'assist' && written.length > 0 && (
+      {run.mode === 'assist' && written.length > 0 && !approve && (
         <section
           aria-label={translate(lang, 'result.undo.title')}
           className='border-base-content/12 flex flex-col gap-1.5 rounded-md border bg-base-100 p-3'

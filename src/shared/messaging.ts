@@ -4,8 +4,9 @@
  * Mọi đầu nhận kiểm `sender.id` và validate shape bằng type guard viết tay.
  */
 import type { AccountsRead } from '@/shared/adAccounts';
+import type { ApproveConfig, RequestsRead } from '@/shared/approve';
 import type { ProbeStage } from '@/shared/probe';
-import type { EngineErrorCode, RunMode, RunState } from '@/shared/run';
+import type { EngineErrorCode, RunFlow, RunMode, RunState } from '@/shared/run';
 import type { RunConfig } from '@/shared/runConfig';
 
 import { isStage } from '@/shared/probe';
@@ -29,8 +30,10 @@ export type LocationReply = {
 export type RunStartCommand = {
   kind: 'run.start';
   requestId: string;
+  // Vắng = 'partner-assign' (tương thích panel cũ); `config` được parse theo flow.
+  flow?: RunFlow;
   mode: RunMode;
-  config: RunConfig;
+  config: RunConfig | ApproveConfig;
   // BM của danh sách TKQC mà user đã chọn ở panel: content script từ chối nếu tab đang ở BM khác
   // và dùng làm mốc cho guard đổi BM suốt run.
   businessId: string;
@@ -57,7 +60,8 @@ export type ContentMessage =
   | LocationRead
   | RunCommand
   | ProbeCommand
-  | AccountsRead;
+  | AccountsRead
+  | RequestsRead;
 
 // ---- Phản hồi / sự kiện ----------------------------------------------------
 
@@ -106,6 +110,9 @@ export function isRunCommand(value: unknown): value is RunCommand {
     case 'run.start':
       return (
         typeof value.requestId === 'string' &&
+        (value.flow === undefined ||
+          value.flow === 'partner-assign' ||
+          value.flow === 'partner-approve') &&
         (value.mode === 'dry' || value.mode === 'assist') &&
         isBusinessId(value.businessId) &&
         isRecord(value.config)

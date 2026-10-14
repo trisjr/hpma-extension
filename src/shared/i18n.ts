@@ -97,6 +97,8 @@ const vi = {
   'probe.pick.label': 'Màn cần đo',
   'probe.pick.auto': 'Tự nhận diện',
   'probe.stage.detail': 'Chi tiết partner',
+  'probe.stage.requests': 'Yêu cầu · danh sách',
+  'probe.stage.request-detail': 'Yêu cầu · chi tiết (mở một request)',
   'probe.keys': 'Selector key · tầng thắng',
   'probe.notMeasured': 'chưa đo · màn {stage}',
   'probe.tierWin': 'tầng {n}',
@@ -282,6 +284,63 @@ const vi = {
   'run.step.5': 'Tick quyền',
   'run.step.6': 'Bấm Assign',
   'run.step.7': 'Verify readback',
+  'approve.step.1': 'Mở Cài đặt BM › Yêu cầu (Needs review)',
+  'approve.step.2': 'Tìm request khớp trong danh sách',
+  'approve.step.3': 'Mở chi tiết request',
+  'approve.step.4': 'Đối chiếu tên BM, BM ID, TKQC',
+  'approve.step.5': 'Tìm nút Approve',
+  'approve.step.6': 'Bấm Approve',
+  'approve.step.7': 'Verify: request rời Needs review',
+  'approve.title': 'Duyệt request partner',
+  'approve.desc':
+    'Dành cho admin thứ 2: duyệt các request cấp quyền TKQC cho BM đối tác đang chờ ở Cài đặt BM › Yêu cầu (Needs review).',
+  'approve.name.label': 'Tên BM đối tác',
+  'approve.name.placeholder': 'Ví dụ: Tris BM',
+  'approve.name.help':
+    'Khớp chính xác với tên BM trong request (không phân biệt hoa thường): "Tris BM" không khớp "Tris BM 2".',
+  'approve.name.empty': 'Nhập tên BM đối tác.',
+  'approve.name.tooLong': 'Tên BM tối đa {n} ký tự.',
+  'approve.scan': 'Quét request',
+  'approve.scanAgain': 'Quét lại',
+  'approve.scanning': 'Đang quét…',
+  'approve.scan.note':
+    'Quét chỉ đọc danh sách Needs review, không bấm gì trên trang BM.',
+  'approve.found': 'Tìm thấy {n} request khớp',
+  'approve.none': 'Không có request nào khớp tên này.',
+  'approve.none.hint':
+    'Kiểm tra tên BM và tab Needs review có request. Nếu giao diện BM không phải tiếng Anh, nhãn chưa được kiểm chứng: chạy Probe.',
+  'approve.stale': 'Tên BM đã đổi sau lần quét. Quét lại trước khi chạy.',
+  'approve.list.row': '{requester} → TKQC {account}',
+  'approve.err.surface':
+    'Tab BM chưa ở trang Yêu cầu (Requests). Bấm thử lại để panel đưa tab tới đó.',
+  'approve.err.unreadable':
+    'Không đọc được danh sách Needs review (trang chưa nạp hoặc nhãn lạ). Tải lại tab hoặc chạy Probe.',
+  'approve.err.busy': 'Đang có run chạy trên tab này. Chờ run xong rồi quét.',
+  'approve.run.dry': 'Chạy thử (Dry-run)',
+  'approve.run.assist': 'Bắt đầu Assist',
+  'approve.run.hintDry':
+    'Dry-run mở từng request để đối chiếu, không bấm Approve.',
+  'approve.run.hintAssist':
+    'Assist dừng trước Approve để bạn tự bấm. Đối chiếu BM ID trong chi tiết trước khi bấm.',
+  'approve.note':
+    'Duyệt request là cấp quyền TKQC cho BM ngoài và khó đảo ngược. Tên BM có thể trùng: luôn đối chiếu BM ID, và đừng duyệt khi chưa chắc chắn về cảnh báo của Meta.',
+  'approve.sim':
+    'Simulator (Devtest) chưa hỗ trợ flow này. Tắt simulator để chạy engine thật.',
+  'approve.progress': 'Request {i}/{n} · {name}',
+  'approve.next.title': 'Bấm Approve trong tab BM',
+  'approve.next.1': 'Chuyển sang tab BM đang bám.',
+  'approve.next.2':
+    'Kiểm tra request ở khung chi tiết: BM {bm}, đúng BM ID bạn tin cậy.',
+  'approve.next.3':
+    'Bấm Approve (không bấm Decline). Engine tự verify khi request rời Needs review.',
+  'approve.next.waiting': 'Đang chờ bạn bấm Approve…',
+  'approve.next.engineDone': 'Tôi đã bấm Approve, kiểm tra ngay',
+  'approve.willDo.line': 'Sẽ duyệt: {name}',
+  'approve.result.title.done.dry': 'Chạy thử xong · {w} request sẽ duyệt',
+  'approve.result.title.done': 'Hoàn tất · đã duyệt {w} request',
+  'approve.result.sub.failed': 'Request {i}/{n} · {runId} · {time}',
+  'approve.result.o.doneDry': 'sẽ duyệt · không ghi',
+  'approve.result.o.done': 'đã duyệt · verify khớp',
   'run.stepState.pending': 'chờ',
   'run.stepState.running': 'đang chạy',
   'run.stepState.ok': 'ok',
@@ -478,6 +537,7 @@ const vi = {
   'opt.audit.loading': 'Đang tải audit log…',
   'opt.flow.all': 'Tất cả flow',
   'opt.flow.partner-assign': 'Gán partner',
+  'opt.flow.partner-approve': 'Duyệt request partner',
   'opt.flow.partner-remove': 'Gỡ partner',
   'opt.flow.rename': 'Đổi tên TKQC',
   'opt.flow.inventory': 'Kiểm kê tài sản',
@@ -584,6 +644,8 @@ const vi = {
     'Tab BM đã tải lại hoặc mất kết nối nên run bị mất và không tự chạy tiếp. Kiểm tra tay trên BM xem đã có thay đổi chưa rồi mới chạy lại.',
   'err.ERR_BM_CHANGED':
     'Tab BM đang ở BM khác với BM bạn đã chọn TKQC, hoặc đã rời BM đó giữa chừng nên run không bắt đầu hoặc đã dừng. Nếu đang chạy giữa chừng, kiểm tra tay cả hai BM xem đã có thay đổi chưa. Sau đó quay lại bước chọn TKQC để tải lại danh sách của BM hiện tại.',
+  'err.ERR_NOT_APPROVED':
+    'Request không được duyệt: không thấy cú bấm Approve (có thể bạn đã bấm Decline) hoặc request vẫn còn ở Needs review. Kiểm tra tay trên BM rồi quét lại.',
   'err.ERR_INTERNAL': 'Lỗi nội bộ của engine. Sao chép mã lỗi gửi cho dev.',
 } as const;
 
@@ -678,6 +740,8 @@ const en: Record<MessageKey, string> = {
   'probe.pick.label': 'Screen to measure',
   'probe.pick.auto': 'Auto-detect',
   'probe.stage.detail': 'Partner detail',
+  'probe.stage.requests': 'Requests · list',
+  'probe.stage.request-detail': 'Requests · details (open a request)',
   'probe.keys': 'Selector key · winning tier',
   'probe.notMeasured': 'not measured · {stage} screen',
   'probe.tierWin': 'tier {n}',
@@ -867,6 +931,66 @@ const en: Record<MessageKey, string> = {
   'run.step.5': 'Tick the permissions',
   'run.step.6': 'Click Assign',
   'run.step.7': 'Verify readback',
+  'approve.step.1': 'Open BM settings › Requests (Needs review)',
+  'approve.step.2': 'Find the matching request in the list',
+  'approve.step.3': 'Open the request details',
+  'approve.step.4': 'Check BM name, BM ID and ad account',
+  'approve.step.5': 'Locate the Approve button',
+  'approve.step.6': 'Click Approve',
+  'approve.step.7': 'Verify: request left Needs review',
+  'approve.title': 'Approve partner requests',
+  'approve.desc':
+    'For the second admin: approve the pending requests that give a partner BM access to ad accounts, under BM settings › Requests (Needs review).',
+  'approve.name.label': 'Partner BM name',
+  'approve.name.placeholder': 'Example: Tris BM',
+  'approve.name.help':
+    'Must match the BM name in the request exactly (case-insensitive): "Tris BM" does not match "Tris BM 2".',
+  'approve.name.empty': 'Enter the partner BM name.',
+  'approve.name.tooLong': 'The BM name is at most {n} characters.',
+  'approve.scan': 'Scan requests',
+  'approve.scanAgain': 'Scan again',
+  'approve.scanning': 'Scanning…',
+  'approve.scan.note':
+    'Scanning only reads the Needs review list and clicks nothing on the BM page.',
+  'approve.found': 'Found {n} matching requests',
+  'approve.none': 'No request matches this name.',
+  'approve.none.hint':
+    'Check the BM name and that Needs review has requests. If the BM UI is not in English the labels are unverified: run the Probe.',
+  'approve.stale':
+    'The BM name changed after the scan. Scan again before running.',
+  'approve.list.row': '{requester} → ad account {account}',
+  'approve.err.surface':
+    'The BM tab is not on the Requests page. Try again so the panel moves the tab there.',
+  'approve.err.unreadable':
+    'Could not read the Needs review list (page not loaded or unknown labels). Reload the tab or run the Probe.',
+  'approve.err.busy':
+    'A run is active on this tab. Wait for it to finish, then scan.',
+  'approve.run.dry': 'Dry-run',
+  'approve.run.assist': 'Start Assist',
+  'approve.run.hintDry':
+    'Dry-run opens each request to cross-check it and never clicks Approve.',
+  'approve.run.hintAssist':
+    'Assist stops before Approve so you click it yourself. Cross-check the BM ID in the details first.',
+  'approve.note':
+    'Approving a request grants an outside BM access to ad accounts and is hard to undo. BM names can collide: always cross-check the BM ID, and do not approve if Meta’s warnings make you doubt it.',
+  'approve.sim':
+    'The Devtest simulator does not support this flow. Turn the simulator off to run the real engine.',
+  'approve.progress': 'Request {i}/{n} · {name}',
+  'approve.next.title': 'Click Approve in the BM tab',
+  'approve.next.1': 'Switch to the attached BM tab.',
+  'approve.next.2':
+    'Check the request in the details pane: BM {bm}, and a BM ID you trust.',
+  'approve.next.3':
+    'Click Approve (not Decline). The engine verifies once the request leaves Needs review.',
+  'approve.next.waiting': 'Waiting for you to click Approve…',
+  'approve.next.engineDone': 'I clicked Approve, check now',
+  'approve.willDo.line': 'Will approve: {name}',
+  'approve.result.title.done.dry':
+    'Dry-run finished · {w} requests would be approved',
+  'approve.result.title.done': 'Done · approved {w} requests',
+  'approve.result.sub.failed': 'Request {i}/{n} · {runId} · {time}',
+  'approve.result.o.doneDry': 'would approve · no write',
+  'approve.result.o.done': 'approved · verified',
   'run.stepState.pending': 'waiting',
   'run.stepState.running': 'running',
   'run.stepState.ok': 'ok',
@@ -1069,6 +1193,7 @@ const en: Record<MessageKey, string> = {
   'opt.audit.loading': 'Loading audit log…',
   'opt.flow.all': 'All flows',
   'opt.flow.partner-assign': 'Assign partner',
+  'opt.flow.partner-approve': 'Approve partner requests',
   'opt.flow.partner-remove': 'Remove partner',
   'opt.flow.rename': 'Rename ad account',
   'opt.flow.inventory': 'Asset inventory',
@@ -1175,6 +1300,8 @@ const en: Record<MessageKey, string> = {
     'The BM tab reloaded or lost connection, so the run was lost and does not continue. Check by hand on the BM whether anything changed before running again.',
   'err.ERR_BM_CHANGED':
     'The BM tab is on a different BM than the one you picked ad accounts for, or it left that BM mid-run, so the run did not start or stopped. If it was mid-run, check both BMs by hand for changes first. Then go back to the ad accounts step to reload the list for the current BM.',
+  'err.ERR_NOT_APPROVED':
+    'The request was not approved: no Approve click was seen (you may have clicked Decline) or the request is still in Needs review. Check by hand on the BM, then scan again.',
   'err.ERR_INTERNAL':
     'Internal engine error. Copy the error code and send it to the dev.',
 };

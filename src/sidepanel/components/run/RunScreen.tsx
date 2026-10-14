@@ -1,9 +1,9 @@
 import { JSX, useEffect, useState } from 'react';
 import type { Lang, MessageKey } from '@/shared/i18n';
-import type { RunState } from '@/shared/run';
+import type { RunState, RunTarget } from '@/shared/run';
 
 import { translate } from '@/shared/i18n';
-import { STEP_COUNT } from '@/shared/run';
+import { isApproveRun, STEP_COUNT } from '@/shared/run';
 
 import Icon from '../Icon';
 import { MODE_STYLES } from '../riskStyles';
@@ -62,6 +62,21 @@ export default function RunScreen({
     ['done', 'skipped-existing', 'pending-approval'].includes(item.outcome)
   );
   const tasks = taskLabels(lang, run.tasks);
+  // Flow duyệt request dùng cùng bộ 7 bước nhưng câu chữ riêng (Approve thay cho Assign).
+  const approve = isApproveRun(run);
+  const willDoLine = (item: RunTarget): string => {
+    if (approve) {
+      return translate(lang, 'approve.willDo.line', { name: item.name });
+    }
+    if (item.plan === 'skip') {
+      return `${item.name} · ${translate(lang, 'diff.noteSkip')}`;
+    }
+    return translate(lang, 'run.willDo.line', {
+      bm: run.partnerBmId.slice(-6),
+      name: item.name,
+      tasks,
+    });
+  };
 
   return (
     <>
@@ -83,7 +98,7 @@ export default function RunScreen({
       <section className='border-base-content/12 flex flex-col gap-3 rounded-md border bg-base-100 p-3'>
         <div className='flex flex-wrap items-center justify-between gap-2'>
           <h1 className='m-0 text-base font-semibold'>
-            {translate(lang, 'pa.title')}
+            {translate(lang, approve ? 'approve.title' : 'pa.title')}
           </h1>
           <span className='flex items-center gap-2'>
             {run.batch.total > 1 && (
@@ -134,7 +149,7 @@ export default function RunScreen({
             className='flex items-center justify-between gap-2 text-xs'
           >
             <span className='min-w-0 truncate font-medium'>
-              {translate(lang, 'run.progress', {
+              {translate(lang, approve ? 'approve.progress' : 'run.progress', {
                 i: run.currentTarget + 1,
                 n: run.targets.length,
                 name: target.name,
@@ -242,24 +257,37 @@ export default function RunScreen({
             {translate(lang, 'run.next.label')}
           </div>
           <h2 id='next-step-title' className='m-0 text-sm font-semibold'>
-            {translate(lang, 'run.next.title')}
+            {translate(lang, approve ? 'approve.next.title' : 'run.next.title')}
           </h2>
           <ol className='m-0 flex list-decimal flex-col gap-1 pl-4 text-[13px]'>
-            <li>{translate(lang, 'run.next.1')}</li>
             <li>
-              {translate(lang, 'run.next.2', {
-                bm: run.partnerBmId,
-                tasks,
-              })}
+              {translate(lang, approve ? 'approve.next.1' : 'run.next.1')}
             </li>
-            <li>{translate(lang, 'run.next.3')}</li>
+            <li>
+              {approve
+                ? translate(lang, 'approve.next.2', {
+                    bm: run.partnerName ?? '',
+                  })
+                : translate(lang, 'run.next.2', {
+                    bm: run.partnerBmId,
+                    tasks,
+                  })}
+            </li>
+            <li>
+              {translate(lang, approve ? 'approve.next.3' : 'run.next.3')}
+            </li>
           </ol>
           <div
             role='status'
             className='flex items-center gap-1.5 text-xs font-medium'
           >
             <Icon name='clock' size={14} />
-            <span>{translate(lang, 'run.next.waiting')}</span>
+            <span>
+              {translate(
+                lang,
+                approve ? 'approve.next.waiting' : 'run.next.waiting'
+              )}
+            </span>
           </div>
           {/* Simulator không có sự kiện "hộp thoại đóng" nên user giả lập; engine thì chỉ giục verify. */}
           <button
@@ -269,7 +297,13 @@ export default function RunScreen({
           >
             {translate(
               lang,
-              simulated ? 'run.next.simulate' : 'run.next.engineDone'
+              // Flow duyệt không có simulator nên luôn là nút của engine.
+              // eslint-disable-next-line no-nested-ternary
+              approve
+                ? 'approve.next.engineDone'
+                : simulated
+                  ? 'run.next.simulate'
+                  : 'run.next.engineDone'
             )}
           </button>
         </section>
@@ -283,13 +317,16 @@ export default function RunScreen({
             <h2 className='m-0 text-[13px] font-semibold'>
               {translate(lang, 'run.willDo.title')}
             </h2>
-            <button
-              type='button'
-              onClick={onOpenDiff}
-              className='h-9 text-[13px] font-medium text-blue-600 dark:text-blue-400'
-            >
-              {translate(lang, 'run.willDo.full')}
-            </button>
+            {/* Màn Diff đầy đủ chỉ có cho flow Gán partner. */}
+            {!approve && (
+              <button
+                type='button'
+                onClick={onOpenDiff}
+                className='h-9 text-[13px] font-medium text-blue-600 dark:text-blue-400'
+              >
+                {translate(lang, 'run.willDo.full')}
+              </button>
+            )}
           </div>
           {done.length === 0 ? (
             <span className='text-base-content/70 text-xs'>…</span>
@@ -306,15 +343,7 @@ export default function RunScreen({
                   >
                     {item.plan === 'skip' ? '=' : '+'}
                   </span>
-                  <span className='break-words'>
-                    {item.plan === 'skip'
-                      ? `${item.name} · ${translate(lang, 'diff.noteSkip')}`
-                      : translate(lang, 'run.willDo.line', {
-                          bm: run.partnerBmId.slice(-6),
-                          name: item.name,
-                          tasks,
-                        })}
-                  </span>
+                  <span className='break-words'>{willDoLine(item)}</span>
                 </li>
               ))}
             </ul>

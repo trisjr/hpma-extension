@@ -47,6 +47,12 @@ describe('stageOfKey', () => {
     expect(stageOfKey('partner.assignedAssets')).toBe('detail');
   });
 
+  it('key của trang Requests có màn riêng, không kéo hit-rate của trang Partners', () => {
+    expect(stageOfKey('requests.needsReview')).toBe('requests');
+    // Nút Approve chỉ có khi khung chi tiết đang mở: màn riêng với danh sách.
+    expect(stageOfKey('request.approve')).toBe('request-detail');
+  });
+
   it('chia hộp thoại theo bước của flow để key bước khác không bị tính là trượt', () => {
     expect(stageOfKey('dialog.bmId')).toBe('dialog-bm');
     expect(stageOfKey('dialog.next')).toBe('dialog-bm');
