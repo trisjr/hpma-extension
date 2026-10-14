@@ -583,7 +583,7 @@ const vi = {
   'err.ERR_TAB_RELOADED':
     'Tab BM đã tải lại hoặc mất kết nối nên run bị mất và không tự chạy tiếp. Kiểm tra tay trên BM xem đã có thay đổi chưa rồi mới chạy lại.',
   'err.ERR_BM_CHANGED':
-    'Tab BM đã chuyển sang BM khác giữa chừng nên run dừng. Kiểm tra tay cả hai BM xem đã có thay đổi chưa rồi mới chạy lại.',
+    'Tab BM đang ở BM khác với BM bạn đã chọn TKQC, hoặc đã rời BM đó giữa chừng nên run không bắt đầu hoặc đã dừng. Nếu đang chạy giữa chừng, kiểm tra tay cả hai BM xem đã có thay đổi chưa. Sau đó quay lại bước chọn TKQC để tải lại danh sách của BM hiện tại.',
   'err.ERR_INTERNAL': 'Lỗi nội bộ của engine. Sao chép mã lỗi gửi cho dev.',
 } as const;
 
@@ -1174,7 +1174,7 @@ const en: Record<MessageKey, string> = {
   'err.ERR_TAB_RELOADED':
     'The BM tab reloaded or lost connection, so the run was lost and does not continue. Check by hand on the BM whether anything changed before running again.',
   'err.ERR_BM_CHANGED':
-    'The BM tab switched to another BM mid-run, so the run stopped. Check both BMs by hand for changes before running again.',
+    'The BM tab is on a different BM than the one you picked ad accounts for, or it left that BM mid-run, so the run did not start or stopped. If it was mid-run, check both BMs by hand for changes first. Then go back to the ad accounts step to reload the list for the current BM.',
   'err.ERR_INTERNAL':
     'Internal engine error. Copy the error code and send it to the dev.',
 };

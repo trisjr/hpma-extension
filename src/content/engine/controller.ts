@@ -16,6 +16,7 @@ import browser from 'webextension-polyfill';
 
 import { parseRunConfig } from '@/shared/runConfig';
 import { isCurfew } from '@/shared/settings';
+import { isBusinessId } from '@/shared/surfaces';
 
 import partnerAssignFlow from '../flows/partnerAssign';
 import { uiTaskKeys } from '../flows/partnerTasks';
@@ -55,6 +56,11 @@ async function start(command: RunStartCommand): Promise<StartReply> {
     return reject('ERR_INVALID_CONFIG');
   }
   if (active || starting) return reject('ERR_BUSY');
+  // Tab phải đang ở đúng BM mà panel đã chọn TKQC: BM khác thì danh sách TKQC không còn khớp.
+  const urlBusinessId =
+    new URL(window.location.href).searchParams.get('business_id') ?? undefined;
+  if (!isBusinessId(urlBusinessId)) return reject('ERR_NO_BUSINESS');
+  if (urlBusinessId !== command.businessId) return reject('ERR_BM_CHANGED');
   starting = true;
   killRequested = false;
   try {
@@ -75,6 +81,7 @@ async function start(command: RunStartCommand): Promise<StartReply> {
     const handle = startRun({
       mode: command.mode,
       config,
+      businessId: command.businessId,
       pacing,
       logDetail,
       flow: partnerAssignFlow,

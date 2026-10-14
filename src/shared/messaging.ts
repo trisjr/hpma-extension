@@ -31,6 +31,9 @@ export type RunStartCommand = {
   requestId: string;
   mode: RunMode;
   config: RunConfig;
+  // BM của danh sách TKQC mà user đã chọn ở panel: content script từ chối nếu tab đang ở BM khác
+  // và dùng làm mốc cho guard đổi BM suốt run.
+  businessId: string;
 };
 export type RunStopCommand = { kind: 'run.stop'; runId: string };
 export type RunSyncCommand = { kind: 'run.sync' };
@@ -104,6 +107,7 @@ export function isRunCommand(value: unknown): value is RunCommand {
       return (
         typeof value.requestId === 'string' &&
         (value.mode === 'dry' || value.mode === 'assist') &&
+        isBusinessId(value.businessId) &&
         isRecord(value.config)
       );
     case 'run.stop':

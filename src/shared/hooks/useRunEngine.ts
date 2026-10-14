@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { RunCommand, RunStartCommand } from '@/shared/messaging';
 import type { PartnerAssignConfig } from '@/shared/partnerAssign';
 import type { DiffRow, EngineErrorCode, RunMode, RunState } from '@/shared/run';
+import type { SurfaceResult } from './ensureSurface';
+import type { RunController } from './runController';
 import browser from 'webextension-polyfill';
 
 import {
@@ -19,8 +21,7 @@ import {
   patchStep,
   stopRun,
 } from '@/shared/run';
-import type { RunController } from './runController';
-import type { SurfaceResult } from './ensureSurface';
+import { isBusinessId } from '@/shared/surfaces';
 
 import ensureSurface from './ensureSurface';
 
@@ -141,7 +142,7 @@ export default function useRunEngine(
   }, [enabled, tabId]);
 
   const start = useCallback<RunController['start']>(
-    ({ mode, config, diff, surface }) => {
+    ({ mode, config, diff, surface, businessId }) => {
       if (!enabled) return;
       const fail = (code: EngineErrorCode): void =>
         setRun(failedRun({ mode, config, diff, code }));
@@ -149,11 +150,18 @@ export default function useRunEngine(
         fail('ERR_TAB_RELOADED');
         return;
       }
+      // Không biết danh sách TKQC thuộc BM nào (chưa tải, hoặc đã bị làm mới vì tab đổi BM):
+      // không gửi lệnh, nếu không guard đổi BM sẽ tắt im lặng.
+      if (!isBusinessId(businessId)) {
+        fail('ERR_BM_CHANGED');
+        return;
+      }
       // `accountIds` ở chế độ engine là các chuỗi tên/ID user dán.
       const command: RunStartCommand = {
         kind: 'run.start',
         requestId: crypto.randomUUID(),
         mode,
+        businessId,
         config: {
           partnerBmId: config.partnerBmId,
           queries: config.accountIds,

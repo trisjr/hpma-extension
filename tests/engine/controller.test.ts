@@ -35,13 +35,17 @@ async function load(): Promise<Handle> {
 }
 
 const config = { partnerBmId: BM_ID, queries: ['Spa Hoa'], tasks: ['ANALYZE'] };
+// BM của tab (khác BM đối tác) và BM panel đã chọn TKQC.
+const TAB_BM = '1451597353550999';
 const startCommand = (
   mode: 'dry' | 'assist',
-  overrides: Record<string, unknown> = {}
+  overrides: Record<string, unknown> = {},
+  businessId: string = TAB_BM
 ): RunCommand =>
   ({
     kind: 'run.start',
     mode,
+    businessId,
     config: { ...config, ...overrides },
   }) as RunCommand;
 
@@ -76,6 +80,31 @@ beforeEach(() => {
   flow.mockReset();
   flow.mockImplementation(async (ctx) => {
     ctx.setTarget(0, 'done');
+  });
+  window.history.replaceState({}, '', `/settings?business_id=${TAB_BM}`);
+});
+
+describe('run.start: BM của panel phải khớp tab', () => {
+  it('tab đã sang BM khác trước khi bấm Run -> ERR_BM_CHANGED, không chạy flow (cả Dry-run)', async () => {
+    const handle = await load();
+    expect(await handle(startCommand('dry', {}, '1451597353550111'))).toEqual({
+      ok: false,
+      code: 'ERR_BM_CHANGED',
+    });
+    expect(
+      await handle(startCommand('assist', {}, '1451597353550111'))
+    ).toEqual({ ok: false, code: 'ERR_BM_CHANGED' });
+    expect(flow).not.toHaveBeenCalled();
+  });
+
+  it('URL không có business_id lúc start -> ERR_NO_BUSINESS (guard không tắt im lặng)', async () => {
+    window.history.replaceState({}, '', '/settings');
+    const handle = await load();
+    expect(await handle(startCommand('dry'))).toEqual({
+      ok: false,
+      code: 'ERR_NO_BUSINESS',
+    });
+    expect(flow).not.toHaveBeenCalled();
   });
 });
 

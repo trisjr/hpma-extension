@@ -75,6 +75,8 @@ export type RunHandle = {
 type StartParams = {
   mode: RunMode;
   config: RunConfig;
+  // Mốc cho guard đổi BM: BM panel đã chọn (đã khớp URL lúc start).
+  businessId: string;
   pacing: PacingConfig;
   logDetail: AuditDetail;
   flow: Flow;
@@ -117,7 +119,7 @@ function redactForStorage(run: RunState, logDetail: AuditDetail): RunState {
 }
 
 export function startRun(params: StartParams): RunHandle {
-  const { mode, config, pacing, logDetail, flow, onState } = params;
+  const { mode, config, businessId, pacing, logDetail, flow, onState } = params;
   const abort = new AbortController();
   const { signal } = abort;
   // `lang` do trang kiểm soát: chỉ nhận dạng mã ngôn ngữ ngắn, còn lại coi như không biết.
@@ -341,7 +343,7 @@ export function startRun(params: StartParams): RunHandle {
   };
 
   const execute = async (): Promise<RunState> => {
-    const stopWatching = startWatchers((code) => {
+    const stopWatching = startWatchers(businessId, (code) => {
       danger = code;
       abort.abort();
     });

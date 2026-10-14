@@ -12,6 +12,8 @@ export type RunController = {
     diff: DiffRow[];
     // Trang flow cần; engine thật kiểm lại ngay trước khi chạy (user có thể đã rời trang).
     surface?: Surface;
+    // BM của danh sách TKQC đã chọn; thiếu thì engine thật không chạy (simulator bỏ qua).
+    businessId: string | undefined;
   }) => void;
   stop: () => void;
   confirmAssist: () => void;

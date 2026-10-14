@@ -26,6 +26,7 @@ function start(flow: Flow, overrides: Start = {}) {
   const handle = startRun({
     mode: 'dry',
     config: configOf(),
+    businessId: BM_ID,
     pacing: pacingOf(),
     logDetail: 'off',
     flow,
@@ -52,6 +53,8 @@ const setHidden = (hidden: boolean): void => {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(NOON_VN);
+  // Guard đổi BM so URL với `businessId` của run: URL không có business_id thì tới ngưỡng sẽ dừng.
+  window.history.replaceState({}, '', `/?business_id=${BM_ID}`);
 });
 
 afterEach(() => {
@@ -350,6 +353,17 @@ describe('tín hiệu nguy hiểm', () => {
     });
     const final = await drive(handle.done);
     expect(final.error?.code).toBe('ERR_LOGGED_OUT');
+    expect(storageState.data[EMERGENCY_KEY]).toBeUndefined();
+  });
+
+  it('tab đổi sang BM khác giữa run: dừng ERR_BM_CHANGED, không khoá khẩn cấp', async () => {
+    const { handle } = start(async (ctx) => {
+      await ctx.pause('step');
+    });
+    window.history.replaceState({}, '', '/?business_id=1451597353550999');
+    const final = await drive(handle.done);
+    expect(final.status).toBe('failed');
+    expect(final.error?.code).toBe('ERR_BM_CHANGED');
     expect(storageState.data[EMERGENCY_KEY]).toBeUndefined();
   });
 

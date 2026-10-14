@@ -5,10 +5,15 @@
  */
 import type { DangerCode } from './signals';
 
+import { isBusinessId } from '@/shared/surfaces';
+
 import { isVisible } from './locator';
 import { businessChanged, classifyPath, classifyText } from './signals';
 
 const PATH_POLL_MS = 500;
+// URL tạm thiếu `business_id` khi SPA chuyển trang là bình thường; thiếu liên tục từng này lần
+// poll (~3 giây) thì coi là đã rời BM.
+export const BM_MISSING_POLLS = 6;
 const POPUP_CSS = '[role="dialog"],[role="alert"],[role="alertdialog"]';
 
 function currentBusinessId(): string | undefined {
@@ -30,10 +35,11 @@ function popupsIn(node: Node): HTMLElement[] {
 }
 
 export default function startWatchers(
+  // BM panel đã chọn: đổi BM giữa run (điều hướng SPA) thì dừng, không chạy tiếp trên BM sai.
+  baseline: string,
   onSignal: (code: DangerCode) => void
 ): () => void {
-  // BM lúc run bắt đầu: đổi BM giữa run (điều hướng SPA) thì dừng, không chạy tiếp trên BM sai.
-  const baseline = currentBusinessId();
+  let missingPolls = 0;
   let fired = false;
   const fire = (code: DangerCode | undefined): void => {
     if (code === undefined || fired) return;
@@ -43,7 +49,14 @@ export default function startWatchers(
 
   const check = (): void => {
     fire(classifyPath(window.location.pathname));
-    if (businessChanged(baseline, currentBusinessId())) fire('ERR_BM_CHANGED');
+    const current = currentBusinessId();
+    if (isBusinessId(current)) {
+      missingPolls = 0;
+      if (businessChanged(baseline, current)) fire('ERR_BM_CHANGED');
+    } else {
+      missingPolls += 1;
+      if (missingPolls >= BM_MISSING_POLLS) fire('ERR_BM_CHANGED');
+    }
     if (hasLoginForm()) fire('ERR_LOGGED_OUT');
   };
   const timer = window.setInterval(check, PATH_POLL_MS);

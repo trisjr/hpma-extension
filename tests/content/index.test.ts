@@ -71,6 +71,17 @@ describe('content script message gate', () => {
     expect(
       listener({ kind: 'run.start', mode: 'full' }, fromPanel)
     ).toBeUndefined();
+    // run.start phải mang businessId hợp lệ: thiếu thì guard đổi BM không có mốc.
+    const noBusiness = {
+      kind: 'run.start',
+      requestId: 'r',
+      mode: 'dry',
+      config: {},
+    };
+    expect(listener(noBusiness, fromPanel)).toBeUndefined();
+    expect(
+      listener({ ...noBusiness, businessId: 'abc' }, fromPanel)
+    ).toBeUndefined();
     expect(listener('run.stop', fromPanel)).toBeUndefined();
     expect(listener(null, fromPanel)).toBeUndefined();
     expect(handleRunCommand).not.toHaveBeenCalled();

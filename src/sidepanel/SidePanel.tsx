@@ -109,6 +109,7 @@ export default function SidePanel(): JSX.Element {
       config: draft.config,
       diff: buildDiff(draft.config, source.accounts, engineMode),
       surface: openFlow?.surface,
+      businessId: source.businessId,
     });
     setDiffOpen(false);
     setTab('run');
