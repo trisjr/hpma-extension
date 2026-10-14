@@ -12,20 +12,21 @@ Người đo: anh (14/10/2026). Phiên bản: v0.6.0 (build local). BM thường
 
 ## Kết quả theo màn
 
-| Màn             | `vi`                                                                             | `en`                                          |
-| --------------- | -------------------------------------------------------------------------------- | --------------------------------------------- |
-| `page`          | 100%: `nav.users` t1, `nav.partners` t1, `partners.add` t3, `partners.search` t4 | 100%: giống `vi` (cùng tầng thắng)            |
-| `menu`          | 100%: `partners.give` t1                                                         | 100%: `partners.give` t1                      |
-| `dialog-bm`     | 100%: `dialog.bmId` t1, `dialog.next` t3                                         | 100%: `dialog.bmId` **t4**, `dialog.next` t3  |
-| `dialog-assets` | 100%: `dialog.assetTypeAdAccounts` t3, `dialog.assetSearch` t4                   | 100%: giống `vi`                              |
-| `dialog-access` | 71,4% lúc đo (5/7), tính lại 100% sau khi sửa key dự phòng                       | 100%: 4 `dialog.task*` t1, `dialog.assign` t3 |
-| `detail`        | **chưa đo**                                                                      | **chưa đo**                                   |
+| Màn             | `vi`                                                                             | `en`                                                                  |
+| --------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `page`          | 100%: `nav.users` t1, `nav.partners` t1, `partners.add` t3, `partners.search` t4 | 100%: giống `vi` (cùng tầng thắng)                                    |
+| `menu`          | 100%: `partners.give` t1                                                         | 100%: `partners.give` t1                                              |
+| `dialog-bm`     | 100%: `dialog.bmId` t1, `dialog.next` t3                                         | 100%: `dialog.bmId` **t4**, `dialog.next` t3                          |
+| `dialog-assets` | 100%: `dialog.assetTypeAdAccounts` t3, `dialog.assetSearch` t4                   | 100%: giống `vi`                                                      |
+| `dialog-access` | 71,4% lúc đo (5/7), tính lại 100% sau khi sửa key dự phòng                       | 100%: 4 `dialog.task*` t1, `dialog.assign` t3                         |
+| `detail`        | **chưa đo**                                                                      | **50%**: `partner.assignedAssets` t1 20/20, **`partner.assign` 0/20** |
 
 Tầng: t1 = nhãn khớp chính xác, t3 = nhãn khớp lỏng, t4 = đường lui cấu trúc.
 
 ## Kết luận
 
-- **Chưa qua gate R1.** Còn thiếu đúng một màn: `detail` (cả `vi` lẫn `en`). 5 màn còn lại đều 100% ở cả hai locale.
+- **Chưa qua gate R1.** 5 màn đều 100% ở cả hai locale. Màn `detail` mới đo `en`: 50%; `vi` chưa đo.
+- **Lỗi thật ở `partner.assign` (`en`, màn `detail`):** partner đang xem có 0 tài sản được gán nên trang hiện **hai** nút "Assign assets" cùng lúc (nút ở đầu trang và nút trong trạng thái rỗng "No assets assigned"). Locator strict-mode coi hai ứng viên là mơ hồ ở mọi tầng nên trả `ambiguous` (không phải nhãn sai: nhãn `Assign assets` khớp). Flow thật cũng dùng `SELECTORS.partnerAssign` (`partnerAssign.ts:348`) nên sẽ dừng với `ERR_LOCATE_AMBIGUOUS` trên partner có sẵn nhưng chưa có tài sản. Fail-closed (an toàn), nhưng là trường hợp phổ biến. Lần chạy thật 14/10 không gặp vì partner khi đó đã có tài sản hoặc đi đường partner mới.
 - **Nguyên nhân hai key trượt ở `dialog-access` (`vi`):** UI hiện tại không có lựa chọn "Quyền truy cập một phần" (chỉ còn tiêu đề và các công tắc), và nút phụ ở bước này tên "Quay lại", không phải "Hủy". Không phải nhãn sai: flow dùng `tryResolve` cho `accessPartial` và `cancel ?? close` cho dọn dẹp (`dialog.close` trúng 20/20). `en` trượt giống hệt hai key này (`accessPartial` 0/20, `cancel` 0/20), nên cùng nguyên nhân.
 - **Đã sửa probe:** `dialog.accessPartial` và `dialog.cancel` thành key dự phòng (không tính hit-rate); `dialog.cancel` hạ về `verified: false`.
 - Chưa rõ "Quay lại" đóng hộp thoại hay lùi một bước, nên chưa thêm vào nhãn `dialog.cancel`. Tên nút `en` ở bước này chưa biết.
