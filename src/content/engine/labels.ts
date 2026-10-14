@@ -39,7 +39,7 @@ export const LABELS: Record<LabelKey, Label> = {
   'nav.users': {
     vi: ['Người dùng'],
     en: ['Users'],
-    verified: false,
+    verified: true,
   },
   'nav.partners': {
     vi: ['Đối tác'],

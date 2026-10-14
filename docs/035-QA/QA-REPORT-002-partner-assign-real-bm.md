@@ -21,7 +21,7 @@ Người thử: anh (thử tay, 14/10/2026). Phiên bản: v0.5.0.
 
 - Mode `Full` (vẫn `FULL_LOCKED`).
 - Nhiều BM, loại BM khác (ngoài BM thường), locale `en`, Firefox.
-- Nhãn còn `verified: false` trong `src/content/engine/labels.ts`: `nav.users`, `partner.exists`, `asset.selectAll`, `partner.assignedAssets`. Nhóm `dialog.*`, `asset.alreadyAssigned`, `signal.approval` đã lật `true` (locale `vi`); nhãn EN trong các nhóm này chưa được thử.
+- Nhãn còn `verified: false` trong `src/content/engine/labels.ts`: `partner.exists`, `asset.selectAll`, `partner.assignedAssets`, `dialog.cancel` (`nav.users` đã lật `true` sau probe 14/10, QA-REPORT-003). Nhóm `dialog.*`, `asset.alreadyAssigned`, `signal.approval` đã lật `true` (locale `vi`); nhãn EN trong các nhóm này chưa được thử.
 - Tình huống `pending-approval`, `unverified`, Cancel giữa chừng, mất tab BM.
 
 ## Việc tiếp theo
