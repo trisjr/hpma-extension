@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.5.1
+
+### What's Changed
+
+- feat(sidepanel): Log screen can pause auto-scroll and copy the log, and shows compact step chips
+- fix(sidepanel): An open flow no longer hides the Log and Probe tabs
+
+Full Changelog: Compare v0.5.0...v0.5.1
+
 ## v0.5.0
 
 ### What's Changed
