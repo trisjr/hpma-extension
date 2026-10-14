@@ -6,31 +6,35 @@ created: 2026-10-14
 related: [ROADMAP-001, PRD-001, SPEC-ENG-001, PLAN-R1]
 ---
 
-# QA-REPORT-003 — Probe thực địa, locale `vi`, Chrome
+# QA-REPORT-003 — Probe thực địa, locale `vi` và `en`, Chrome
 
-Người đo: anh (14/10/2026). Phiên bản: v0.6.0 (build local). BM thường, trang `/latest/settings/partners`. Mỗi màn 20 mẫu, **chọn màn bằng tay** (`manual: true`), nên tự nhận diện chưa được kiểm chứng.
+Người đo: anh (14/10/2026). Phiên bản: v0.6.0 (build local). BM thường, trang `/latest/settings/partners`. Mỗi màn 20 mẫu, **chọn màn bằng tay** (`manual: true`), nên tự nhận diện chưa được kiểm chứng. Đo `vi` trước, `en` sau (lúc đó đã có bản sửa key dự phòng).
 
 ## Kết quả theo màn
 
-| Màn             | Hit-rate  | Ghi chú                                                                                                                                                        |
-| --------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `page`          | 100%      | `nav.users` t1, `nav.partners` t1, `partners.add` t3, `partners.search` t4                                                                                     |
-| `menu`          | 100%      | `partners.give` t1                                                                                                                                             |
-| `dialog-bm`     | 100%      | `dialog.bmId` t1, `dialog.next` t3                                                                                                                             |
-| `dialog-assets` | 100%      | `dialog.assetTypeAdAccounts` t3, `dialog.assetSearch` t4                                                                                                       |
-| `dialog-access` | **71,4%** | 5/7 key bắt buộc. **Trượt:** `dialog.accessPartial` 0/20, `dialog.cancel` 0/20. Trúng: 4 `dialog.task*` (t1), `dialog.assign` t3, `dialog.close` t3 (dự phòng) |
-| `detail`        | chưa đo   | `partner.assign`, `partner.assignedAssets`                                                                                                                     |
+| Màn             | `vi`                                                                             | `en`                                          |
+| --------------- | -------------------------------------------------------------------------------- | --------------------------------------------- |
+| `page`          | 100%: `nav.users` t1, `nav.partners` t1, `partners.add` t3, `partners.search` t4 | 100%: giống `vi` (cùng tầng thắng)            |
+| `menu`          | 100%: `partners.give` t1                                                         | 100%: `partners.give` t1                      |
+| `dialog-bm`     | 100%: `dialog.bmId` t1, `dialog.next` t3                                         | 100%: `dialog.bmId` **t4**, `dialog.next` t3  |
+| `dialog-assets` | 100%: `dialog.assetTypeAdAccounts` t3, `dialog.assetSearch` t4                   | 100%: giống `vi`                              |
+| `dialog-access` | 71,4% lúc đo (5/7), tính lại 100% sau khi sửa key dự phòng                       | 100%: 4 `dialog.task*` t1, `dialog.assign` t3 |
+| `detail`        | **chưa đo**                                                                      | **chưa đo**                                   |
+
+Tầng: t1 = nhãn khớp chính xác, t3 = nhãn khớp lỏng, t4 = đường lui cấu trúc.
 
 ## Kết luận
 
-- **Chưa qua gate R1.** Còn thiếu: màn `detail` và locale `en`.
-- **Nguyên nhân hai key trượt (ảnh chụp bước quyền, 14/10):** UI hiện tại không có lựa chọn "Quyền truy cập một phần" (chỉ còn tiêu đề và các công tắc), và nút phụ ở bước này tên "Quay lại", không phải "Hủy". Không phải nhãn sai: flow dùng `tryResolve` cho `accessPartial` và `cancel ?? close` cho dọn dẹp (`dialog.close` trúng 20/20).
-- **Đã sửa probe:** `dialog.accessPartial` và `dialog.cancel` thành key dự phòng (không tính hit-rate); `dialog.cancel` hạ về `verified: false`. Với báo cáo này, `dialog-access` tính lại là 5/5 = 100%.
-- Chưa rõ "Quay lại" đóng hộp thoại hay lùi một bước, nên chưa thêm vào nhãn `dialog.cancel`.
-- Bốn công tắc `dialog.task*` trúng tầng 1, nên PRD §4.3 (blocker `dialog.accessPartial`, `dialog.taskManage*`) chỉ còn chờ xác nhận lại ở `en`.
-- `nav.users` trúng 20/20 tầng 1 trên `vi`: đủ cơ sở lật `verified`.
+- **Chưa qua gate R1.** Còn thiếu đúng một màn: `detail` (cả `vi` lẫn `en`). 5 màn còn lại đều 100% ở cả hai locale.
+- **Nguyên nhân hai key trượt ở `dialog-access` (`vi`):** UI hiện tại không có lựa chọn "Quyền truy cập một phần" (chỉ còn tiêu đề và các công tắc), và nút phụ ở bước này tên "Quay lại", không phải "Hủy". Không phải nhãn sai: flow dùng `tryResolve` cho `accessPartial` và `cancel ?? close` cho dọn dẹp (`dialog.close` trúng 20/20). `en` trượt giống hệt hai key này (`accessPartial` 0/20, `cancel` 0/20), nên cùng nguyên nhân.
+- **Đã sửa probe:** `dialog.accessPartial` và `dialog.cancel` thành key dự phòng (không tính hit-rate); `dialog.cancel` hạ về `verified: false`.
+- Chưa rõ "Quay lại" đóng hộp thoại hay lùi một bước, nên chưa thêm vào nhãn `dialog.cancel`. Tên nút `en` ở bước này chưa biết.
+- Bốn công tắc `dialog.task*` trúng tầng 1 ở cả hai locale: điều kiện chặn viết ở PRD §4.3 (`dialog.taskManage*`) đã có bằng chứng.
+- **Nhãn `en` yếu ở ba key, đang sống nhờ đường lui cấu trúc (t4):** `dialog.bmId` (`vi` t1, `en` t4), `dialog.assetSearch` (t4 cả hai), `partners.search` (t4 cả hai). Hit-rate vẫn 100% nhưng nếu Meta đổi cấu trúc thì sẽ gãy trước; nên xem lại nhãn khi có DOM.
+- `nav.users` trúng 20/20 tầng 1 ở cả hai locale; đã lật `verified: true`.
 
 ## Việc tiếp theo
 
-- Đo `detail`, rồi lặp cả 6 màn với locale `en`.
+- Đo `detail` (`vi` và `en`): `partner.assign`, `partner.assignedAssets`.
 - Đo lại một lần có tự nhận diện (không chọn tay) để kiểm chứng `detectStage`.
+- Xem lại nhãn `dialog.bmId` (`en`), `dialog.assetSearch`, `partners.search` khi có DOM (placeholder/aria-label thật).
