@@ -52,6 +52,8 @@ const SELECTORS = {
     key: 'partner.assign',
     css: BUTTON,
     label: 'dialog.assign',
+    // Partner chưa có tài sản: trang hiện hai nút cùng mở một hộp thoại (QA-REPORT-003).
+    duplicatesOk: true,
     scope: 'main',
   },
   bmIdInput: {

@@ -349,6 +349,11 @@ async function openExistingAssets(
   // Kiểm trên chính phần tử sắp bấm: locate có thể đã poll tới nút trong dialog sau guard trên.
   if (assignButton.closest('[role="dialog"]'))
     throw new EngineError('ERR_UNEXPECTED_DIALOG', SELECTORS.partnerAssign.key);
+  // `partner.assign` cho phép nhiều bản sao (duplicatesOk): chỉ bấm nút nằm trong chi tiết đã
+  // xác minh đúng partner bằng BM ID, không phải nút của partner khác trong cùng vùng main.
+  const assignScope = partnerDetails(ctx.config.partnerBmId, ctx.lang);
+  if (!assignScope?.contains(assignButton))
+    throw new EngineError('ERR_LOCATE_AMBIGUOUS', SELECTORS.partnerAssign.key);
   await click(assignButton, ctx);
   await waitFor(
     () => (activeDialog()?.querySelector(CHECKBOX_CSS) ? true : undefined),

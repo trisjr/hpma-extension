@@ -124,6 +124,25 @@ describe('resolveOnce: các tầng', () => {
     ).toBe('c');
   });
 
+  it('duplicatesOk: nhiều bản sao cùng tầng thì lấy cái đầu theo thứ tự DOM, mặc định vẫn ambiguous', () => {
+    html('<button id="a">Tiếp</button><button id="b">Tiếp</button>');
+    expect(
+      idOf(
+        resolveOnce(spec({ label: 'dialog.next', duplicatesOk: true }), 'vi')
+      )
+    ).toBe('a');
+    expect(idOf(resolveOnce(spec({ label: 'dialog.next' }), 'vi'))).toBe(
+      'ambiguous'
+    );
+  });
+
+  it('partner.assign: partner chưa có tài sản có hai nút Assign assets thì lấy nút đầu trang', () => {
+    html(
+      '<div role="main"><button id="head">Assign assets</button><div>No assets assigned<button id="empty">Assign assets</button></div></div>'
+    );
+    expect(idOf(resolveOnce(SELECTORS.partnerAssign, 'en'))).toBe('head');
+  });
+
   it('không có gì thì none; phần tử ẩn bị lọc', () => {
     html('<button hidden>Tiếp</button>');
     expect(idOf(resolveOnce(spec({ label: 'dialog.next' }), 'vi'))).toBe(

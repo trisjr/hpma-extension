@@ -26,6 +26,10 @@ export type LocatorSpec = {
   attrs?: { name: string; contains: string }[];
   // Tầng 4: CSS cấu trúc, phải ra đúng một phần tử trong phạm vi.
   structure?: string;
+  // Opt-in cho nút có nhiều bản sao cùng làm một việc (vd. nút "Assign assets" ở đầu trang
+  // và ở trạng thái rỗng): ≥ 2 ứng viên cùng tầng thì lấy cái đầu theo thứ tự DOM thay vì báo mơ hồ.
+  // Chỉ dùng cho spec khớp theo nhãn (không có `structure`), và flow phải tự kiểm phần tử trả về.
+  duplicatesOk?: boolean;
   scope: LocatorScope;
 };
 
@@ -148,7 +152,9 @@ export function resolveOnce(spec: LocatorSpec, lang: string): Resolution {
   let ambiguous = false;
   for (let tier = 1; tier <= 4; tier += 1) {
     const found = innermost(tierMatches(tier, candidates, spec, scope, lang));
-    if (found.length === 1) return { ok: true, el: found[0], tier };
+    if (found.length === 1 || (found.length > 1 && spec.duplicatesOk)) {
+      return { ok: true, el: found[0], tier };
+    }
     if (found.length > 1) ambiguous = true;
   }
   return { ok: false, reason: ambiguous ? 'ambiguous' : 'none' };
@@ -157,7 +163,7 @@ export function resolveOnce(spec: LocatorSpec, lang: string): Resolution {
 export type TierHits = {
   // Số ứng viên (đã lọc ẩn, lấy phần tử trong cùng) ở từng tầng 1..4.
   counts: [number, number, number, number];
-  // Tầng thắng: tầng đầu tiên có đúng một ứng viên; undefined nếu trượt.
+  // Tầng thắng: tầng đầu tiên có đúng một ứng viên (hoặc ≥ 1 với `duplicatesOk`); undefined nếu trượt.
   win?: 1 | 2 | 3 | 4;
 };
 
@@ -176,7 +182,12 @@ export function tierHits(
   ([1, 2, 3, 4] as const).forEach((tier) => {
     const found = innermost(tierMatches(tier, candidates, spec, scope, lang));
     counts[tier - 1] = found.length;
-    if (win === undefined && found.length === 1) win = tier;
+    if (
+      win === undefined &&
+      (found.length === 1 || (found.length > 1 && spec.duplicatesOk))
+    ) {
+      win = tier;
+    }
   });
   return { counts, win };
 }

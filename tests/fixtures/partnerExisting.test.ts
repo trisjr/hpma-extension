@@ -38,9 +38,14 @@ type FlowRun = {
 async function flowCheck(
   mode: PageMode,
   queries: string[],
-  options: { wrongIdentity?: boolean; tasks?: PartnerTask[] } = {}
+  options: {
+    wrongIdentity?: boolean;
+    tasks?: PartnerTask[];
+    afterMount?: () => void;
+  } = {}
 ): Promise<FlowRun> {
   const page = mountPartnerPage({ mode, wrongIdentity: options.wrongIdentity });
+  options.afterMount?.();
   const { ctx, targets, controller } = makeFlowContext({
     mode: 'dry',
     config: { queries, tasks: options.tasks ?? ['ANALYZE'] },
@@ -187,6 +192,35 @@ describe('Flow trên partner đã có (partner-existing.html)', () => {
     expect(outcomes).toBe('skipped-existing');
     expect(page.counters).toMatchObject({ assetOpens: 0, writes: 0, adds: 0 });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('Hai nút Assign assets cùng trong chi tiết partner đúng: vẫn mở wizard (partner chưa có tài sản)', async () => {
+    const { error, page } = await flowCheck('open', [NEXT_ASSET_ID], {
+      afterMount: () =>
+        document
+          .querySelector('#details')
+          ?.insertAdjacentHTML(
+            'beforeend',
+            '<button id="emptyAssign">Chỉ định tài sản</button>'
+          ),
+    });
+    expect(error).toBeUndefined();
+    expect(page.counters.assetOpens).toBe(1);
+    expect(page.counters.writes).toBe(0);
+  });
+
+  it('Nút Assign assets đứng trước nhưng nằm ngoài chi tiết partner đúng: dừng, không bấm', async () => {
+    const { error, page } = await flowCheck('open', [NEXT_ASSET_ID], {
+      afterMount: () =>
+        document
+          .querySelector('[role="main"]')
+          ?.insertAdjacentHTML(
+            'afterbegin',
+            '<button id="otherPartner">Chỉ định tài sản</button>'
+          ),
+    });
+    expect(error?.code).toBe('ERR_LOCATE_AMBIGUOUS');
+    expect(page.counters).toMatchObject({ assetOpens: 0, writes: 0 });
   });
 
   it('Existing account without requested full control stops before wizard', async () => {
