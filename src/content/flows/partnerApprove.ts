@@ -73,8 +73,14 @@ function matchingRows(
 // được chọn" (trang có thể tự chuyển sang tab khác), và không có chỉ báo đang tải. Chỉ khi đó
 // "không còn thấy hàng" mới có nghĩa là request đã rời danh sách, chứ không phải danh sách trống
 // vì đang dựng lại.
+// Locator trả về span chứa nhãn; trạng thái chọn nằm ở phần tử role=tab bao ngoài.
+function needsReviewTab(ctx: Ctx): HTMLElement | undefined {
+  const label = tryResolve(SELECTORS.requestsNeedsReview, ctx.lang);
+  return label?.closest<HTMLElement>('[role="tab"]') ?? label;
+}
+
 function listReadable(ctx: Ctx): boolean {
-  const tab = tryResolve(SELECTORS.requestsNeedsReview, ctx.lang);
+  const tab = needsReviewTab(ctx);
   if (!tab || tab.getAttribute('aria-selected') === 'false') return false;
   return !Array.from(
     mainRegion().querySelectorAll<HTMLElement>(
@@ -114,7 +120,7 @@ function notFound(ctx: Ctx, index: number): never {
 // ---- Bước 1: tới tab Needs review -------------------------------------------
 
 async function selectNeedsReview(ctx: Ctx): Promise<void> {
-  const tab = tryResolve(SELECTORS.requestsNeedsReview, ctx.lang);
+  const tab = needsReviewTab(ctx);
   if (tab) {
     if (!isChecked(tab)) await click(tab, ctx);
     return;

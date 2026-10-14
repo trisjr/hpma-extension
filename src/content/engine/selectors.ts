@@ -151,6 +151,8 @@ const SELECTORS = {
     css: `${CLICKABLE}, div, span`,
     label: 'requests.needsReview',
     scope: 'main',
+    // DOM thật (14/10/2026): nhãn tab được lặp 3 lần trong 3 span cùng cấp, nên tầng 3 luôn ra 3 bản.
+    duplicatesOk: true,
   },
   requestApprove: {
     key: 'request.approve',

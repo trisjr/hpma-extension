@@ -53,7 +53,7 @@ export function mountRequestsPage(
     '/latest/settings/requests?business_id=104536928206688'
   );
   document.body.innerHTML =
-    '<main role="main" id="fixture"><div role="tablist"><div role="tab" aria-selected="true">Needs review</div><div role="tab" aria-selected="false">Completed</div></div><div id="list"></div><section id="pane"></section></main>';
+    '<main role="main" id="fixture"><div role="tablist"><div role="tab" aria-selected="true"><span>Needs review</span><span>Needs review</span><span>Needs review</span></div><div role="tab" aria-selected="false"><span>Completed</span><span>Completed</span><span>Completed</span></div></div><div id="list"></div><section id="pane"></section></main>';
   const root = document.querySelector<HTMLElement>('#fixture') as HTMLElement;
   const page: RequestsPage = {
     root,
