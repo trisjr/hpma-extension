@@ -1,6 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyPath, classifyText } from '@/content/engine/signals';
+import {
+  businessChanged,
+  classifyPath,
+  classifyText,
+} from '@/content/engine/signals';
+
+describe('businessChanged', () => {
+  const A = '1451597353550362';
+  const B = '1451597353550999';
+
+  it('chỉ true khi cả hai là ID hợp lệ và khác nhau', () => {
+    expect(businessChanged(A, B)).toBe(true);
+    expect(businessChanged(A, A)).toBe(false);
+  });
+
+  it('thiếu hoặc sai định dạng một phía thì không kết luận là đổi BM', () => {
+    expect(businessChanged(undefined, B)).toBe(false);
+    expect(businessChanged(A, undefined)).toBe(false);
+    expect(businessChanged(A, 'abc')).toBe(false);
+    expect(businessChanged('abc', B)).toBe(false);
+  });
+});
 
 describe('classifyPath', () => {
   it('checkpoint và đăng nhập, không phân biệt hoa/thường', () => {

@@ -19,6 +19,7 @@ import type { RunConfig } from '@/shared/runConfig';
 import type { PacingConfig } from '@/shared/settings';
 import type { PauseKind } from './delay';
 import type { ActionContext } from './primitives';
+import type { DangerCode } from './signals';
 
 import { rowsFromRun } from '@/shared/audit';
 import { appendLog, finish, patchStep } from '@/shared/run';
@@ -130,11 +131,7 @@ export function startRun(params: StartParams): RunHandle {
     now: Date.now(),
     runId: newEngineRunId(),
   });
-  let danger:
-    | 'ERR_CHECKPOINT'
-    | 'ERR_LOGGED_OUT'
-    | 'ERR_RATE_LIMITED'
-    | undefined;
+  let danger: DangerCode | undefined;
   let resolveAssist: (() => void) | undefined;
   // Từ lúc Assist chờ user bấm Assign, một lần ghi có thể đã tới Meta dù run kết thúc bất thường.
   let reachedAssign = false;

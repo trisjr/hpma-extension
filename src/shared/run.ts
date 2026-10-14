@@ -90,6 +90,7 @@ export type EngineErrorCode =
   | 'ERR_CHECKPOINT'
   | 'ERR_LOGGED_OUT'
   | 'ERR_TAB_RELOADED'
+  | 'ERR_BM_CHANGED'
   | 'ERR_INTERNAL';
 
 export type RunStatus =

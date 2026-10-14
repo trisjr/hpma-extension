@@ -4,12 +4,25 @@
  */
 import type { EngineErrorCode } from '@/shared/run';
 
+import { isBusinessId } from '@/shared/surfaces';
+
 import { normalizeText } from './text';
 
 export type DangerCode = Extract<
   EngineErrorCode,
-  'ERR_CHECKPOINT' | 'ERR_LOGGED_OUT' | 'ERR_RATE_LIMITED'
+  'ERR_CHECKPOINT' | 'ERR_LOGGED_OUT' | 'ERR_RATE_LIMITED' | 'ERR_BM_CHANGED'
 >;
+
+// Run phải dừng khi tab chuyển sang BM khác (SPA không reload nên chỉ đổi `business_id`).
+// Chỉ so khi cả hai phía là ID hợp lệ: URL tạm thời thiếu tham số không đủ để kết luận.
+export function businessChanged(
+  baseline: string | undefined,
+  current: string | undefined
+): boolean {
+  return (
+    isBusinessId(baseline) && isBusinessId(current) && baseline !== current
+  );
+}
 
 const RATE_LIMIT_WORDS = [
   'temporarily blocked',
