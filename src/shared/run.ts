@@ -115,6 +115,36 @@ export type RunError = { code: string; stepIndex: number; detail?: string };
 // 'disconnect': mất tab BM (panel re-sync). 'hidden': tab BM bị ẩn, engine tự chạy tiếp.
 export type PauseReason = 'disconnect' | 'hidden';
 
+// ---- Log của run (tab Log) ------------------------------------------------
+
+export const LOG_LIMIT = 200;
+export type LogLevel = 'ok' | 'warn' | 'error';
+export const LOG_LEVELS: readonly LogLevel[] = ['ok', 'warn', 'error'];
+// Mỗi mã ứng với một khoá i18n `log.code.<mã>`; không bao giờ chứa chữ từ trang BM.
+export type LogCode =
+  | 'run.start'
+  | 'run.end'
+  | 'step.start'
+  | 'step.ok'
+  | 'step.skip'
+  | 'step.wait'
+  | 'step.fail'
+  | 'locate.fallback';
+
+export type RunLogEntry = {
+  at: number;
+  // 1..7; 0 cho chính run.
+  step: number;
+  phase?: RunPhase;
+  level: LogLevel;
+  code: LogCode;
+  // Chỉ có khi logDetail ≠ off (SPEC-UI-004 §5.2).
+  key?: string;
+  tier?: 1 | 2 | 3 | 4;
+  // Tên TKQC; chỉ khi logDetail = verbose.
+  detail?: string;
+};
+
 export type RunBatch = { index: number; total: number };
 
 export type RunState = {
@@ -141,7 +171,51 @@ export type RunState = {
   sub: 0 | 1;
   disconnectDone: boolean;
   error?: RunError;
+  // `lastRun` lưu bởi v0.4.0 chưa có trường này: đọc bằng `runLog`, không đọc thẳng.
+  log: RunLogEntry[];
 };
+
+function isLogEntry(value: unknown): value is RunLogEntry {
+  if (typeof value !== 'object' || value === null) return false;
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry.at === 'number' &&
+    typeof entry.step === 'number' &&
+    typeof entry.code === 'string' &&
+    LOG_LEVELS.some((level) => level === entry.level) &&
+    (entry.key === undefined || typeof entry.key === 'string') &&
+    (entry.detail === undefined || typeof entry.detail === 'string') &&
+    (entry.tier === undefined || [1, 2, 3, 4].includes(entry.tier as number))
+  );
+}
+
+// Dữ liệu lưu có thể thiếu hoặc hỏng: bỏ dòng sai shape để một dòng xấu không làm trắng panel.
+export function runLog(run: RunState): RunLogEntry[] {
+  return Array.isArray(run.log) ? run.log.filter(isLogEntry) : [];
+}
+
+export function appendLog(run: RunState, entry: RunLogEntry): RunState {
+  return { ...run, log: [...runLog(run), entry].slice(-LOG_LIMIT) };
+}
+
+export function filterByLevel(
+  entries: readonly RunLogEntry[],
+  level: LogLevel | 'all'
+): RunLogEntry[] {
+  return level === 'all'
+    ? [...entries]
+    : entries.filter((entry) => entry.level === level);
+}
+
+export function countByLevel(
+  entries: readonly RunLogEntry[]
+): Record<LogLevel, number> {
+  const counts: Record<LogLevel, number> = { ok: 0, warn: 0, error: 0 };
+  entries.forEach((entry) => {
+    counts[entry.level] += 1;
+  });
+  return counts;
+}
 
 const ACTIVE_STATUSES: readonly RunStatus[] = [
   'running',
@@ -222,6 +296,10 @@ export function pendingSteps(): RunStep[] {
   }));
 }
 
+export function startEntry(now: number): RunLogEntry {
+  return { at: now, step: 0, level: 'ok', code: 'run.start' };
+}
+
 export function createRun(params: {
   mode: RunMode;
   scenario: RunScenario;
@@ -252,8 +330,16 @@ export function createRun(params: {
     stepIndex: 1,
     sub: 0,
     disconnectDone: false,
+    log: [startEntry(now)],
   };
 }
+
+const END_LEVEL: Partial<Record<RunStatus, LogLevel>> = {
+  done: 'ok',
+  'pending-approval': 'warn',
+  stopped: 'warn',
+  failed: 'error',
+};
 
 export function patchStep(
   run: RunState,
@@ -292,7 +378,24 @@ export function finish(
   status: RunStatus,
   now: number
 ): RunState {
-  return { ...run, status, endedAt: now };
+  return appendLog(
+    { ...run, status, endedAt: now },
+    { at: now, step: 0, level: END_LEVEL[status] ?? 'ok', code: 'run.end' }
+  );
+}
+
+function logStep(
+  run: RunState,
+  now: number,
+  code: LogCode,
+  level: LogLevel = 'ok'
+): RunState {
+  return appendLog(run, {
+    at: now,
+    step: run.stepIndex,
+    level,
+    code,
+  });
 }
 
 // Chuyển sang TKQC kế tiếp hoặc kết thúc run.
@@ -337,15 +440,20 @@ function startStep(run: RunState, now: number): RunState {
   ) {
     const code = mode === 'assist' ? 'ERR_ACT_REJECTED' : 'ERR_LOCATE_TIMEOUT';
     return finish(
-      {
-        ...run,
-        targets: patchTarget(run, currentTarget, 'failed'),
-        steps: patchStep(run, stepIndex, {
-          state: 'failed',
-          phases: { locate: 'done', act: 'fail', verify: 'idle' },
-        }),
-        error: { code, stepIndex },
-      },
+      logStep(
+        {
+          ...run,
+          targets: patchTarget(run, currentTarget, 'failed'),
+          steps: patchStep(run, stepIndex, {
+            state: 'failed',
+            phases: { locate: 'done', act: 'fail', verify: 'idle' },
+          }),
+          error: { code, stepIndex },
+        },
+        now,
+        'step.fail',
+        'error'
+      ),
       'failed',
       now
     );
@@ -355,7 +463,7 @@ function startStep(run: RunState, now: number): RunState {
     if (mode === 'dry') {
       // Dry-run không bao giờ thực thi bước ghi (FR-03).
       return {
-        ...run,
+        ...logStep(run, now, 'step.skip'),
         steps: patchStep(run, stepIndex, {
           state: 'skipped',
           phases: { locate: 'idle', act: 'skip', verify: 'skip' },
@@ -366,7 +474,7 @@ function startStep(run: RunState, now: number): RunState {
       };
     }
     return {
-      ...run,
+      ...logStep(run, now, 'step.wait', 'warn'),
       status: 'waiting-user',
       steps: patchStep(run, stepIndex, {
         state: 'waiting',
@@ -377,7 +485,7 @@ function startStep(run: RunState, now: number): RunState {
 
   if (stepIndex === VERIFY_STEP && mode === 'dry') {
     const closed: RunState = {
-      ...run,
+      ...logStep(run, now, 'step.skip'),
       steps: patchStep(run, stepIndex, {
         state: 'skipped',
         phases: { locate: 'skip', act: 'skip', verify: 'skip' },
@@ -388,7 +496,7 @@ function startStep(run: RunState, now: number): RunState {
   }
 
   return {
-    ...run,
+    ...logStep(run, now, 'step.start'),
     steps: running,
     sub: 1,
     targets:
@@ -400,7 +508,7 @@ function startStep(run: RunState, now: number): RunState {
 
 function completeStep(run: RunState, now: number): RunState {
   const done: RunState = {
-    ...run,
+    ...logStep(run, now, 'step.ok'),
     steps: patchStep(run, run.stepIndex, {
       state: 'ok',
       phases: { locate: 'done', act: 'done', verify: 'done' },

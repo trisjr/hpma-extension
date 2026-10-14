@@ -10,12 +10,14 @@ import { isAccountsRead } from '@/shared/adAccounts';
 import {
   isLocationRead,
   isPingMessage,
+  isProbeCommand,
   isRunCommand,
 } from '@/shared/messaging';
 import { isBusinessId } from '@/shared/surfaces';
 
 import readAdAccounts, { watchAccountScope } from './adAccounts';
 import handleRunCommand from './engine/controller';
+import handleProbe from './engine/probe';
 
 watchAccountScope();
 
@@ -42,6 +44,7 @@ browser.runtime.onMessage.addListener(
     }
     if (fromExtensionPage && isAccountsRead(message))
       return readAdAccounts(message);
+    if (fromExtensionPage && isProbeCommand(message)) return handleProbe();
     if (fromExtensionPage && isRunCommand(message)) {
       return handleRunCommand(message);
     }

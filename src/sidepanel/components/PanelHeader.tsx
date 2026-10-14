@@ -1,10 +1,10 @@
 import { JSX } from 'react';
 import type { ConnectionState } from '@/shared/hooks/useConnection';
 import type { Lang } from '@/shared/i18n';
-import { translate } from '@/shared/i18n';
 import type { RunMode } from './riskStyles';
 import type { PanelTab } from './TabNav';
 
+import { translate } from '@/shared/i18n';
 
 import Icon from './Icon';
 import ModeSwitch from './ModeSwitch';
@@ -18,6 +18,7 @@ type PanelHeaderProps = {
   // Đang có run: các mode còn lại bị disabled (SPEC-UI-001 §4.2).
   modeLocked: boolean;
   tab: PanelTab;
+  probeEnabled: boolean;
   onToggleLang: () => void;
   onModeChange: (mode: RunMode) => void;
   onTabChange: (tab: PanelTab) => void;
@@ -57,6 +58,7 @@ export default function PanelHeader({
   fullLocked,
   modeLocked,
   tab,
+  probeEnabled,
   onToggleLang,
   onModeChange,
   onTabChange,
@@ -91,7 +93,12 @@ export default function PanelHeader({
           onChange={onModeChange}
         />
       </div>
-      <TabNav lang={lang} current={tab} onChange={onTabChange} />
+      <TabNav
+        lang={lang}
+        probeEnabled={probeEnabled}
+        current={tab}
+        onChange={onTabChange}
+      />
     </header>
   );
 }

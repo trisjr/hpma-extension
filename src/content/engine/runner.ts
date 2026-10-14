@@ -5,6 +5,8 @@
  */
 import type { AuditDetail } from '@/shared/audit';
 import type {
+  LogCode,
+  LogLevel,
   PhaseState,
   RunError,
   RunMode,
@@ -15,12 +17,12 @@ import type {
 } from '@/shared/run';
 import type { RunConfig } from '@/shared/runConfig';
 import type { PacingConfig } from '@/shared/settings';
+import type { PauseKind } from './delay';
+import type { ActionContext } from './primitives';
 
 import { rowsFromRun } from '@/shared/audit';
-import { finish, patchStep } from '@/shared/run';
+import { appendLog, finish, patchStep } from '@/shared/run';
 import { isCurfew } from '@/shared/settings';
-import type { ActionContext } from './primitives';
-import type { PauseKind } from './delay';
 
 import { computeDelayMs } from './delay';
 import EngineError from './errors';
@@ -142,10 +144,24 @@ export function startRun(params: StartParams): RunHandle {
     onState(state);
   };
 
+  // Mỗi lần đổi trạng thái step kèm một dòng log (nếu có `entry`) trong cùng một snapshot.
   const setStepState = (
     index: number,
-    patch: { state: StepState; phases: Record<RunPhase, PhaseState> }
-  ): void => update((run) => ({ ...run, steps: patchStep(run, index, patch) }));
+    patch: { state: StepState; phases: Record<RunPhase, PhaseState> },
+    entry?: { code: LogCode; level: LogLevel; phase?: RunPhase }
+  ): void =>
+    update((run) => {
+      const next = { ...run, steps: patchStep(run, index, patch) };
+      if (!entry) return next;
+      const target = run.targets[run.currentTarget];
+      return appendLog(next, {
+        at: Date.now(),
+        step: index,
+        ...entry,
+        // Tên TKQC chỉ vào log ở mức verbose (SPEC-UI-004 §5.2).
+        ...(logDetail === 'verbose' && target ? { detail: target.name } : {}),
+      });
+    });
 
   // Cổng trước mỗi hành động: curfew (chỉ Assist, vì Dry không ghi) và tab hiển thị.
   const gate = async (): Promise<void> => {
@@ -183,6 +199,20 @@ export function startRun(params: StartParams): RunHandle {
     signal,
     lang,
     gate,
+    onTier: (key, tier) => {
+      if (tier <= 1 || tier > 4) return;
+      update((run) =>
+        appendLog(run, {
+          at: Date.now(),
+          step: run.stepIndex,
+          phase: 'locate',
+          level: 'warn',
+          code: 'locate.fallback',
+          // key/tier chỉ từ mức basic trở lên.
+          ...(logDetail === 'off' ? {} : { key, tier: tier as 1 | 2 | 3 | 4 }),
+        })
+      );
+    },
     mode,
     config,
     batchSize,
@@ -207,10 +237,14 @@ export function startRun(params: StartParams): RunHandle {
         sub: 0,
       })),
     step: async (index, body) => {
-      setStepState(index, {
-        state: 'running',
-        phases: { locate: 'run', act: 'idle', verify: 'idle' },
-      });
+      setStepState(
+        index,
+        {
+          state: 'running',
+          phases: { locate: 'run', act: 'idle', verify: 'idle' },
+        },
+        { code: 'step.start', level: 'ok', phase: 'locate' }
+      );
       update((run) => ({ ...run, stepIndex: index, sub: 1 }));
       try {
         const result = await body({
@@ -220,28 +254,44 @@ export function startRun(params: StartParams): RunHandle {
               phases: { locate: 'done', act: 'run', verify: 'idle' },
             }),
         });
-        setStepState(index, {
-          state: 'ok',
-          phases: { locate: 'done', act: 'done', verify: 'done' },
-        });
+        setStepState(
+          index,
+          {
+            state: 'ok',
+            phases: { locate: 'done', act: 'done', verify: 'done' },
+          },
+          { code: 'step.ok', level: 'ok' }
+        );
         return result;
       } catch (error) {
         if (!(error instanceof RunStopped)) {
           const acting = state.steps[index - 1]?.phases.act === 'run';
-          setStepState(index, {
-            state: 'failed',
-            phases: {
-              locate: acting ? 'done' : 'fail',
-              act: acting ? 'fail' : 'idle',
-              verify: 'idle',
+          setStepState(
+            index,
+            {
+              state: 'failed',
+              phases: {
+                locate: acting ? 'done' : 'fail',
+                act: acting ? 'fail' : 'idle',
+                verify: 'idle',
+              },
             },
-          });
+            {
+              code: 'step.fail',
+              level: 'error',
+              phase: acting ? 'act' : 'locate',
+            }
+          );
         }
         throw error;
       }
     },
     skipStep: (index, phases) => {
-      setStepState(index, { state: 'skipped', phases });
+      setStepState(
+        index,
+        { state: 'skipped', phases },
+        { code: 'step.skip', level: 'ok' }
+      );
       update((run) => ({ ...run, stepIndex: index, sub: 0 }));
     },
     setTarget: (index, outcome, code) =>
@@ -275,6 +325,14 @@ export function startRun(params: StartParams): RunHandle {
       update((run) => ({
         ...run,
         status: waiting ? 'waiting-user' : 'running',
+        log: waiting
+          ? appendLog(run, {
+              at: Date.now(),
+              step: run.stepIndex,
+              level: 'warn',
+              code: 'step.wait',
+            }).log
+          : run.log,
         steps: patchStep(run, run.stepIndex, {
           state: waiting ? 'waiting' : 'running',
           phases: waiting

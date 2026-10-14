@@ -154,6 +154,33 @@ export function resolveOnce(spec: LocatorSpec, lang: string): Resolution {
   return { ok: false, reason: ambiguous ? 'ambiguous' : 'none' };
 }
 
+export type TierHits = {
+  // Số ứng viên (đã lọc ẩn, lấy phần tử trong cùng) ở từng tầng 1..4.
+  counts: [number, number, number, number];
+  // Tầng thắng: tầng đầu tiên có đúng một ứng viên; undefined nếu trượt.
+  win?: 1 | 2 | 3 | 4;
+};
+
+// Chỉ đọc, không chờ: dùng cho probe. `undefined` khi vùng tìm (scope) chưa có trên trang.
+export function tierHits(
+  spec: LocatorSpec,
+  lang: string
+): TierHits | undefined {
+  const scope = scopeRoot(spec.scope);
+  if (!scope) return undefined;
+  const candidates = Array.from(
+    scope.querySelectorAll<HTMLElement>(spec.css)
+  ).filter(isVisible);
+  const counts: [number, number, number, number] = [0, 0, 0, 0];
+  let win: TierHits['win'];
+  ([1, 2, 3, 4] as const).forEach((tier) => {
+    const found = innermost(tierMatches(tier, candidates, spec, scope, lang));
+    counts[tier - 1] = found.length;
+    if (win === undefined && found.length === 1) win = tier;
+  });
+  return { counts, win };
+}
+
 // Chờ tới khi định vị được đúng một phần tử. Mơ hồ có thể chỉ là tạm thời
 // (đang tải) nên vẫn chờ; hết hạn thì báo đúng lý do cuối cùng.
 export async function locate(
@@ -163,16 +190,22 @@ export async function locate(
 ): Promise<HTMLElement> {
   // Gán trong closure nên TS không tự thu hẹp; ép kiểu để so sánh bên dưới hợp lệ.
   let last = 'none' as 'none' | 'ambiguous';
+  let won = 0;
   try {
-    return await waitFor(
+    const el = await waitFor(
       () => {
         const result = resolveOnce(spec, ctx.lang);
-        if (result.ok) return result.el;
+        if (result.ok) {
+          won = result.tier;
+          return result.el;
+        }
         last = result.reason;
         return undefined;
       },
       { signal: ctx.signal, timeoutMs }
     );
+    ctx.onTier?.(spec.key, won);
+    return el;
   } catch (error) {
     if (error instanceof EngineError && error.code === 'ERR_STEP_TIMEOUT') {
       throw new EngineError(

@@ -58,6 +58,7 @@ export default function makeFlowContext(options: Options = {}): FakeFlow {
     stepIndex: 1,
     sub: 0,
     disconnectDone: false,
+    log: [],
   });
   const ctx: FlowContext = {
     signal: controller.signal,

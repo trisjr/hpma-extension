@@ -11,7 +11,7 @@ import type {
 } from '@/shared/run';
 import type { RunConfig } from '@/shared/runConfig';
 
-import { pendingSteps, VERIFY_STEP } from '@/shared/run';
+import { pendingSteps, startEntry, VERIFY_STEP } from '@/shared/run';
 
 const SELECT_STEP = 4;
 
@@ -62,6 +62,7 @@ export function createEngineRun(params: {
     stepIndex: 1,
     sub: 0,
     disconnectDone: false,
+    log: [startEntry(now)],
   };
 }
 

@@ -14,12 +14,15 @@ const TABS: readonly { id: PanelTab; label: string }[] = [
 
 type TabNavProps = {
   lang: Lang;
+  // Tab Probe chỉ hiện khi bật cờ Devtest `ui.probeTab` (SPEC-UI-004 §5.1, Q6).
+  probeEnabled: boolean;
   current: PanelTab;
   onChange: (tab: PanelTab) => void;
 };
 
 export default function TabNav({
   lang,
+  probeEnabled,
   current,
   onChange,
 }: TabNavProps): JSX.Element {
@@ -28,7 +31,7 @@ export default function TabNav({
       aria-label={translate(lang, 'nav.label')}
       className='border-base-content/12 flex border-t px-2'
     >
-      {TABS.map((tab) => {
+      {TABS.filter((tab) => tab.id !== 'probe' || probeEnabled).map((tab) => {
         const isCurrent = tab.id === current;
         return (
           <a

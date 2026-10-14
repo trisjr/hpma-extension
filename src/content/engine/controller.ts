@@ -33,6 +33,11 @@ function emit(run: RunState): void {
   browser.runtime.sendMessage(event).catch(() => undefined);
 }
 
+// Probe không chạy chen vào lúc run đang khởi động hoặc đang chạy.
+export function isRunBusy(): boolean {
+  return active !== undefined || starting;
+}
+
 const reject = (code: EngineErrorCode): StartReply => ({ ok: false, code });
 
 async function start(command: RunStartCommand): Promise<StartReply> {

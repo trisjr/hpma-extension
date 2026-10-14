@@ -13,6 +13,8 @@ export type ActionContext = {
   lang: string;
   // Chặn tới khi tab hiển thị; ném lỗi nếu bị curfew. Chạy trước mỗi hành động.
   gate: () => Promise<void>;
+  // Gọi sau mỗi lần định vị thành công, kèm tầng thắng (tab Log cảnh báo khi tầng > 1).
+  onTier?: (key: string, tier: number) => void;
 };
 
 export const STEP_TIMEOUT_MS = 15_000;

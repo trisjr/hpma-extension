@@ -43,10 +43,14 @@ export type RunCommand =
   | RunAssistDoneCommand
   | RunClearCommand;
 
+// Panel → content script: đo hit-rate selector trên DOM sống (chỉ đọc, FR-02).
+export type ProbeCommand = { kind: 'probe.run' };
+
 export type ContentMessage =
   | PingMessage
   | LocationRead
   | RunCommand
+  | ProbeCommand
   | AccountsRead;
 
 // ---- Phản hồi / sự kiện ----------------------------------------------------
@@ -108,6 +112,10 @@ export function isRunCommand(value: unknown): value is RunCommand {
     default:
       return false;
   }
+}
+
+export function isProbeCommand(value: unknown): value is ProbeCommand {
+  return kindOf(value) === 'probe.run';
 }
 
 export function isStartReply(value: unknown): value is StartReply {

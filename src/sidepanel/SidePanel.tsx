@@ -1,5 +1,7 @@
 import { JSX, useState } from 'react';
 import type { FlowDef } from '@/shared/flows';
+import type { RunMode } from './components/riskStyles';
+import type { PanelTab } from './components/TabNav';
 
 import { FLOWS } from '@/shared/flows';
 import useAdAccounts from '@/shared/hooks/useAdAccounts';
@@ -7,6 +9,7 @@ import useConnection from '@/shared/hooks/useConnection';
 import useFlowSurface from '@/shared/hooks/useFlowSurface';
 import useLanguage from '@/shared/hooks/useLanguage';
 import usePartnerDraft from '@/shared/hooks/usePartnerDraft';
+import useProbe from '@/shared/hooks/useProbe';
 import useRunEngine from '@/shared/hooks/useRunEngine';
 import useRunSimulator from '@/shared/hooks/useRunSimulator';
 import { useDevtestSettings } from '@/shared/hooks/useSettings';
@@ -14,14 +17,14 @@ import useTheme from '@/shared/hooks/useTheme';
 import useWriteBudget from '@/shared/hooks/useWriteBudget';
 import { translate } from '@/shared/i18n';
 import { buildDiff, isRunActive, isRunFinished } from '@/shared/run';
-import type { PanelTab } from './components/TabNav';
-import type { RunMode } from './components/riskStyles';
 
 import ComingSoon from './components/ComingSoon';
 import FlowsScreen from './components/FlowsScreen';
+import LogScreen from './components/LogScreen';
 import PanelFooter from './components/PanelFooter';
 import PanelHeader from './components/PanelHeader';
 import PartnerAssignWizard from './components/partner/PartnerAssignWizard';
+import ProbeScreen from './components/ProbeScreen';
 import DiffScreen from './components/run/DiffScreen';
 import ResultScreen from './components/run/ResultScreen';
 import RunEmpty from './components/run/RunEmpty';
@@ -47,7 +50,12 @@ export default function SidePanel(): JSX.Element {
   const sim = useRunSimulator(useSim);
   const controller = useSim ? sim : engine;
   const [mode, setMode] = useState<RunMode>('dry');
-  const [tab, setTab] = useState<PanelTab>('flows');
+  const [requestedTab, setTab] = useState<PanelTab>('flows');
+  const probeEnabled = devtest.ready && devtest.value.probeTab;
+  // Cờ probeTab tắt khi đang ở Probe thì về Flows, không để panel kẹt ở tab đã ẩn.
+  const tab: PanelTab =
+    requestedTab === 'probe' && !probeEnabled ? 'flows' : requestedTab;
+  const probe = useProbe(tabId, probeEnabled);
   const [openFlow, setOpenFlow] = useState<FlowDef | undefined>();
   const [diffOpen, setDiffOpen] = useState(false);
   const wizardOpen = tab === 'flows' && openFlow?.id === PARTNER_FLOW_ID;
@@ -173,8 +181,14 @@ export default function SidePanel(): JSX.Element {
     if (tab === 'flows') {
       return <FlowsScreen lang={lang} onOpenFlow={setOpenFlow} />;
     }
-    const tabTitle = `${tab.charAt(0).toUpperCase()}${tab.slice(1)}`;
-    return <ComingSoon lang={lang} title={tabTitle} onBack={goToFlows} />;
+    if (tab === 'log') return <LogScreen lang={lang} run={run} />;
+    return (
+      <ProbeScreen
+        lang={lang}
+        probe={probe}
+        disabled={connection.status !== 'connected'}
+      />
+    );
   };
 
   const connectionNotice =
@@ -234,6 +248,7 @@ export default function SidePanel(): JSX.Element {
           fullLocked={FULL_LOCKED}
           modeLocked={isRunActive(run)}
           tab={tab}
+          probeEnabled={probeEnabled}
           onToggleLang={toggleLang}
           onModeChange={setMode}
           onTabChange={changeTab}
