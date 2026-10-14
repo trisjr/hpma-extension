@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.5.0
+
+### What's Changed
+
+- feat(sidepanel): Run log screen in the side panel
+- feat(sidepanel): Selector probe tab that measures selector hit-rate on the live page, shown only when the Devtest flag `ui.probeTab` is on
+- fix(partner): Hidden loading indicators no longer block reading partner search results, and a stuck indicator no longer turns "no partner" into a timeout
+
+Full Changelog: Compare v0.4.0...v0.5.0
+
 ## v0.4.0
 
 ### What's Changed
