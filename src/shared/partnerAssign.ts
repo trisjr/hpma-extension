@@ -107,6 +107,16 @@ export function pickedBusinessId(
   return loaded === undefined || loaded === picked ? picked : undefined;
 }
 
+// Lựa chọn TKQC đã có không thuộc BM của danh sách đang hiện: bỏ, chỉ giữ phần vừa thêm.
+// Bản nháp cũ (không có BM đã lưu) cũng tính là cũ, vì không biết nó thuộc BM nào.
+export function isStaleSelection(
+  selectedCount: number,
+  picked: string | undefined,
+  loaded: string | undefined
+): boolean {
+  return selectedCount > 0 && loaded !== undefined && picked !== loaded;
+}
+
 export type PartnerAssignDraft = {
   config: PartnerAssignConfig;
   step: WizardStep;

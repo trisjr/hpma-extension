@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseDraft, pickedBusinessId } from '@/shared/partnerAssign';
+import {
+  isStaleSelection,
+  parseDraft,
+  pickedBusinessId,
+} from '@/shared/partnerAssign';
 
 const A = '1451597353550362';
 const B = '1451597353550999';
@@ -21,6 +25,29 @@ describe('pickedBusinessId: BM mà run được phép chạy', () => {
   it('chưa từng chọn TKQC ở BM nào thì không có BM để gửi', () => {
     expect(pickedBusinessId(undefined, undefined)).toBeUndefined();
     expect(pickedBusinessId(undefined, B)).toBeUndefined();
+  });
+});
+
+describe('isStaleSelection: lựa chọn cũ thuộc BM khác', () => {
+  it('lựa chọn đầu tiên (chưa có TKQC nào) không bao giờ là cũ', () => {
+    expect(isStaleSelection(0, undefined, B)).toBe(false);
+    expect(isStaleSelection(0, A, B)).toBe(false);
+  });
+
+  it('cùng BM thì giữ', () => {
+    expect(isStaleSelection(2, A, A)).toBe(false);
+  });
+
+  it('danh sách đang hiện thuộc BM khác BM đã lưu thì lựa chọn cũ bị bỏ', () => {
+    expect(isStaleSelection(2, A, B)).toBe(true);
+  });
+
+  it('bản nháp cũ không có BM đã lưu cũng bị bỏ khi danh sách đã tải', () => {
+    expect(isStaleSelection(2, undefined, B)).toBe(true);
+  });
+
+  it('danh sách chưa tải thì chưa kết luận', () => {
+    expect(isStaleSelection(2, A, undefined)).toBe(false);
   });
 });
 

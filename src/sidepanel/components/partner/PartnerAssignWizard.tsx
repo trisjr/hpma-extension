@@ -9,7 +9,7 @@ import type { RunMode } from '../riskStyles';
 import { usePacingConfig } from '@/shared/hooks/useSettings';
 import useWriteBudget from '@/shared/hooks/useWriteBudget';
 import { translate } from '@/shared/i18n';
-import { isStepValid } from '@/shared/partnerAssign';
+import { isStaleSelection, isStepValid } from '@/shared/partnerAssign';
 import { isCurfew } from '@/shared/settings';
 
 import Icon from '../Icon';
@@ -186,10 +186,11 @@ export default function PartnerAssignWizard({
           selectedIds={config.accountIds}
           onChange={(accountIds) => {
             // Lựa chọn cũ thuộc BM khác với danh sách đang hiện: bỏ, chỉ giữ phần vừa thêm ở BM này.
-            const stale =
-              draft.businessId !== undefined &&
-              source.businessId !== undefined &&
-              draft.businessId !== source.businessId;
+            const stale = isStaleSelection(
+              config.accountIds.length,
+              draft.businessId,
+              source.businessId
+            );
             setConfig({
               ...config,
               accountIds: stale
