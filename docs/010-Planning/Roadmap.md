@@ -116,5 +116,5 @@ R0 ──► R1 ──► R2 ──► R3 ──► R4
 
 ## 5. Câu hỏi mở
 
-- Ngày mục tiêu cho từng mốc: chưa có, cần anh chốt.
-- Có cần Firefox đạt ngang Chrome ở từng gate hay chỉ ở gate ghi (R3)?
+- Ngày mục tiêu cho từng mốc: R1 = 28/10/2026 (xem PLAN-R1 §7); R2–R4 chưa có.
+- ~~Firefox đạt ngang Chrome ở từng gate?~~ Đã chốt 14/10: R1 chỉ cần Chrome (vi + en); Firefox ≥ 95% bắt buộc trước gate ghi (R3). Gate R1 ở trên cần sửa theo khi anh duyệt.
