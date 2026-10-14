@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.6.0
+
+### What's Changed
+
+- feat(safety): Kill-switch button in the side panel and popup stops the active run and locks Assist until cleared in Options
+- feat(safety): A run stops with `ERR_BM_CHANGED` when the BM tab switches to another business
+- feat(probe): Probe measures 6 screens (page, menu, 3 dialog wizard steps, partner detail), detects the screen automatically or lets you pick it, and copies all reports at once
+
+Full Changelog: Compare v0.5.1...v0.6.0
+
 ## v0.5.1
 
 ### What's Changed
