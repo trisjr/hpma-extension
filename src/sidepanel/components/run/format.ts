@@ -11,6 +11,11 @@ export function formatClock(timestamp: number): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
+export function formatClockMs(timestamp: number): string {
+  const ms = String(new Date(timestamp).getMilliseconds()).padStart(3, '0');
+  return `${formatClock(timestamp)}.${ms}`;
+}
+
 export function formatElapsed(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
   return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;

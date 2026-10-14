@@ -169,7 +169,8 @@ export default function SidePanel(): JSX.Element {
 
   const renderScreen = (): JSX.Element => {
     if (tab === 'run') return renderRunTab();
-    if (openFlow) {
+    // Flow đang mở chỉ che tab Flows; Log/Probe không được bị chặn bởi nó.
+    if (tab === 'flows' && openFlow) {
       return (
         <ComingSoon
           lang={lang}
