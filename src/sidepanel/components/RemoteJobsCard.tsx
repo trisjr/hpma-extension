@@ -1,23 +1,18 @@
 import { JSX } from 'react';
-import type { Lang, MessageKey } from '@/shared/i18n';
-import type { RemoteFlow, RemoteJob } from '@/shared/remoteJob';
+import type { Lang } from '@/shared/i18n';
+import type { RemoteJob } from '@/shared/remoteJob';
 
 import { translate } from '@/shared/i18n';
 import { PARTNER_TASKS } from '@/shared/partnerAssign';
-import { jobPartnerName } from '@/shared/remoteJob';
 import { parseRunConfig } from '@/shared/runConfig';
+
+import summarizeJob, { FLOW_KEYS } from './remoteJobSummary';
 
 type RemoteJobsCardProps = {
   lang: Lang;
   jobs: RemoteJob[];
   tabBusinessId: string | undefined;
   onUse: (job: RemoteJob) => void;
-};
-
-const FLOW_KEYS: Record<RemoteFlow, MessageKey> = {
-  'partner-assign': 'remote.card.assign',
-  'partner-approve': 'remote.card.approve',
-  'requests.scan': 'remote.card.scan',
 };
 
 export default function RemoteJobsCard({
@@ -27,19 +22,6 @@ export default function RemoteJobsCard({
   onUse,
 }: RemoteJobsCardProps): JSX.Element | null {
   if (jobs.length === 0) return null;
-
-  const summary = (job: RemoteJob): string | undefined => {
-    const assign = job.flow === 'partner-assign' && parseRunConfig(job.config);
-    if (assign)
-      return translate(lang, 'remote.card.summaryAssign', {
-        bm: assign.partnerBmId,
-        count: assign.queries.length,
-      });
-    const name = jobPartnerName(job);
-    return name
-      ? translate(lang, 'remote.card.summaryPartner', { name })
-      : undefined;
-  };
 
   return (
     <section
@@ -70,7 +52,7 @@ export default function RemoteJobsCard({
                   {translate(lang, FLOW_KEYS[job.flow])}
                 </span>
                 <span className='text-base-content/70 break-words text-[13px]'>
-                  {summary(job)}
+                  {summarizeJob(lang, job)}
                 </span>
               </span>
               <button

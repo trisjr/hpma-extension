@@ -8,11 +8,15 @@ import curfewLabel from '@/shared/curfewLabel';
 import useConnection from '@/shared/hooks/useConnection';
 import useKillSwitch from '@/shared/hooks/useKillSwitch';
 import useLanguage from '@/shared/hooks/useLanguage';
+import useRemoteJobs from '@/shared/hooks/useRemoteJobs';
 import { usePacingConfig } from '@/shared/hooks/useSettings';
 import useTheme from '@/shared/hooks/useTheme';
 import useWriteBudget from '@/shared/hooks/useWriteBudget';
 import { translate } from '@/shared/i18n';
 import Icon from '@/sidepanel/components/Icon';
+import summarizeJob, {
+  FLOW_KEYS,
+} from '@/sidepanel/components/remoteJobSummary';
 
 const STATUS_VIEW: Record<
   ConnectionState['status'],
@@ -30,6 +34,7 @@ export default function Popup(): JSX.Element {
   const { used, limit } = useWriteBudget();
   const { value: pacing } = usePacingConfig();
   const { engaged: killEngaged, failed: killFailed, engage } = useKillSwitch();
+  const remoteJobs = useRemoteJobs();
   // Resolve windowId trước: open side panel đòi user gesture, không được await
   // trong onClick (docs/050-Research/21 §5.1).
   const [windowId, setWindowId] = useState<number>();
@@ -104,6 +109,29 @@ export default function Popup(): JSX.Element {
           <div role='alert' className='alert alert-error text-xs'>
             {translate(lang, 'popup.openFailed')}
           </div>
+        )}
+
+        {remoteJobs.length > 0 && (
+          <section
+            aria-label={translate(lang, 'remote.card.title')}
+            className='border-base-content/12 flex min-h-0 flex-col gap-1.5 rounded-md border bg-base-100 p-2.5'
+          >
+            <h2 className='m-0 text-[13px] font-semibold'>
+              {translate(lang, 'remote.card.title')} · {remoteJobs.length}
+            </h2>
+            <ul className='m-0 flex min-h-0 list-none flex-col gap-1.5 overflow-y-auto p-0'>
+              {remoteJobs.map((job) => (
+                <li key={job.id} className='flex flex-col text-xs'>
+                  <span className='font-medium'>
+                    {translate(lang, FLOW_KEYS[job.flow])}
+                  </span>
+                  <span className='text-base-content/70 break-words'>
+                    {summarizeJob(lang, job)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         <div className='flex-1' />
