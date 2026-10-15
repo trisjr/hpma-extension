@@ -765,6 +765,15 @@ Pha 1 làm tuần tự: (1) hai spike `sender.url` của SW và thăm dò `locat
 
 Mỗi pha là một bản release riêng; không nhảy pha khi tiêu chí chưa qua.
 
+**Trạng thái triển khai Pha 2 (code xong, chưa qua tiêu chí thực địa):**
+
+- Dispatcher (`src/background/jobDispatcher.ts`, logic thuần ở `dispatchLogic.ts`, bộ nhớ bền ở `dispatchMemory.ts`, keo RTDB ở `jobStore.ts`, tab ở `jobTabs.ts`) làm đúng §5: cổng trước claim, claim bằng transaction (`src/shared/jobClaim.ts`, dùng chung với test Rules), một job mỗi lúc, ánh xạ lỗi §5.2, cancel, kill-switch, reconcile (§5.1 bước 0). `ensureSurface` nhận `businessId` ưu tiên (§5.5.3).
+- **Ngưỡng sự cố N = 1 fail-closed ở chính máy:** một sự cố (`ERR_CHECKPOINT`/`ERR_RATE_LIMITED` giữa run) trong 24 giờ chặn máy cục bộ, không phụ thuộc `coordinator watch`. Coordinator nâng lên cấp BM bằng `killSwitch/<bm>` (Rules cho coordinator **chỉ** ghi `true` vào BM cụ thể, không ghi `global`, không gỡ).
+- **Cổng `full` cho `partner-approve` (Q4):** (1) allowlist `REMOTE_ALLOWED_MODES` theo flow + Rules (`mode full` chỉ khi `flow = partner-approve` và `approval = human`); (2) cổng probe: báo cáo hai màn `requests` và `request-detail` phải mới (≤ 7 ngày) và ≥ 95%, nếu không job bị chốt `ERR_PROBE_GATE`; (3) trần 3 job `full` mỗi 24 giờ mỗi máy, đếm trước khi gửi lệnh; (4) panel mở chế độ Full theo đúng cổng probe đó (không còn hằng `FULL_LOCKED`). `assist` vẫn chưa mở.
+- **Rules:** heartbeat/`connectedAt` bắt buộc là server time (L5); kill-switch theo BM cho coordinator; deploy lên `tnm---hpma` và smoke test thật qua.
+- **Janitor và ops (§7.4):** `coordinator once|watch` (Admin SDK + `databaseAuthVariableOverride`), `ops approve|cancel|janitor`, `pnpm purge-jobs` (Admin, chỉ để dọn dữ liệu thử).
+- **Còn lại để qua tiêu chí §9:** chạy thực địa 2 profile (10 job dry không lỗi mapping; cancel ≤ 1 step; giết SW giữa `claimed`/`running`; tắt profile giữa `running` → janitor chốt `ERR_MACHINE_LOST`), và Q2 (visibility gate) trước khi chạy `full` không người trông.
+
 **Chuỗi auto-match (§7.3) theo pha:**
 
 - **Pha 1–2: không triển khai.** `dry` assign không bao giờ dừng ở `pending-approval` (`partnerAssign.ts:763` đánh `done` mọi target), nên chuỗi không có gì để chạy thật; làm sớm chỉ thêm chi phí. Rules pha 1–2 từ chối `chain.auto` (§8.2).
