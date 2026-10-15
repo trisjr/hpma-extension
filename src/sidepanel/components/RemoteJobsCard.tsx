@@ -3,6 +3,7 @@ import type { Lang, MessageKey } from '@/shared/i18n';
 import type { RemoteFlow, RemoteJob } from '@/shared/remoteJob';
 
 import { translate } from '@/shared/i18n';
+import { PARTNER_TASKS } from '@/shared/partnerAssign';
 import { jobPartnerName } from '@/shared/remoteJob';
 import { parseRunConfig } from '@/shared/runConfig';
 
@@ -78,6 +79,20 @@ export default function RemoteJobsCard({
                 {translate(lang, 'remote.card.use')}
               </button>
             </div>
+            {config && (
+              <ul className='m-0 flex list-none flex-wrap gap-1 p-0'>
+                {PARTNER_TASKS.filter((entry) =>
+                  config.tasks.includes(entry.task)
+                ).map((entry) => (
+                  <li
+                    key={entry.task}
+                    className={`badge badge-sm ${entry.high ? 'badge-warning' : 'badge-ghost'}`}
+                  >
+                    {translate(lang, entry.labelKey)}
+                  </li>
+                ))}
+              </ul>
+            )}
             {config && (
               <details className='text-[13px]'>
                 <summary className='cursor-pointer'>

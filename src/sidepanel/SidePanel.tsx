@@ -167,12 +167,16 @@ export default function SidePanel(): JSX.Element {
     controller.clear();
     setDiffOpen(false);
     setTab('flows');
+    // Job tạo ở chế độ dry: không để lại mode (assist/full) của lần trước.
+    setMode('dry');
     if (job.flow === 'partner-assign') {
       const config = parseRunConfig(job.config);
       if (!config) return;
+      // Xoá TKQC đã chọn từ trước để không gắn chúng vào BM đối tác mới của job.
       draft.setConfig({
         ...draft.config,
         partnerBmId: config.partnerBmId,
+        accountIds: [],
         tasks: config.tasks,
       });
       draft.setStep(1);
