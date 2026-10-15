@@ -5,6 +5,8 @@ import type { Provision, RemoteProbeReply } from '@/shared/remoteMessages';
 import useRemote from '@/shared/hooks/useRemote';
 import { translate } from '@/shared/i18n';
 
+import FullCapSection from './FullCapSection';
+
 type RemoteTabProps = { lang: Lang };
 
 const INPUT =
@@ -134,6 +136,8 @@ export default function RemoteTab({ lang }: RemoteTabProps): JSX.Element {
           </p>
         </section>
       )}
+
+      <FullCapSection lang={lang} />
 
       {signedIn ? (
         <div className='flex flex-wrap items-center gap-3'>

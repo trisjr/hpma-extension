@@ -6,7 +6,9 @@ import {
   LIMIT_DEFAULTS,
   LOG_DETAIL_TTL_MS,
   parseDevtest,
+  parseFullCapInput,
   parsePacing,
+  parseRemoteSettings,
   withLogDetail,
 } from '@/shared/settings';
 
@@ -120,5 +122,30 @@ describe('parseDevtest / withLogDetail', () => {
     expect(
       withLogDetail(withLogDetail(base, 'basic', now), 'off', now).logDetailAt
     ).toBeUndefined();
+  });
+});
+
+describe('remote settings', () => {
+  it('mặc định và dữ liệu hỏng đều là không giới hạn', () => {
+    expect(parseRemoteSettings(undefined).fullJobsPerDay).toBeUndefined();
+    expect(
+      parseRemoteSettings({ fullJobsPerDay: 0 }).fullJobsPerDay
+    ).toBeUndefined();
+    expect(
+      parseRemoteSettings({ fullJobsPerDay: 2.5 }).fullJobsPerDay
+    ).toBeUndefined();
+    expect(
+      parseRemoteSettings({ fullJobsPerDay: '3' }).fullJobsPerDay
+    ).toBeUndefined();
+    expect(parseRemoteSettings({ fullJobsPerDay: 5 }).fullJobsPerDay).toBe(5);
+  });
+
+  it('ô nhập: rỗng = không giới hạn, ngoài biên hoặc không phải số nguyên là lỗi', () => {
+    expect(parseFullCapInput('  ')).toEqual({ ok: true, value: undefined });
+    expect(parseFullCapInput('12')).toEqual({ ok: true, value: 12 });
+    expect(parseFullCapInput('0')).toEqual({ ok: false });
+    expect(parseFullCapInput('1001')).toEqual({ ok: false });
+    expect(parseFullCapInput('2.5')).toEqual({ ok: false });
+    expect(parseFullCapInput('abc')).toEqual({ ok: false });
   });
 });

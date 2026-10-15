@@ -24,8 +24,6 @@ export type Block = { reason: BlockedReason; until: number | null };
 // Ngưỡng tạm dừng BM (Q4): đạt N sự cố checkpoint/CAPTCHA/rate-limit trong 24 giờ thì máy tự chặn cục bộ.
 export const INCIDENT_THRESHOLD_N = 1;
 export const INCIDENT_WINDOW_MS = 24 * 60 * 60 * 1000;
-// Trần job `partner-approve` chạy `full` mỗi ngày của một máy/BM (Q4, Q11).
-export const FULL_APPROVE_CAP_PER_DAY = 3;
 export const BUSY_BACKOFF_MS = 5 * 60 * 1000;
 export const MAX_SURFACE_ATTEMPTS = 3;
 // Giữ job `claimed` chờ khoá có hạn tối đa từng ấy kể từ lúc claim, quá thì `error` (§5.2 b).
@@ -70,12 +68,14 @@ export function pruneIncidents(
   return incidents.filter((item) => now - item.at < INCIDENT_WINDOW_MS);
 }
 
-// Đã có đủ FULL_APPROVE_CAP_PER_DAY lần bắt đầu job duyệt full trong 24 giờ thì chặn tới khi lần cũ nhất hết hạn.
+// Đã có đủ `cap` lần bắt đầu job full trong 24 giờ thì chặn tới khi lần cũ nhất hết hạn.
+// `cap` do người dùng đặt ở Options → Remote; `undefined` = không giới hạn (mặc định).
 export function fullCapBlock(
   startedAts: readonly number[],
   now: number,
-  cap: number = FULL_APPROVE_CAP_PER_DAY
+  cap: number | undefined
 ): Block | undefined {
+  if (cap === undefined) return undefined;
   const inWindow = recent(startedAts, now, INCIDENT_WINDOW_MS);
   if (inWindow.length < cap) return undefined;
   return {
@@ -94,6 +94,8 @@ export type GateInput = {
   incidents: readonly Incident[];
   // Mốc bắt đầu các job duyệt `full` gần đây của máy này.
   fullStarts: readonly number[];
+  // Trần job full mỗi 24 giờ; `undefined` = không giới hạn.
+  fullCap: number | undefined;
   job: { flow: RemoteFlow; mode: RemoteMode };
 };
 
@@ -126,7 +128,7 @@ export function claimGate(input: GateInput): Gate {
   if (incident) return { open: false, why: 'blocked', block: incident };
   // Mỗi máy chỉ chạy một flow nên trần 3/ngày tính trên đúng flow của máy đó.
   if (input.job.mode === 'full') {
-    const cap = fullCapBlock(input.fullStarts, input.now);
+    const cap = fullCapBlock(input.fullStarts, input.now, input.fullCap);
     if (cap) return { open: false, why: 'blocked', block: cap };
   }
   return { open: true };

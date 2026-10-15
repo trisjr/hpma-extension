@@ -274,3 +274,41 @@ export function withLogDetail(
     logDetailAt: logDetail === 'off' ? undefined : now,
   };
 }
+
+// ---- Điều khiển từ xa (Options → Remote) ------------------------------------
+
+export const REMOTE_KEY = 'settings:remote';
+
+// Trần số job `full` máy này được bắt đầu trong 24 giờ; `undefined` = không giới hạn (mặc định).
+export type RemoteSettings = { fullJobsPerDay: number | undefined };
+
+export const FULL_JOBS_MIN = 1;
+export const FULL_JOBS_MAX = 1000;
+
+export function defaultRemoteSettings(): RemoteSettings {
+  return { fullJobsPerDay: undefined };
+}
+
+// Thiếu/hỏng/ngoài biên → không giới hạn: giá trị lạ không bao giờ vô tình chặn máy.
+export function parseRemoteSettings(raw: unknown): RemoteSettings {
+  if (!isRecord(raw)) return defaultRemoteSettings();
+  const cap = raw.fullJobsPerDay;
+  const valid =
+    typeof cap === 'number' &&
+    Number.isInteger(cap) &&
+    cap >= FULL_JOBS_MIN &&
+    cap <= FULL_JOBS_MAX;
+  return { fullJobsPerDay: valid ? cap : undefined };
+}
+
+// Ô nhập: rỗng = không giới hạn; số nguyên trong biên = trần; còn lại không hợp lệ.
+export function parseFullCapInput(
+  text: string
+): { ok: true; value: number | undefined } | { ok: false } {
+  const trimmed = text.trim();
+  if (trimmed === '') return { ok: true, value: undefined };
+  if (!/^\d+$/.test(trimmed)) return { ok: false };
+  const value = Number(trimmed);
+  if (value < FULL_JOBS_MIN || value > FULL_JOBS_MAX) return { ok: false };
+  return { ok: true, value };
+}

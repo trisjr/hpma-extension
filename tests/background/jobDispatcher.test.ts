@@ -58,7 +58,11 @@ const PASSING_PROBE = {
 function setup(
   options: {
     owned?: OwnJob[];
-    locks?: Partial<{ emergency: unknown; rateLimitedUntil: unknown }>;
+    locks?: Partial<{
+      emergency: unknown;
+      rateLimitedUntil: unknown;
+      fullCap: number;
+    }>;
     memory?: Partial<DispatchMemory>;
     flow?: 'partner-assign' | 'partner-approve';
     probe?: ProbeReports;
@@ -131,6 +135,7 @@ function setup(
           tz: 'Asia/Ho_Chi_Minh',
         },
         writesPerDay: 20,
+        fullCap: undefined,
         ...options.locks,
       })
     ),
@@ -318,10 +323,11 @@ describe('jobDispatcher: chạy job', () => {
     await vi.waitFor(() => expect(ctx.statusOf('d')).toBe('running'));
   });
 
-  it('trần 3 job duyệt full mỗi ngày: job thứ tư không được claim, máy blocked budget', async () => {
+  it('trần 3 job full mỗi ngày (đã cấu hình): job thứ tư không được claim, máy blocked budget', async () => {
     const ctx = setup({
       flow: 'partner-approve',
       memory: { fullStarts: [T0 - 3000, T0 - 2000, T0 - 1000] },
+      locks: { fullCap: 3 },
     });
     ctx.dispatcher.setPending([approveFull('f4')]);
     await vi.waitFor(() =>

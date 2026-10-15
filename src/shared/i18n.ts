@@ -486,7 +486,15 @@ const vi = {
   'remote.card.bmMismatch':
     'Job dành cho BM {job} nhưng tab đang mở BM {tab}. Kiểm tra lại trước khi chạy.',
   'remote.blocked.title': 'Máy đang bị khoá, job chưa chạy',
-  'remote.blocked.budget': 'Đã đủ 3 job full trong 24 giờ.',
+  'remote.blocked.budget':
+    'Đã đủ trần job full trong 24 giờ (đặt ở Options → Remote).',
+  'opt.remote.cap.title': 'Trần job full',
+  'opt.remote.cap.label': 'Số job full tối đa mỗi 24 giờ',
+  'opt.remote.cap.unit': 'job',
+  'opt.remote.cap.hint': 'Để trống = không giới hạn.',
+  'opt.remote.cap.save': 'Lưu',
+  'opt.remote.cap.saved': 'Đã lưu.',
+  'opt.remote.cap.saveFail': 'Không lưu được.',
   'remote.blocked.rate-limited': 'Meta đang giới hạn tần suất (rate-limit).',
   'remote.blocked.checkpoint': 'Có sự cố checkpoint/CAPTCHA gần đây.',
   'remote.blocked.emergency': 'Đang ở chế độ khẩn cấp, cần gỡ tại profile.',
@@ -1219,7 +1227,15 @@ const en: Record<MessageKey, string> = {
   'remote.card.bmMismatch':
     'This job is for BM {job} but the open tab is BM {tab}. Check before running.',
   'remote.blocked.title': 'Machine is blocked, job has not started',
-  'remote.blocked.budget': 'Already ran 3 full jobs in the last 24 hours.',
+  'remote.blocked.budget':
+    'Full job cap reached for the last 24 hours (set in Options → Remote).',
+  'opt.remote.cap.title': 'Full job cap',
+  'opt.remote.cap.label': 'Max full jobs per 24 hours',
+  'opt.remote.cap.unit': 'jobs',
+  'opt.remote.cap.hint': 'Leave empty for no limit.',
+  'opt.remote.cap.save': 'Save',
+  'opt.remote.cap.saved': 'Saved.',
+  'opt.remote.cap.saveFail': 'Could not save.',
   'remote.blocked.rate-limited': 'Meta is rate-limiting this profile.',
   'remote.blocked.checkpoint':
     'A checkpoint/CAPTCHA incident happened recently.',

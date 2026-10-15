@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { DevtestSettings, PacingConfig } from '@/shared/settings';
+import type {
+  DevtestSettings,
+  PacingConfig,
+  RemoteSettings,
+} from '@/shared/settings';
 import browser from 'webextension-polyfill';
 
 import {
@@ -7,6 +11,8 @@ import {
   PACING_KEY,
   parseDevtest,
   parsePacing,
+  parseRemoteSettings,
+  REMOTE_KEY,
 } from '@/shared/settings';
 
 export type StoredSetting<T> = {
@@ -53,6 +59,10 @@ function useStoredSetting<T>(
   );
 
   return { ready, value, save };
+}
+
+export function useRemoteSettings(): StoredSetting<RemoteSettings> {
+  return useStoredSetting(REMOTE_KEY, parseRemoteSettings);
 }
 
 export function usePacingConfig(): StoredSetting<PacingConfig> {

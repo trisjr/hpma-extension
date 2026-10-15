@@ -6,7 +6,6 @@ import {
   claimGate,
   countTargets,
   curfewEndsAt,
-  FULL_APPROVE_CAP_PER_DAY,
   fullCapBlock,
   GateInput,
   INCIDENT_WINDOW_MS,
@@ -35,6 +34,7 @@ const gateInput = (patch: Partial<GateInput> = {}): GateInput => ({
   rateLimitedUntil: undefined,
   incidents: [],
   fullStarts: [],
+  fullCap: undefined,
   job: { flow: 'partner-assign', mode: 'dry' },
   ...patch,
 });
@@ -105,26 +105,30 @@ describe('claimGate', () => {
 
   it('trần job duyệt full chỉ áp cho partner-approve full', () => {
     const starts = [NOW - 3000, NOW - 2000, NOW - 1000];
-    expect(starts).toHaveLength(FULL_APPROVE_CAP_PER_DAY);
+    const fullCap = 3;
     const approveFull = {
       flow: 'partner-approve' as const,
       mode: 'full' as const,
     };
     expect(
-      claimGate(gateInput({ fullStarts: starts, job: approveFull }))
+      claimGate(gateInput({ fullStarts: starts, fullCap, job: approveFull }))
     ).toMatchObject({ block: { reason: 'budget' } });
-    expect(claimGate(gateInput({ fullStarts: starts }))).toEqual({
+    expect(claimGate(gateInput({ fullStarts: starts, fullCap }))).toEqual({
       open: true,
     });
+    // Không đặt trần: không bao giờ chặn.
+    expect(
+      claimGate(gateInput({ fullStarts: starts, job: approveFull }))
+    ).toEqual({ open: true });
   });
 });
 
 describe('fullCapBlock', () => {
   it('hết hạn khi lần cũ nhất qua 24 giờ', () => {
     const oldest = NOW - 3600_000;
-    const block = fullCapBlock([oldest, NOW - 2000, NOW - 1000], NOW);
+    const block = fullCapBlock([oldest, NOW - 2000, NOW - 1000], NOW, 3);
     expect(block?.until).toBe(oldest + INCIDENT_WINDOW_MS);
-    expect(fullCapBlock([oldest, NOW - 2000], NOW)).toBeUndefined();
+    expect(fullCapBlock([oldest, NOW - 2000], NOW, 3)).toBeUndefined();
   });
 });
 
@@ -406,5 +410,12 @@ describe('mapRunEnd', () => {
     expect(end).toMatchObject({ status: 'error' });
     expect(end.block).toBeUndefined();
     expect(end.result.detail).toBeUndefined();
+  });
+});
+
+describe('fullCapBlock không đặt trần', () => {
+  it('undefined = không giới hạn dù đã chạy rất nhiều job full', () => {
+    const starts = Array.from({ length: 50 }, (_, i) => NOW - 1000 - i);
+    expect(fullCapBlock(starts, NOW, undefined)).toBeUndefined();
   });
 });

@@ -105,6 +105,8 @@ export type Locks = {
   rateLimitedUntil: unknown;
   curfew: CurfewConfig;
   writesPerDay: number;
+  // Trần job full mỗi 24 giờ (Options → Remote); undefined = không giới hạn.
+  fullCap: number | undefined;
 };
 
 export type DispatcherDeps = {
@@ -495,6 +497,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       rateLimitedUntil: locks.rateLimitedUntil,
       incidents: m.incidents,
       fullStarts: m.fullStarts,
+      fullCap: locks.fullCap,
       job: { flow: job.flow, mode: job.mode },
     });
   }

@@ -40,7 +40,12 @@ import { getMachineId } from '@/shared/machineId';
 import { isLocationReply, isRunEvent } from '@/shared/messaging';
 import { parseProbeReports, PROBE_STORAGE_KEY } from '@/shared/probe';
 import { isRemoteCommand } from '@/shared/remoteMessages';
-import { PACING_KEY, parsePacing } from '@/shared/settings';
+import {
+  PACING_KEY,
+  parsePacing,
+  parseRemoteSettings,
+  REMOTE_KEY,
+} from '@/shared/settings';
 
 import { DISPATCH_KEY, parseMemory } from './dispatchMemory';
 import createDispatcher, { Dispatcher, machinePatchOf } from './jobDispatcher';
@@ -134,12 +139,14 @@ async function readLocks(): Promise<{
   rateLimitedUntil: unknown;
   curfew: ReturnType<typeof parsePacing>['curfew'];
   writesPerDay: number;
+  fullCap: number | undefined;
 }> {
   const stored = await browser.storage.local
-    .get([EMERGENCY_KEY, RATE_LIMIT_KEY, PACING_KEY])
+    .get([EMERGENCY_KEY, RATE_LIMIT_KEY, PACING_KEY, REMOTE_KEY])
     .catch(() => ({}) as Record<string, unknown>);
   const pacing = parsePacing(stored[PACING_KEY]);
   return {
+    fullCap: parseRemoteSettings(stored[REMOTE_KEY]).fullJobsPerDay,
     emergency: stored[EMERGENCY_KEY],
     rateLimitedUntil: stored[RATE_LIMIT_KEY],
     curfew: pacing.curfew,
