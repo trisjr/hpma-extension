@@ -5,6 +5,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
+      // Test chạy không có Firebase SDK: `@relay` trỏ vào bản rỗng (như bản build Firefox).
+      '@relay': resolve(__dirname, './src/background/firebaseRelay.noop.ts'),
       '@utils': resolve(__dirname, './src/utils'),
       '@assets': resolve(__dirname, './src/assets'),
       '@': resolve(__dirname, './src'),

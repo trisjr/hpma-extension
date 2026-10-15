@@ -44,7 +44,8 @@ const chromeSpecificManifest = {
     type: 'module',
   },
   minimum_chrome_version: '116', // sidePanel.open
-  permissions: [...BASE_PERMISSIONS, 'sidePanel'],
+  // `alarms`: heartbeat 1 phút đánh thức service worker cho kênh Firebase (SPEC-AUTO-001 §6.3).
+  permissions: [...BASE_PERMISSIONS, 'sidePanel', 'alarms'],
   // Graph là quyền tuỳ chọn: không khai bắt buộc thì bản cập nhật không bị Chrome tắt chờ user chấp nhận.
   optional_host_permissions: [GRAPH_ORIGIN_PATTERN],
   side_panel: {
@@ -115,6 +116,13 @@ export default defineConfig(({ mode }) => ({
   },
   resolve: {
     alias: {
+      // Relay Firebase chỉ có ở Chrome (Q7): Firefox trỏ vào bản rỗng để bundle không kéo SDK.
+      '@relay': resolve(
+        __dirname,
+        mode === 'firefox'
+          ? './src/background/firebaseRelay.noop.ts'
+          : './src/background/firebaseRelay.ts'
+      ),
       '@': resolve(__dirname, './src'),
       '@utils': resolve(__dirname, './src/utils'),
       '@assets': resolve(__dirname, './src/assets'),

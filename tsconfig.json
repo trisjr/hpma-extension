@@ -15,6 +15,7 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
+      "@relay": ["src/background/firebaseRelay.ts"],
       "@*": ["src/*"]
     },
 
