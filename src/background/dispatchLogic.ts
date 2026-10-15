@@ -183,13 +183,18 @@ function surfaceFailure(ctx: ReplyContext): ReplyAction {
   return { kind: 'unclaim', backoffMs: BUSY_BACKOFF_MS, attempts };
 }
 
+// Giữ tối thiểu từng này: khoá "hết hạn ngay" (vd. curfew đã tắt giữa chừng) không được gây quay vòng nóng.
+export const MIN_HOLD_MS = 60 * 1000;
+
 function holdOrExpire(
   ctx: ReplyContext,
   block: Block,
   code: string
 ): ReplyAction {
   if (ctx.now - ctx.claimedAt > HOLD_MAX_MS) return { kind: 'error', code };
-  return { kind: 'hold', block };
+  const until =
+    block.until === null ? null : Math.max(block.until, ctx.now + MIN_HOLD_MS);
+  return { kind: 'hold', block: { ...block, until } };
 }
 
 // Lỗi khi chuẩn bị tab (`ensureSurface`, tìm tab) — trước khi gửi lệnh.

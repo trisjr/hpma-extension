@@ -197,10 +197,13 @@ describe('mapStartReply', () => {
 
   it('rate-limit/curfew/budget giữ claimed và chặn máy có hạn', () => {
     expect(
-      mapStartReply('ERR_RATE_LIMITED', replyCtx({ rateLimitedUntil: NOW + 9 }))
+      mapStartReply(
+        'ERR_RATE_LIMITED',
+        replyCtx({ rateLimitedUntil: NOW + 90_000 })
+      )
     ).toEqual({
       kind: 'hold',
-      block: { reason: 'rate-limited', until: NOW + 9 },
+      block: { reason: 'rate-limited', until: NOW + 90_000 },
     });
     const inside = Date.UTC(2025, 0, 1, 20, 0, 0);
     expect(
@@ -215,6 +218,15 @@ describe('mapStartReply', () => {
     expect(mapStartReply('ERR_BUDGET', replyCtx())).toMatchObject({
       kind: 'hold',
       block: { reason: 'budget' },
+    });
+  });
+
+  it('khoá hết hạn ngay vẫn được giữ tối thiểu 1 phút (không quay vòng nóng)', () => {
+    expect(
+      mapStartReply('ERR_RATE_LIMITED', replyCtx({ rateLimitedUntil: NOW - 5 }))
+    ).toEqual({
+      kind: 'hold',
+      block: { reason: 'rate-limited', until: NOW + 60_000 },
     });
   });
 
