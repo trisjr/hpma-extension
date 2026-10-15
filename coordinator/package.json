@@ -7,6 +7,7 @@
     "test": "firebase emulators:exec --only database --project demo-hpma \"vitest run\"",
     "claims": "tsx scripts/setClaims.ts",
     "smoke": "tsx scripts/smokeTest.ts",
+    "purge-jobs": "tsx scripts/purgeJobs.ts",
     "ops": "tsx --env-file=../.env src/ops.ts"
   },
   "devDependencies": {
