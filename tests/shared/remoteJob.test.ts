@@ -192,6 +192,51 @@ describe('flow và mode', () => {
       );
     });
 
+    // TEMP(D12-bridge): gỡ khối này cùng `isBridgeApprove`.
+    it('D12-bridge: approve machine-chain full do máy tạo (không scan, có partnerBmId) được chạy', () => {
+      const bridge = {
+        ...approveJob,
+        scanJobId: undefined,
+        approval: 'machine-chain',
+        createdBy: 'uid-m1',
+        approvedBy: 'uid-m1',
+      };
+      expect(issueOf(bridge)).toBeUndefined();
+      // Có scan, thiếu partnerBmId, decline, approvedBy khác người tạo, hoặc do coordinator: bị từ chối.
+      expect(issueOf({ ...bridge, scanJobId: 'scan-1' })).toBe('provenance');
+      expect(
+        issueOf({
+          ...bridge,
+          config: { ...approveJob.config, partnerBmId: undefined },
+        })
+      ).toBe('provenance');
+      expect(
+        issueOf({
+          ...bridge,
+          config: { ...approveJob.config, action: 'decline' },
+        })
+      ).toBe('provenance');
+      expect(issueOf({ ...bridge, approvedBy: 'uid-khac' })).toBe('provenance');
+      expect(
+        issueOf({
+          ...bridge,
+          createdBy: 'coordinator',
+          approvedBy: 'coordinator',
+        })
+      ).toBe('provenance');
+      expect(issueOf({ ...bridge, chain: {} })).toBe('provenance');
+      // Chỉ cho approve: assign full mang approval machine-chain vẫn bị từ chối.
+      expect(
+        issueOf({
+          ...assignJob,
+          mode: 'full',
+          approval: 'machine-chain',
+          createdBy: 'uid-m1',
+          approvedBy: 'uid-m1',
+        })
+      ).toBe('provenance');
+    });
+
     it('job approve auto-match full do coordinator tạo được chạy', () => {
       expect(issueOf(approveJob)).toBeUndefined();
       expect(parseJobEnvelope('j', approveJob, BM)?.chainAssignJobId).toBe(

@@ -224,6 +224,28 @@ function isAutoMatchApprove(job: RemoteJob): boolean {
   );
 }
 
+// TEMP(D12-bridge): đường tạm khi chưa có coordinator — máy `partner-assign` tự tạo job approve ngay sau khi
+// job assign (có `chain.auto`) dừng ở pending-approval. Gỡ cùng lúc với `src/background/chainBridge.ts` và nhánh
+// `machine-chain` trong `coordinator/database.rules.json` khi coordinator (phase B) được triển khai.
+export const BRIDGE_APPROVAL = 'machine-chain';
+
+// Job approve của đường tạm: chỉ approve, do chính máy tạo (createdBy = approvedBy), trỏ về job assign của chuỗi,
+// không có scan và bắt buộc có partnerBmId (M3).
+function isBridgeApprove(job: RemoteJob): boolean {
+  if (job.flow !== 'partner-approve' || job.approval !== BRIDGE_APPROVAL)
+    return false;
+  const config = parseApproveConfig(job.config);
+  return (
+    config?.action === 'approve' &&
+    config.partnerBmId !== undefined &&
+    job.scanJobId === undefined &&
+    job.chainAssignJobId !== undefined &&
+    job.createdBy !== undefined &&
+    job.createdBy !== COORDINATOR_UID &&
+    job.approvedBy === job.createdBy
+  );
+}
+
 // Vì sao dispatcher không được chạy job này (→ `ERR_JOB_INVALID`, không gửi lệnh, không retry).
 export function jobDispatchIssue(
   job: RemoteJob
@@ -239,7 +261,8 @@ export function jobDispatchIssue(
       job.approvedBy !== undefined &&
       job.approvedBy === job.createdBy
     ) &&
-    !isAutoMatchApprove(job)
+    !isAutoMatchApprove(job) &&
+    !isBridgeApprove(job)
   )
     return 'provenance';
   return hasValidConfig(job) ? undefined : 'config';

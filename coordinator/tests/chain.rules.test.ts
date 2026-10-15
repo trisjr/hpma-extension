@@ -96,6 +96,7 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
         createdAt: 1,
         state: {
           status: 'done',
+          claimedBy: 'm1',
           finishedAt: over.finishedAt ?? Date.now(),
           result: { runStatus: over.runStatus ?? 'pending-approval' },
         },
@@ -360,6 +361,217 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
         approveJob()
       )
     );
+  });
+
+  // TEMP(D12-bridge): máy partner-assign tự tạo approve của chuỗi. Gỡ khối này cùng nhánh rules `machine-chain`.
+  describe('đường tạm D12-bridge (máy assign tạo approve)', () => {
+    const machine = (
+      id = 'm1',
+      flow = 'partner-assign',
+      bm = BM
+    ): ReturnType<RulesTestEnvironment['authenticatedContext']> =>
+      env.authenticatedContext(`uid-${id}`, { machineId: id, bm, flow });
+    const bridge = (
+      uid = 'uid-m1',
+      over: Record<string, unknown> = {}
+    ): Record<string, unknown> => {
+      const { scanJobId: _s, ...rest } = approveJob();
+      return {
+        ...rest,
+        approval: 'machine-chain',
+        approvedBy: uid,
+        createdBy: uid,
+        ...over,
+      };
+    };
+    const KEY = `ext/jobs/${BM}/chain-assign1-approve`;
+
+    it('máy đã giữ job assign tạo được approve; lần hai và khoá lạ bị từ chối', async () => {
+      await seed();
+      const db = machine().database();
+      await assertSucceeds(set(ref(db, KEY), bridge()));
+      await assertFails(set(ref(db, KEY), bridge()));
+      await assertFails(set(ref(db, `ext/jobs/${BM}/approve-2`), bridge()));
+    });
+
+    it('máy khác, máy flow approve hoặc máy BM khác bị từ chối', async () => {
+      await seed();
+      await assertFails(
+        set(ref(machine('m2').database(), KEY), bridge('uid-m2'))
+      );
+      await assertFails(
+        set(
+          ref(machine('m1', 'partner-approve').database(), KEY),
+          bridge('uid-m1')
+        )
+      );
+      await assertFails(
+        set(
+          ref(
+            machine('m1', 'partner-assign', '111111111111111').database(),
+            KEY
+          ),
+          bridge('uid-m1')
+        )
+      );
+    });
+
+    it('bị từ chối khi assign chưa chờ duyệt hoặc chuỗi quá ttl', async () => {
+      await seed({ runStatus: 'done' });
+      await assertFails(set(ref(machine().database(), KEY), bridge()));
+      await env.clearDatabase();
+      await seed({ finishedAt: Date.now() - (chain.ttlSec + 60) * 1000 });
+      await assertFails(set(ref(machine().database(), KEY), bridge()));
+    });
+
+    it('partnerBmId, partnerName, mode, action phải khớp job assign; scanJobId không được có', async () => {
+      await seed();
+      const db = machine().database();
+      const config = approveJob().config as Record<string, unknown>;
+      await assertFails(
+        set(
+          ref(db, KEY),
+          bridge('uid-m1', {
+            config: { ...config, partnerBmId: '9999999999999' },
+          })
+        )
+      );
+      await assertFails(
+        set(
+          ref(db, KEY),
+          bridge('uid-m1', { config: { ...config, partnerName: 'BM Khac' } })
+        )
+      );
+      await assertFails(set(ref(db, KEY), bridge('uid-m1', { mode: 'dry' })));
+      await assertFails(
+        set(
+          ref(db, KEY),
+          bridge('uid-m1', { config: { ...config, action: 'decline' } })
+        )
+      );
+      await assertFails(
+        set(ref(db, KEY), bridge('uid-m1', { scanJobId: SCAN }))
+      );
+    });
+
+    it('mọi requester phải bằng chain.requesterName của job assign (kể cả mục thứ hai)', async () => {
+      await seed();
+      const db = machine().database();
+      const config = approveJob().config as Record<string, unknown>;
+      const other = { requester: 'Another Employee', account: 'SHOP A' };
+      await assertFails(
+        set(
+          ref(db, KEY),
+          bridge('uid-m1', { config: { ...config, requests: [other] } })
+        )
+      );
+      await assertFails(
+        set(
+          ref(db, KEY),
+          bridge('uid-m1', {
+            config: {
+              ...config,
+              requests: [{ requester: 'Admin 1', account: 'A' }, other],
+            },
+          })
+        )
+      );
+      await assertSucceeds(
+        set(
+          ref(db, KEY),
+          bridge('uid-m1', {
+            config: {
+              ...config,
+              requests: [
+                { requester: 'Admin 1', account: 'A' },
+                { requester: 'Admin 1', account: 'B' },
+              ],
+            },
+          })
+        )
+      );
+    });
+
+    it('bị từ chối khi job assign đã bị yêu cầu huỷ hoặc kill-switch đang bật', async () => {
+      await seed();
+      await env.withSecurityRulesDisabled(async (context) => {
+        await set(
+          ref(context.database(), `ext/jobs/${BM}/${ASSIGN}/cancelRequested`),
+          true
+        );
+      });
+      await assertFails(set(ref(machine().database(), KEY), bridge()));
+      await env.clearDatabase();
+      await seed();
+      await env.withSecurityRulesDisabled(async (context) => {
+        await set(ref(context.database(), `ext/killSwitch/${BM}`), true);
+      });
+      await assertFails(set(ref(machine().database(), KEY), bridge()));
+    });
+
+    it('máy giữ job không ghi được finishedAt tuỳ ý để kéo dài ttl', async () => {
+      await env.withSecurityRulesDisabled(async (context) => {
+        await set(ref(context.database(), `ext/jobs/${BM}/${ASSIGN}`), {
+          flow: 'partner-assign',
+          mode: 'full',
+          businessId: BM,
+          config: assignConfig,
+          chain,
+          createdBy: 'uid-ops',
+          createdAt: 1,
+          state: { status: 'running', claimedBy: 'm1' },
+        });
+      });
+      const stateRef = ref(
+        machine().database(),
+        `ext/jobs/${BM}/${ASSIGN}/state`
+      );
+      await assertFails(update(stateRef, { status: 'done', finishedAt: 9e15 }));
+      await assertSucceeds(
+        update(stateRef, { status: 'done', finishedAt: serverTimestamp() })
+      );
+    });
+
+    it('máy chỉ tạo được approve machine-chain: không assign, scan, human hay auto-match', async () => {
+      await seed();
+      const db = machine().database();
+      await assertFails(
+        set(ref(db, `ext/jobs/${BM}/chain-assign1-scan-9`), {
+          ...scanJob(),
+          createdBy: 'uid-m1',
+        })
+      );
+      await assertFails(
+        set(ref(db, `ext/jobs/${BM}/x1`), {
+          ...buildAssignJob(assignConfig, { ...opsArgs, uid: 'uid-m1' }, 'dry'),
+        })
+      );
+      await assertFails(
+        set(ref(db, KEY), bridge('uid-m1', { approval: 'auto-match' }))
+      );
+      await assertFails(
+        set(
+          ref(db, KEY),
+          bridge('uid-m1', { approval: 'human', scanJobId: SCAN })
+        )
+      );
+    });
+
+    it('ops và coordinator không dùng được approval machine-chain', async () => {
+      await seed();
+      await assertFails(
+        set(
+          ref(ops().database(), KEY),
+          bridge('uid-ops', { approvedBy: 'uid-ops' })
+        )
+      );
+      await assertFails(
+        set(
+          ref(coordinator().database(), KEY),
+          bridge('coordinator', { approvedBy: 'coordinator' })
+        )
+      );
+    });
   });
 
   it('coordinator không tạo được assign, kể cả dry mang approval auto-match', async () => {

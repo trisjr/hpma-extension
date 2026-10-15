@@ -14,6 +14,7 @@ import type { MachineFlow, RemoteJob } from '@/shared/remoteJob';
 import type { RunState } from '@/shared/run';
 import type { CurfewConfig } from '@/shared/settings';
 import type { Surface } from '@/shared/surfaces';
+import type { BridgeJob } from './chainBridge';
 import type { Block, Gate, ReplyAction, ReplyContext } from './dispatchLogic';
 import type { DispatchMemory } from './dispatchMemory';
 
@@ -28,6 +29,7 @@ import {
 import { isRunActive, isRunFinished } from '@/shared/run';
 import { parseRunConfig } from '@/shared/runConfig';
 
+import bridgeApprove from './chainBridge';
 import {
   awaitingOf,
   claimGate,
@@ -119,6 +121,8 @@ export type DispatcherDeps = {
   claim: (jobId: string) => Promise<boolean>;
   writeState: (jobId: string, patch: Record<string, unknown>) => Promise<void>;
   writeMachine: (patch: MachinePatch) => Promise<void>;
+  // TEMP(D12-bridge): tạo job approve của chuỗi (xem chainBridge.ts); không có thì đường tạm tắt.
+  createJob?: (jobId: string, job: BridgeJob) => Promise<void>;
   // Cục bộ: công bố job đang chạy cho popup (undefined = không có).
   publishActive: (active: ActiveJob | undefined) => Promise<void>;
   // Cục bộ: công bố trạng thái máy (idle/busy/blocked + lý do) để popup giải thích vì sao job chưa chạy.
@@ -306,12 +310,8 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
         ? locks.rateLimitedUntil
         : undefined;
     const now = deps.now();
-    const end = mapRunEnd(
-      run,
-      cur.cancelRequested || kill.global || kill.bm,
-      now,
-      limitedUntil
-    );
+    const stopped = cur.cancelRequested || kill.global || kill.bm;
+    const end = mapRunEnd(run, stopped, now, limitedUntil);
     // Chuỗi D12: job assign khai chain.auto và run dừng chờ duyệt thì ghi E cho coordinator đối chiếu.
     const awaiting =
       cur.job.chain?.auto && run.status === 'pending-approval'
@@ -341,6 +341,10 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     }));
     lastGateBlock = undefined;
     await setView(idleView());
+    // TEMP(D12-bridge): đặt cuối và không await — `set` của RTDB treo khi offline, không được giữ pump/view của job
+    // kế. Job assign đã chốt `done` từ trước nên lỗi tạo job approve chỉ được báo. Huỷ hoặc kill-switch thì không nối chuỗi.
+    if (awaiting && end.status === 'done' && !stopped)
+      guard(bridgeApprove(cur.job, awaiting, deps.createJob));
   }
 
   // Job `claimed` chưa chạm BM: xử lý theo ReplyAction (§5.2).

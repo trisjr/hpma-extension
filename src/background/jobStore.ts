@@ -4,6 +4,7 @@
  * mọi quyết định nằm ở `jobDispatcher.ts`/`dispatchLogic.ts`. Rules cưỡng chế độc lập (D15): máy chỉ ghi được
  * `state` của job mình claim, và chỉ claim được job đúng flow/BM khi kill-switch tắt.
  */
+import type { BridgeJob } from './chainBridge';
 import type { MachinePatch, OwnJob } from './jobDispatcher';
 import type { MachineClaims } from './relayLogic';
 import {
@@ -15,6 +16,8 @@ import {
   query,
   ref,
   runTransaction,
+  serverTimestamp,
+  set,
   update,
 } from 'firebase/database';
 
@@ -25,6 +28,8 @@ export type JobStore = {
   claim: (jobId: string) => Promise<boolean>;
   writeState: (jobId: string, patch: Record<string, unknown>) => Promise<void>;
   writeMachine: (patch: MachinePatch) => Promise<void>;
+  // TEMP(D12-bridge): tạo job approve của chuỗi (chainBridge.ts); Rules chỉ cho đúng một dạng job này.
+  createJob: (jobId: string, job: BridgeJob) => Promise<void>;
   readOwnJobs: () => Promise<OwnJob[]>;
   watchCancel: (
     jobId: string,
@@ -41,7 +46,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export default function createJobStore(
   db: Database,
-  claims: MachineClaims
+  claims: MachineClaims,
+  getUid: () => string | undefined
 ): JobStore {
   const jobRef = (jobId: string, child = ''): ReturnType<typeof ref> =>
     ref(db, `ext/jobs/${claims.bm}/${jobId}${child}`);
@@ -63,6 +69,18 @@ export default function createJobStore(
 
     async writeMachine(patch) {
       await update(ref(db, `ext/machines/${claims.machineId}`), patch);
+    },
+
+    // TEMP(D12-bridge): `set` chỉ thành công khi chưa có job cùng khoá (Rules: `!data.exists()`).
+    async createJob(jobId, job) {
+      const uid = getUid();
+      if (!uid) throw new Error('chưa đăng nhập');
+      await set(jobRef(jobId), {
+        ...job,
+        createdAt: serverTimestamp(),
+        createdBy: uid,
+        approvedBy: uid,
+      });
     },
 
     // Job do chính máy này giữ: bắt cả job đã claim mà SW chết trước khi kịp ghi `currentJobId` (§5.1 bước 0).

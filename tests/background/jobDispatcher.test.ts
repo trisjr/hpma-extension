@@ -1,3 +1,4 @@
+import type { BridgeJob } from '@/background/chainBridge';
 import type { ProbeReports } from '@/shared/probe';
 import type { RemoteJob } from '@/shared/remoteJob';
 import type { RunState } from '@/shared/run';
@@ -67,9 +68,12 @@ function setup(
     flow?: 'partner-assign' | 'partner-approve';
     probe?: ProbeReports;
     killUnknown?: boolean;
+    createFails?: boolean;
   } = {}
 ) {
   const clock = { now: T0 };
+  const createdJobs: { id: string; job: BridgeJob }[] = [];
+  const statusAtCreate: (string | undefined)[] = [];
   const writes: Write[] = [];
   const machine: MachinePatch[] = [];
   const status = new Map<string, string>();
@@ -139,6 +143,12 @@ function setup(
         ...options.locks,
       })
     ),
+    createJob: vi.fn(async (id: string, job: BridgeJob) => {
+      // Rules cần thấy job assign đã `done` rồi mới cho tạo job approve.
+      statusAtCreate.push(status.get(id.replace(/^chain-|-approve$/g, '')));
+      if (options.createFails) throw new Error('permission_denied');
+      createdJobs.push({ id, job });
+    }),
     loadMemory: vi.fn(async () => memory),
     saveMemory: vi.fn(async (next: DispatchMemory) => {
       memory = next;
@@ -154,6 +164,8 @@ function setup(
     deps,
     tabs,
     writes,
+    createdJobs,
+    statusAtCreate,
     machine,
     status,
     clock,
@@ -251,6 +263,93 @@ describe('jobDispatcher: chạy job', () => {
       chained.dispatcher.onRunEvent(run({ status: 'done' }), 7);
       await vi.waitFor(() => expect(chained.statusOf('n2')).toBe('done'));
       expect(chained.last('n2')?.result).not.toHaveProperty('awaitingApproval');
+    });
+
+    // TEMP(D12-bridge): gỡ ba test này cùng chainBridge.ts.
+    it('D12-bridge: assign chờ duyệt tạo đúng một job approve sau khi chốt done', async () => {
+      const ctx = setup();
+      ctx.dispatcher.setPending([mkJob('c1', { chain })]);
+      await vi.waitFor(() => expect(ctx.statusOf('c1')).toBe('running'));
+      ctx.dispatcher.onRunEvent(pendingRun, 7);
+      await vi.waitFor(() => expect(ctx.createdJobs).toHaveLength(1));
+      expect(ctx.statusOf('c1')).toBe('done');
+      expect(ctx.statusAtCreate).toEqual(['done']);
+      expect(ctx.createdJobs[0]).toMatchObject({
+        id: 'chain-c1-approve',
+        job: {
+          flow: 'partner-approve',
+          mode: 'full',
+          businessId: BM,
+          approval: 'machine-chain',
+          chain: { assignJobId: 'c1' },
+          config: {
+            partnerName: 'BM Đối Tác',
+            partnerBmId: '1234567890123456',
+            action: 'approve',
+            requests: [{ requester: 'Admin 1', account: 'SHOP B' }],
+          },
+        },
+      });
+    });
+
+    it('D12-bridge: không có chain.auto, run không chờ duyệt, hoặc thiếu requesterName thì không tạo job', async () => {
+      const plain = setup();
+      plain.dispatcher.setPending([mkJob('n1')]);
+      await vi.waitFor(() => expect(plain.statusOf('n1')).toBe('running'));
+      plain.dispatcher.onRunEvent(pendingRun, 7);
+      await vi.waitFor(() => expect(plain.statusOf('n1')).toBe('done'));
+      expect(plain.createdJobs).toHaveLength(0);
+
+      const done = setup();
+      done.dispatcher.setPending([mkJob('n2', { chain })]);
+      await vi.waitFor(() => expect(done.statusOf('n2')).toBe('running'));
+      done.dispatcher.onRunEvent(run({ status: 'done' }), 7);
+      await vi.waitFor(() => expect(done.statusOf('n2')).toBe('done'));
+      expect(done.createdJobs).toHaveLength(0);
+
+      const noRequester = setup();
+      noRequester.dispatcher.setPending([
+        mkJob('n3', { chain: { ...chain, requesterName: undefined } }),
+      ]);
+      await vi.waitFor(() =>
+        expect(noRequester.statusOf('n3')).toBe('running')
+      );
+      noRequester.dispatcher.onRunEvent(pendingRun, 7);
+      await vi.waitFor(() => expect(noRequester.statusOf('n3')).toBe('done'));
+      expect(noRequester.createdJobs).toHaveLength(0);
+      expect(noRequester.errors).toHaveLength(1);
+    });
+
+    it('D12-bridge: bị huỷ hoặc kill-switch đang bật thì không tạo job approve', async () => {
+      const cancelled = setup();
+      cancelled.dispatcher.setPending([mkJob('c1', { chain })]);
+      await vi.waitFor(() => expect(cancelled.statusOf('c1')).toBe('running'));
+      cancelled.cancel('c1');
+      cancelled.dispatcher.onRunEvent(pendingRun, 7);
+      await vi.waitFor(() => expect(cancelled.statusOf('c1')).toBe('done'));
+      await settle();
+      expect(cancelled.createdJobs).toHaveLength(0);
+
+      const killed = setup();
+      killed.dispatcher.setPending([mkJob('c2', { chain })]);
+      await vi.waitFor(() => expect(killed.statusOf('c2')).toBe('running'));
+      killed.dispatcher.setKill({ global: false, bm: true });
+      killed.dispatcher.onRunEvent(pendingRun, 7);
+      await vi.waitFor(() => expect(killed.statusOf('c2')).toBeDefined());
+      await settle();
+      expect(killed.createdJobs).toHaveLength(0);
+    });
+
+    it('D12-bridge: tạo job lỗi thì chỉ báo lỗi, job assign vẫn done và máy về idle', async () => {
+      const ctx = setup({ createFails: true });
+      ctx.dispatcher.setPending([mkJob('c1', { chain })]);
+      await vi.waitFor(() => expect(ctx.statusOf('c1')).toBe('running'));
+      ctx.dispatcher.onRunEvent(pendingRun, 7);
+      await vi.waitFor(() => expect(ctx.statusOf('c1')).toBe('done'));
+      await vi.waitFor(() => expect(ctx.errors).toHaveLength(1));
+      await vi.waitFor(() =>
+        expect(ctx.dispatcher.view()).toEqual({ status: 'idle' })
+      );
     });
 
     it('SW chết giữa run: job nối lại qua reconcile vẫn giữ chain và ghi E', async () => {

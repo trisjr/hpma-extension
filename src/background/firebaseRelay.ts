@@ -160,8 +160,12 @@ function ensureDispatcher(claims: MachineClaims): Dispatcher {
   const key = `${claims.machineId}/${claims.bm}/${claims.flow}`;
   if (dispatcher && dispatcherKey === key) return dispatcher;
   disposeDispatcher();
-  const { db: database } = sdk();
-  const store = createJobStore(database, claims);
+  const { db: database, auth: authInstance } = sdk();
+  const store = createJobStore(
+    database,
+    claims,
+    () => authInstance.currentUser?.uid
+  );
   const created = createDispatcher({
     now: () => Date.now(),
     machineId: claims.machineId,
