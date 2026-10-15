@@ -19,7 +19,7 @@ const job = (
   config: {
     partnerBmId: '1234567890123456',
     queries: ['SHOP LAN 1'],
-    tasks: ['ADVERTISE'],
+    tasks: ['ADVERTISE', 'ANALYZE'],
   },
   createdAt: 100,
   createdBy: 'uid-ops',

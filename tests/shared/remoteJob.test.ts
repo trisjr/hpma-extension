@@ -5,7 +5,9 @@ import {
   isMachineFlow,
   isModeAllowed,
   isRemoteJob,
+  jobDispatchIssue,
   jobPartnerName,
+  parseJobEnvelope,
   parseRemoteJob,
 } from '@/shared/remoteJob';
 
@@ -111,10 +113,30 @@ describe('flow và mode', () => {
     expect(acceptsFlow('partner-assign', 'partner-approve')).toBe(false);
   });
 
-  it('chỉ dry được phép từ xa ở pha 1–2 (D8)', () => {
-    expect(isModeAllowed('dry')).toBe(true);
-    expect(isModeAllowed('assist')).toBe(false);
-    expect(isModeAllowed('full')).toBe(false);
+  it('chỉ dry được phép từ xa khi chưa mở full (D8)', () => {
+    expect(isModeAllowed('partner-assign', 'dry')).toBe(true);
+    expect(isModeAllowed('partner-assign', 'assist')).toBe(false);
+    expect(isModeAllowed('partner-approve', 'full')).toBe(false);
+    expect(isModeAllowed('requests.scan', 'full')).toBe(false);
+  });
+
+  it('từ chối job gán có tổ hợp quyền UI BM không biểu diễn được', () => {
+    const only = {
+      ...assignJob,
+      config: { ...assignJob.config, tasks: ['ADVERTISE'] },
+    };
+    expect(parseRemoteJob('x', only, BM)).toBeUndefined();
+  });
+
+  it('vỏ job vẫn đọc được khi config sai, và nêu lý do không chạy', () => {
+    const bad = { ...assignJob, config: { partnerBmId: 'abc' } };
+    const envelope = parseJobEnvelope('x', bad, BM);
+    expect(envelope?.id).toBe('x');
+    expect(envelope && jobDispatchIssue(envelope)).toBe('config');
+    const lax = parseJobEnvelope('y', { ...assignJob, mode: 'assist' }, BM);
+    expect(lax && jobDispatchIssue(lax)).toBe('mode');
+    const ok = parseJobEnvelope('z', assignJob, BM);
+    expect(ok && jobDispatchIssue(ok)).toBeUndefined();
   });
 
   it('isMachineFlow loại requests.scan', () => {
