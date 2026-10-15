@@ -20,6 +20,7 @@ import {
   locate,
   resolveOnce,
   tryResolve,
+  visibleDialogs,
 } from '../engine/locator';
 import {
   click,
@@ -571,27 +572,58 @@ async function cancelWizard(ctx: FlowContext): Promise<void> {
 
 // Yêu cầu duyệt đã được Meta ghi nhận; hộp thoại "Approval needed" chỉ là thông báo, đóng nó không ghi gì thêm
 // và không để nó chặn tab. Tốt nhất có thể: không tìm thấy nút thì để nguyên cho user.
+// Meta xếp "Approval needed" đè lên wizard (wizard báo "Unable to assign assets" với nút Done riêng), nên phải
+// chọn nút BÊN TRONG từng dialog, không dùng dialog cuối theo DOM. Đóng thông báo trước, rồi tới wizard đã hỏng.
 async function dismissApprovalNotice(ctx: FlowContext): Promise<void> {
-  try {
-    const dialog = activeDialog();
-    if (!dialog) return;
-    // Chỉ đóng đúng thông báo duyệt: dialog khác (checkpoint, rate-limit...) phải để nguyên cho watcher và user.
+  const textHas = (dialog: HTMLElement, phrases: string[]): boolean => {
     const text = normalizeText(dialog.textContent ?? '');
-    const isApprovalNotice = labelsOf('signal.approval', ctx.lang)
-      .map(normalizeText)
-      .some((phrase) => text.includes(phrase));
-    if (!isApprovalNotice) return;
-    const button =
-      tryResolve(SELECTORS.done, ctx.lang) ??
-      tryResolve(SELECTORS.close, ctx.lang);
-    if (!button) return;
-    await click(button, ctx);
-    await orUndefined(
-      waitGone(() => activeDialog() !== null, {
-        signal: ctx.signal,
-        timeoutMs: 8000,
-      })
+    return phrases.map(normalizeText).some((phrase) => text.includes(phrase));
+  };
+  const buttonIn = (dialog: HTMLElement): HTMLElement | undefined => {
+    const names = [
+      ...labelsOf('dialog.done', ctx.lang),
+      ...labelsOf('dialog.close', ctx.lang),
+    ].map(normalizeText);
+    const buttons = Array.from(
+      dialog.querySelectorAll<HTMLElement>('button, [role="button"]')
+    ).filter(
+      (el) =>
+        isVisible(el) &&
+        names.includes(
+          normalizeText(el.getAttribute('aria-label') ?? el.textContent ?? '')
+        )
     );
+    // Có cả "Done" lẫn nút X "Close": ưu tiên Done (nút chính của dialog).
+    const done = labelsOf('dialog.done', ctx.lang).map(normalizeText);
+    return (
+      buttons.find((el) =>
+        done.includes(normalizeText(el.textContent ?? ''))
+      ) ?? buttons[0]
+    );
+  };
+  try {
+    // Tối đa 3 dialog: thông báo duyệt, wizard, và dự phòng. Dialog khác (checkpoint, rate-limit...) để nguyên.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const dialogs = visibleDialogs();
+      const target =
+        dialogs.find((d) =>
+          textHas(d, labelsOf('signal.approval', ctx.lang))
+        ) ??
+        dialogs.find((d) => textHas(d, labelsOf('dialog.assign', ctx.lang)));
+      const button = target && buttonIn(target);
+      if (!target || !button) return;
+      // eslint-disable-next-line no-await-in-loop
+      await click(button, ctx);
+      // eslint-disable-next-line no-await-in-loop
+      await orUndefined(
+        waitGone(() => isVisible(target), {
+          signal: ctx.signal,
+          timeoutMs: 8000,
+        })
+      );
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(NOTICE_SETTLE_MS, ctx.signal);
+    }
   } catch (error) {
     if (!(error instanceof EngineError)) throw error;
   }
@@ -603,8 +635,13 @@ function trackNotices(): { read: () => string; stop: () => void } {
   let last = '';
   const toasts = new Set<string>();
   const capture = (): void => {
-    const dialog = activeDialog();
-    if (dialog) last = normalizeText(dialog.textContent ?? '');
+    // Mọi dialog đang hiện, không chỉ cái cuối: thông báo duyệt có thể nằm trước wizard trong DOM.
+    const dialogs = visibleDialogs();
+    if (dialogs.length > 0) {
+      last = dialogs
+        .map((dialog) => normalizeText(dialog.textContent ?? ''))
+        .join(' ');
+    }
     document
       .querySelectorAll<HTMLElement>('[role="alert"],[role="status"]')
       .forEach((el) => {

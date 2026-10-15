@@ -49,11 +49,16 @@ export function isVisible(el: Element): boolean {
   return rect.width > 0 && rect.height > 0;
 }
 
-// Hộp thoại mới nhất đang hiện (Comet có thể xếp chồng nhiều dialog).
-export function activeDialog(root: SearchRoot = document): HTMLElement | null {
-  const dialogs = Array.from(
+// Mọi hộp thoại đang hiện, theo thứ tự DOM (Meta xếp chồng, vd "Approval needed" đè lên wizard).
+export function visibleDialogs(root: SearchRoot = document): HTMLElement[] {
+  return Array.from(
     root.querySelectorAll<HTMLElement>('[role="dialog"]')
   ).filter(isVisible);
+}
+
+// Hộp thoại cuối theo thứ tự DOM (Comet có thể xếp chồng nhiều dialog).
+export function activeDialog(root: SearchRoot = document): HTMLElement | null {
+  const dialogs = visibleDialogs(root);
   return dialogs[dialogs.length - 1] ?? null;
 }
 

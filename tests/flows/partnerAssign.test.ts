@@ -326,6 +326,39 @@ describe('Full: engine tự bấm Assign đúng một lần mỗi mẻ', () => {
     expect(run.steps).not.toContain(7);
   });
 
+  it('dialog "Approval needed" nằm TRƯỚC wizard trong DOM: vẫn pending-approval, đóng cả hai bằng nút Done của chính chúng', async () => {
+    const run = await runFlow(
+      {
+        mode: 'new',
+        onAssign: (page) => {
+          const wizard =
+            page.root.querySelector<HTMLElement>('[role="dialog"]');
+          if (!wizard) throw new Error('thiếu wizard');
+          wizard.innerHTML =
+            '<h2>Assign assets and permissions</h2><p>Unable to assign assets</p><button id="wizard-done">Done</button>';
+          wizard.insertAdjacentHTML(
+            'beforebegin',
+            '<div role="dialog" id="approval"><h2>Approval needed</h2><p>We need someone else on this business approve this request.</p><button>View request</button><button id="approval-done">Done</button></div>'
+          );
+          page.root
+            .querySelector('#approval-done')
+            ?.addEventListener('click', () => {
+              page.root.querySelector('#approval')?.remove();
+            });
+          page.root
+            .querySelector('#wizard-done')
+            ?.addEventListener('click', () => wizard.remove());
+        },
+      },
+      { mode: 'full', queries: [NEXT_ASSET_ID] }
+    );
+    expect(run.error).toBeUndefined();
+    expect(run.targets[0].outcome).toBe('pending-approval');
+    expect(engineAssignClicks(run.pressed)).toHaveLength(1);
+    expect(run.steps).not.toContain(7);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
   it('đã bấm mà không đọc lại được -> unverified, không bao giờ done', async () => {
     const run = await runFlow(
       { mode: 'new', onAssign: closeDialog },
