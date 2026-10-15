@@ -3,6 +3,7 @@ import type { RunTarget } from '@/shared/run';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { labelsOf } from '@/content/engine/labels';
+import { normalizeText } from '@/content/engine/text';
 import partnerAssignFlow, {
   approvalAppeared,
   verifyTokens,
@@ -503,5 +504,17 @@ describe('hàm thuần của flow', () => {
     expect(approvalAppeared(phrases, 'a', 'đã chỉ định thành công')).toBe(
       false
     );
+  });
+
+  it('nhận ra dialog "Approval needed" thật của Meta', () => {
+    expect(
+      approvalAppeared(
+        labelsOf('signal.approval', 'en'),
+        'assign assets',
+        normalizeText(
+          'Approval needed We need someone else on this business approve this request. View request Done'
+        )
+      )
+    ).toBe(true);
   });
 });

@@ -156,7 +156,13 @@ export const LABELS: Record<LabelKey, Label> = {
   'signal.approval': {
     // Chỉ cụm nhiều từ: từ đơn như "approval" xuất hiện cả trong văn bản trợ giúp của wizard.
     vi: ['cần được phê duyệt', 'cần phê duyệt', 'cần người khác duyệt'],
-    en: ['may need to approve', 'needs to be approved', 'needs approval from'],
+    // "Approval needed … we need someone else on this business approve this request" (ảnh chụp 15/10/2026).
+    en: [
+      'may need to approve',
+      'needs to be approved',
+      'needs approval from',
+      'approve this request',
+    ],
     verified: true,
   },
   // Nhóm `request*`: Settings › Requests (SPEC-ENG-002). `en` theo ảnh chụp 14/10/2026;

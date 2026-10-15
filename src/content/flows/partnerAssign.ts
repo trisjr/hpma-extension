@@ -793,7 +793,15 @@ async function runBatchSteps(
         });
         await orUndefined(waitDialogClosedOrDone(ctx, FULL_CLOSE_MS));
         // Hộp thoại còn mở sau thời hạn: không đoán, không bấm thêm; run dừng, target chưa rõ thành unverified.
-        if (activeDialog())
+        // Ngoại lệ: chính hộp thoại còn mở là thông báo "cần duyệt" (Meta không tự đóng) thì để nhánh pending-approval xử lý.
+        if (
+          activeDialog() &&
+          !approvalAppeared(
+            labelsOf('signal.approval', ctx.lang),
+            baseline,
+            tracker.read()
+          )
+        )
           throw new EngineError('ERR_STEP_TIMEOUT', 'assign.close');
       } else {
         ctx.setWaiting(true);
