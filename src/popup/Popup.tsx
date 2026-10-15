@@ -84,7 +84,7 @@ export default function Popup(): JSX.Element {
   // PostCSS prefix `#my-ext ` chỉ khớp phần tử con → layout nằm ở div con.
   return (
     <div id='my-ext' data-theme={theme}>
-      <div className='flex h-[400px] w-80 flex-col gap-2 overflow-hidden bg-base-200 p-3 text-sm text-base-content'>
+      <div className='flex h-[480px] w-80 flex-col gap-2 overflow-hidden bg-base-200 p-3 text-sm text-base-content'>
         <div className='flex h-9 items-center justify-between gap-2'>
           <span className='flex items-baseline gap-1.5'>
             <span className='text-[15px] font-semibold'>HPMA Copilot</span>
@@ -125,114 +125,117 @@ export default function Popup(): JSX.Element {
           · {curfewLabel(lang, pacing.curfew)}
         </div>
 
-        <button
-          type='button'
-          disabled={windowId === undefined}
-          onClick={() => openPanel()}
-          className='btn btn-primary h-10 min-h-10 text-sm font-semibold'
-        >
-          <Icon name='panel' />
-          {translate(lang, 'popup.openPanel')}
-        </button>
-        {openFailed && (
-          <div role='alert' className='alert alert-error text-xs'>
-            {translate(lang, 'popup.openFailed')}
-          </div>
-        )}
-
-        {activeJob && (
-          <section
-            aria-label={translate(lang, 'remote.active.title')}
-            className='border-base-content/12 flex flex-col gap-1.5 rounded-md border bg-base-100 p-2.5'
+        {/* Vùng cuộn giữa phần đầu và nút kill-switch: kill-switch luôn ghim ở đáy, không bị đẩy ra khỏi popup. */}
+        <div className='flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto [&>*]:shrink-0'>
+          <button
+            type='button'
+            disabled={windowId === undefined}
+            onClick={() => openPanel()}
+            className='btn btn-primary h-10 min-h-10 text-sm font-semibold'
           >
-            <button
-              type='button'
-              disabled={windowId === undefined}
-              onClick={() => openPanel()}
-              className='flex w-full flex-col gap-1 rounded-md p-1 text-left text-xs hover:bg-base-200'
+            <Icon name='panel' />
+            {translate(lang, 'popup.openPanel')}
+          </button>
+          {openFailed && (
+            <div role='alert' className='alert alert-error text-xs'>
+              {translate(lang, 'popup.openFailed')}
+            </div>
+          )}
+
+          {activeJob && (
+            <section
+              aria-label={translate(lang, 'remote.active.title')}
+              className='border-base-content/12 flex flex-col gap-1.5 rounded-md border bg-base-100 p-2.5'
             >
-              <span className='flex items-center justify-between gap-2'>
-                <span className='font-medium'>
-                  {translate(lang, FLOW_KEYS[activeJob.job.flow])}
-                </span>
-                <span className='text-base-content/70'>
-                  {translate(lang, activeLabel(activeJob.progress?.status))}
-                </span>
-              </span>
-              <span className='text-base-content/70 break-words'>
-                {summarizeJob(lang, activeJob.job)}
-              </span>
-              {activeJob.progress ? (
-                <>
-                  <progress
-                    className='progress progress-primary w-full'
-                    value={activeJob.progress.done}
-                    max={Math.max(activeJob.progress.total, 1)}
-                  />
-                  <span className='text-base-content/70'>
-                    {translate(lang, 'remote.active.progress', {
-                      done: activeJob.progress.done,
-                      total: activeJob.progress.total,
-                    })}
+              <button
+                type='button'
+                disabled={windowId === undefined}
+                onClick={() => openPanel()}
+                className='flex w-full flex-col gap-1 rounded-md p-1 text-left text-xs hover:bg-base-200'
+              >
+                <span className='flex items-center justify-between gap-2'>
+                  <span className='font-medium'>
+                    {translate(lang, FLOW_KEYS[activeJob.job.flow])}
                   </span>
-                </>
-              ) : (
-                <progress className='progress progress-primary w-full' />
-              )}
-            </button>
-          </section>
-        )}
-
-        {machineBlock && (
-          <div
-            role='status'
-            className='alert alert-warning flex-col items-start gap-0.5 text-xs'
-          >
-            <span className='font-medium'>
-              {translate(lang, 'remote.blocked.title')}
-            </span>
-            <span>{translate(lang, blockReasonKey(machineBlock.reason))}</span>
-            <span>
-              {machineBlock.until === null
-                ? translate(lang, 'remote.blocked.manual')
-                : translate(lang, 'remote.blocked.until', {
-                    time: new Date(machineBlock.until).toLocaleString(lang),
-                  })}
-            </span>
-          </div>
-        )}
-
-        {remoteJobs.length > 0 && (
-          <section
-            aria-label={translate(lang, 'remote.card.title')}
-            className='border-base-content/12 flex min-h-0 flex-col gap-1.5 rounded-md border bg-base-100 p-2.5'
-          >
-            <h2 className='m-0 text-[13px] font-semibold'>
-              {translate(lang, 'remote.card.title')} · {remoteJobs.length}
-            </h2>
-            <ul className='m-0 flex min-h-0 list-none flex-col gap-1.5 overflow-y-auto p-0'>
-              {remoteJobs.map((job) => (
-                <li key={job.id}>
-                  <button
-                    type='button'
-                    disabled={windowId === undefined}
-                    onClick={() => openPanel(job.id)}
-                    className='flex w-full flex-col rounded-md p-1 text-left text-xs hover:bg-base-200'
-                  >
-                    <span className='font-medium'>
-                      {translate(lang, FLOW_KEYS[job.flow])}
+                  <span className='text-base-content/70'>
+                    {translate(lang, activeLabel(activeJob.progress?.status))}
+                  </span>
+                </span>
+                <span className='text-base-content/70 break-words'>
+                  {summarizeJob(lang, activeJob.job)}
+                </span>
+                {activeJob.progress ? (
+                  <>
+                    <progress
+                      className='progress progress-primary w-full'
+                      value={activeJob.progress.done}
+                      max={Math.max(activeJob.progress.total, 1)}
+                    />
+                    <span className='text-base-content/70'>
+                      {translate(lang, 'remote.active.progress', {
+                        done: activeJob.progress.done,
+                        total: activeJob.progress.total,
+                      })}
                     </span>
-                    <span className='text-base-content/70 break-words'>
-                      {summarizeJob(lang, job)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+                  </>
+                ) : (
+                  <progress className='progress progress-primary w-full' />
+                )}
+              </button>
+            </section>
+          )}
 
-        <div className='flex-1' />
+          {machineBlock && (
+            <section
+              role='status'
+              className='border-base-content/12 flex flex-col gap-0.5 rounded-md border border-l-4 border-l-warning bg-base-100 p-2.5 text-xs'
+            >
+              <h2 className='m-0 text-[13px] font-semibold'>
+                {translate(lang, 'remote.blocked.title')}
+              </h2>
+              <p className='m-0'>
+                {translate(lang, blockReasonKey(machineBlock.reason))}
+              </p>
+              <p className='text-base-content/70 m-0'>
+                {machineBlock.until === null
+                  ? translate(lang, 'remote.blocked.manual')
+                  : translate(lang, 'remote.blocked.until', {
+                      time: new Date(machineBlock.until).toLocaleString(lang),
+                    })}
+              </p>
+            </section>
+          )}
+
+          {remoteJobs.length > 0 && (
+            <section
+              aria-label={translate(lang, 'remote.card.title')}
+              className='border-base-content/12 flex flex-col gap-1.5 rounded-md border bg-base-100 p-2.5'
+            >
+              <h2 className='m-0 text-[13px] font-semibold'>
+                {translate(lang, 'remote.card.title')} · {remoteJobs.length}
+              </h2>
+              <ul className='m-0 flex list-none flex-col gap-1.5 p-0'>
+                {remoteJobs.map((job) => (
+                  <li key={job.id}>
+                    <button
+                      type='button'
+                      disabled={windowId === undefined}
+                      onClick={() => openPanel(job.id)}
+                      className='flex w-full flex-col rounded-md p-1 text-left text-xs hover:bg-base-200'
+                    >
+                      <span className='font-medium'>
+                        {translate(lang, FLOW_KEYS[job.flow])}
+                      </span>
+                      <span className='text-base-content/70 break-words'>
+                        {summarizeJob(lang, job)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
 
         {killFailed && (
           <div role='alert' className='alert alert-error text-xs'>
