@@ -5,14 +5,16 @@ import {
   initializeTestEnvironment,
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { ref, serverTimestamp, set } from 'firebase/database';
+import { ref, serverTimestamp, set, update } from 'firebase/database';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  buildApproveJob,
   buildAssignJob,
   buildScanJob,
   parseAssignConfig,
   parseScanPartner,
+  parseSelection,
   requireBusinessId,
 } from '../src/jobs';
 
@@ -104,5 +106,126 @@ describe('job do ops CLI dựng ra phải qua Rules thật', () => {
     await assertFails(
       set(ref(ops().database(), 'ext/jobs/111111111111111/j3'), job)
     );
+  });
+
+  const SCAN = {
+    partnerName: 'BM ĐỐI TÁC',
+    requests: [
+      { requester: 'Alice', account: 'TK 1' },
+      { requester: 'Bob', account: 'TK 2' },
+      { requester: 'Carol', account: 'TK 3' },
+    ],
+  };
+  const seedScan = async (status = 'done'): Promise<void> => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `ext/jobs/${BM}/scan1`), {
+        flow: 'requests.scan',
+        mode: 'dry',
+        businessId: BM,
+        config: { partnerName: SCAN.partnerName },
+        createdAt: 1,
+        createdBy: 'uid-ops',
+        state: { status, result: { scan: { requests: SCAN.requests } } },
+      });
+    });
+  };
+  const approve = (
+    selection: number[],
+    uid = 'uid-ops',
+    mode: 'dry' | 'full' = 'dry'
+  ) =>
+    buildApproveJob({
+      scan: SCAN,
+      selection,
+      action: 'approve',
+      mode,
+      scanJobId: 'scan1',
+      args: { ...args, uid },
+    });
+
+  it('job approve của người (HITL) trỏ vào scan đã done được ghi', async () => {
+    await seedScan();
+    await assertSucceeds(
+      set(ref(ops().database(), `ext/jobs/${BM}/a1`), approve([0, 2]))
+    );
+  });
+
+  it('job approve bị từ chối khi scan chưa done, hoặc mode full khi chưa mở', async () => {
+    await seedScan('running');
+    await assertFails(
+      set(ref(ops().database(), `ext/jobs/${BM}/a1`), approve([0]))
+    );
+    await seedScan('done');
+    await assertFails(
+      set(
+        ref(ops().database(), `ext/jobs/${BM}/a2`),
+        approve([0], 'uid-ops', 'full')
+      )
+    );
+  });
+
+  it('job approve với approvedBy khác người tạo bị từ chối', async () => {
+    await seedScan();
+    await assertFails(
+      set(ref(ops().database(), `ext/jobs/${BM}/a3`), {
+        ...approve([0]),
+        approvedBy: 'uid-khac',
+      })
+    );
+  });
+
+  it('cancel job pending: đặt cancelRequested và chốt state cancelled', async () => {
+    const db = ops().database();
+    await assertSucceeds(
+      set(ref(db, `ext/jobs/${BM}/c1`), buildScanJob('BM ĐỐI TÁC', args))
+    );
+    await assertSucceeds(
+      set(ref(db, `ext/jobs/${BM}/c1/cancelRequested`), true)
+    );
+    await assertSucceeds(
+      update(ref(db, `ext/jobs/${BM}/c1/state`), {
+        status: 'cancelled',
+        finishedAt: serverTimestamp(),
+      })
+    );
+  });
+});
+
+describe('chọn request để duyệt (D6: chỉ tập con của kết quả quét)', () => {
+  it('parseSelection nhận danh sách, khoảng và all', () => {
+    expect(parseSelection('1,3-4', 5)).toEqual([0, 2, 3]);
+    expect(parseSelection('all', 3)).toEqual([0, 1, 2]);
+    expect(parseSelection(' 2 , 2 ', 3)).toEqual([1]);
+  });
+
+  it('parseSelection từ chối rỗng, ngoài phạm vi, sai cú pháp', () => {
+    expect(() => parseSelection('', 3)).toThrow();
+    expect(() => parseSelection('0', 3)).toThrow();
+    expect(() => parseSelection('4', 3)).toThrow();
+    expect(() => parseSelection('3-1', 3)).toThrow();
+    expect(() => parseSelection('a', 3)).toThrow();
+  });
+
+  it('buildApproveJob chỉ lấy đúng các request đã chọn', () => {
+    const job = buildApproveJob({
+      scan: {
+        partnerName: 'BM',
+        requests: [
+          { requester: 'A', account: 'T1' },
+          { requester: 'B', account: 'T2' },
+        ],
+      },
+      selection: [1],
+      action: 'decline',
+      mode: 'dry',
+      scanJobId: 's',
+      args: { businessId: BM, uid: 'u', createdAt: 1 },
+    });
+    expect(job.config.requests).toEqual([{ requester: 'B', account: 'T2' }]);
+    expect(job).toMatchObject({
+      approval: 'human',
+      approvedBy: 'u',
+      scanJobId: 's',
+    });
   });
 });

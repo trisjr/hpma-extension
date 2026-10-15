@@ -1,14 +1,17 @@
 /**
  * ops — CLI tạo/giám sát job qua client SDK để Database Rules luôn áp dụng (SPEC-AUTO-001 §7.4, D15).
  * Đăng nhập bằng tài khoản có claim `ops` (HPMA_OPS_EMAIL mặc định ops@hpma.com, HPMA_OPS_PASSWORD).
- * Pha 1: assign, scan, status, kill, unkill. cancel/approve/janitor thuộc pha 2.
  *
  *   pnpm ops status
  *   pnpm ops assign <bm> --file job.json
  *   pnpm ops scan <bm> --partner "TÊN BM ĐỐI TÁC"
+ *   pnpm ops approve <bm> <scanJobId> [--action approve|decline] [--select 1,3-5|all] [--mode dry|full] [--yes]
+ *   pnpm ops cancel <bm> <jobId>
+ *   pnpm ops janitor
  *   pnpm ops kill [<bm>]      pnpm ops unkill [<bm>]
  */
 import { readFileSync } from 'node:fs';
+import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 import { deleteApp, initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
@@ -22,17 +25,45 @@ import {
   remove,
   serverTimestamp,
   set,
+  update,
 } from 'firebase/database';
 
 import firebaseConfig from '@/shared/firebaseConfig';
 
+import { runJanitor } from './janitor';
+import { clientIo } from './janitorIo';
 import {
+  buildApproveJob,
   buildAssignJob,
   buildScanJob,
   parseAssignConfig,
   parseScanPartner,
+  parseSelection,
   requireBusinessId,
 } from './jobs';
+
+type ScanJobNode = {
+  flow?: string;
+  config?: { partnerName?: unknown };
+  state?: {
+    status?: string;
+    result?: { scan?: { requests?: unknown } };
+  };
+};
+
+// Giá trị lấy từ cờ dòng lệnh nếu có, không thì hỏi trên terminal.
+async function ask(
+  preset: string | undefined,
+  question: string
+): Promise<string> {
+  if (preset !== undefined) return preset.trim();
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return (await rl.question(question)).trim();
+  } finally {
+    rl.close();
+  }
+}
 
 const OFFLINE_AFTER_MS = 5 * 60_000;
 
@@ -56,6 +87,7 @@ type Machine = {
   status?: string;
   blockedReason?: string | null;
   currentJobId?: string | null;
+  blockedUntil?: number | null;
   lastHeartbeatAt?: number;
   extensionVersion?: string;
 };
@@ -73,14 +105,19 @@ async function printStatus(db: Database): Promise<void> {
     const age = m.lastHeartbeatAt ? now - m.lastHeartbeatAt : undefined;
     const presence =
       age === undefined || age > OFFLINE_AFTER_MS ? 'OFFLINE' : 'online';
-    const blocked = m.blockedReason ? ` (${m.blockedReason})` : '';
+    const until =
+      m.blockedUntil && m.blockedReason
+        ? ` tới ${new Date(m.blockedUntil).toLocaleString('vi-VN')}`
+        : '';
+    const blocked = m.blockedReason ? ` (${m.blockedReason}${until})` : '';
+    const holding = m.currentJobId ? `  job=${m.currentJobId}` : '';
     console.log(
       [
         id,
         presence,
         m.flow,
         `bm=${m.businessId}`,
-        `${m.status ?? '?'}${blocked}`,
+        `${m.status ?? '?'}${blocked}${holding}`,
         age === undefined
           ? 'heartbeat: —'
           : `heartbeat: ${Math.round(age / 1000)}s trước`,
@@ -114,11 +151,21 @@ async function printStatus(db: Database): Promise<void> {
 const main = async (): Promise<void> => {
   const { positionals, values } = parseArgs({
     allowPositionals: true,
-    options: { file: { type: 'string' }, partner: { type: 'string' } },
+    options: {
+      file: { type: 'string' },
+      partner: { type: 'string' },
+      select: { type: 'string' },
+      action: { type: 'string' },
+      mode: { type: 'string' },
+      yes: { type: 'boolean' },
+    },
   });
-  const [command, arg] = positionals;
+  const [command, arg, arg2] = positionals;
   const password = process.env.HPMA_OPS_PASSWORD;
-  if (!command) fail('thiếu lệnh (status | assign | scan | kill | unkill)');
+  if (!command)
+    fail(
+      'thiếu lệnh (status | assign | scan | approve | cancel | janitor | kill | unkill)'
+    );
   if (!password) fail('thiếu biến môi trường HPMA_OPS_PASSWORD');
 
   const app = initializeApp(firebaseConfig);
@@ -161,6 +208,112 @@ const main = async (): Promise<void> => {
       console.log(
         `Đã tạo job requests.scan ${jobRef.key} (dry) ở BM ${businessId}`
       );
+      break;
+    }
+    case 'approve': {
+      const businessId = requireBusinessId(arg);
+      const scanJobId = arg2 ?? fail('thiếu <scanJobId>');
+      const job = ((
+        await get(ref(db, `ext/jobs/${businessId}/${scanJobId}`))
+      ).val() ??
+        fail(`không thấy job ${scanJobId} ở BM ${businessId}`)) as ScanJobNode;
+      if (job.flow !== 'requests.scan' || job.state?.status !== 'done')
+        fail('job này không phải requests.scan đã `done`');
+      const requests = job.state?.result?.scan?.requests;
+      const partnerName =
+        typeof job.config?.partnerName === 'string'
+          ? job.config.partnerName
+          : fail('job quét không có tên BM đối tác');
+      if (!Array.isArray(requests) || requests.length === 0)
+        fail(
+          'kết quả quét trống hoặc đã bị dọn (PII chỉ giữ 24 giờ): hãy quét lại'
+        );
+      const list = requests as { requester: string; account: string }[];
+      console.log(`Danh sách request chờ duyệt cho "${partnerName}":`);
+      list.forEach((request, index) =>
+        console.log(
+          `  ${String(index + 1).padStart(2)}. ${request.requester} → ${request.account}`
+        )
+      );
+      const action = await ask(
+        values.action,
+        'Hành động (approve | decline): '
+      );
+      if (action !== 'approve' && action !== 'decline')
+        fail('action phải là approve hoặc decline');
+      const selection = parseSelection(
+        await ask(values.select, 'Chọn request (vd 1,3-5 hoặc all): '),
+        list.length
+      );
+      const mode = values.mode ?? 'dry';
+      if (mode !== 'dry' && mode !== 'full') fail('mode phải là dry hoặc full');
+      console.log(
+        `\nSẽ tạo job ${action} (${mode}) cho ${selection.length} request: ${selection.map((i) => i + 1).join(', ')}`
+      );
+      if (
+        !values.yes &&
+        (await ask(undefined, 'Xác nhận đã xem danh sách? (gõ "yes"): ')) !==
+          'yes'
+      )
+        fail('đã huỷ, không tạo job');
+      const jobRef = push(ref(db, `ext/jobs/${businessId}`));
+      await set(
+        jobRef,
+        buildApproveJob({
+          scan: { partnerName, requests: list },
+          selection,
+          action: action as 'approve' | 'decline',
+          mode: mode as 'dry' | 'full',
+          scanJobId,
+          args: args(businessId),
+        })
+      );
+      console.log(
+        `Đã tạo job partner-approve ${jobRef.key} (${mode}) ở BM ${businessId}`
+      );
+      break;
+    }
+    case 'cancel': {
+      const businessId = requireBusinessId(arg);
+      const jobId = arg2 ?? fail('thiếu <jobId>');
+      const node = (
+        await get(ref(db, `ext/jobs/${businessId}/${jobId}`))
+      ).val() as {
+        state?: { status?: string };
+      } | null;
+      if (!node) fail(`không thấy job ${jobId} ở BM ${businessId}`);
+      await set(
+        ref(db, `ext/jobs/${businessId}/${jobId}/cancelRequested`),
+        true
+      );
+      // Job còn pending thì chưa máy nào giữ nên không máy nào ghi được `state`: tự chốt cancelled (§5.3).
+      if (node?.state?.status === 'pending')
+        await update(ref(db, `ext/jobs/${businessId}/${jobId}/state`), {
+          status: 'cancelled',
+          finishedAt: serverTimestamp(),
+        });
+      console.log(
+        node?.state?.status === 'pending'
+          ? `Đã huỷ job ${jobId} (chưa máy nào giữ)`
+          : `Đã yêu cầu huỷ job ${jobId} (đang ${node?.state?.status}): máy giữ job sẽ dừng ≤ 1 bước`
+      );
+      break;
+    }
+    case 'janitor': {
+      const reports = await runJanitor(clientIo(db));
+      reports.forEach((report) => {
+        console.log(`BM ${report.bm}: ${report.actions.length} hành động`);
+        report.actions.forEach((action) =>
+          console.log(`  ${action.kind} ${action.jobId}`)
+        );
+        report.failed.forEach((failure) =>
+          console.log(
+            `  THẤT BẠI ${failure.action.kind} ${failure.action.jobId}: ${failure.error}`
+          )
+        );
+      });
+      if (reports.length === 0)
+        console.log('Chưa có máy nào, không có BM để dọn.');
       break;
     }
     case 'kill':

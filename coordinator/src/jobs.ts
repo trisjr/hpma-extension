@@ -5,10 +5,15 @@
  * Database Rules không kiểm shape của `config`, nên CLI kiểm bằng đúng parser mà engine dùng (D3):
  * config sai bị chặn ngay tại đây thay vì để máy claim rồi báo ERR_JOB_INVALID.
  */
+import type { ApproveConfig } from '@/shared/approve';
 import type { RunConfig } from '@/shared/runConfig';
 
 import { uiTaskKeys } from '@/content/flows/partnerTasks';
-import { validatePartnerName } from '@/shared/approve';
+import {
+  MAX_APPROVE_REQUESTS,
+  parseApproveConfig,
+  validatePartnerName,
+} from '@/shared/approve';
 import { parseRunConfig } from '@/shared/runConfig';
 import { isBusinessId } from '@/shared/surfaces';
 
@@ -77,6 +82,77 @@ export function buildScanJob(partnerName: string, args: BuildArgs): NewJob {
     mode: 'dry',
     businessId: args.businessId,
     config: { partnerName },
+    createdAt: args.createdAt,
+    createdBy: args.uid,
+    cancelRequested: false,
+    state: { status: 'pending' },
+  };
+}
+
+// ---- Job duyệt request (D6: người đã xem danh sách quét) --------------------
+
+export type NewApproveJob = {
+  flow: 'partner-approve';
+  mode: 'dry' | 'full';
+  businessId: string;
+  config: ApproveConfig;
+  scanJobId: string;
+  approvedBy: string;
+  approval: 'human';
+  createdAt: unknown;
+  createdBy: string;
+  cancelRequested: false;
+  state: { status: 'pending' };
+};
+
+// "1,3-5" hoặc "all" → chỉ số 0-based tăng dần, không trùng. Ném lỗi khi rỗng/ngoài phạm vi: không bao giờ đoán.
+export function parseSelection(text: string, total: number): number[] {
+  const input = text.trim().toLowerCase();
+  if (input === 'all') return Array.from({ length: total }, (_, i) => i);
+  const picked = new Set<number>();
+  input.split(',').forEach((part) => {
+    const range = /^(\d+)(?:-(\d+))?$/.exec(part.trim());
+    if (!range) throw new Error(`lựa chọn không hợp lệ: "${part.trim()}"`);
+    const from = Number(range[1]);
+    const to = range[2] === undefined ? from : Number(range[2]);
+    if (from < 1 || to < from || to > total)
+      throw new Error(`ngoài phạm vi 1–${total}: "${part.trim()}"`);
+    for (let n = from; n <= to; n += 1) picked.add(n - 1);
+  });
+  if (picked.size === 0) throw new Error('chưa chọn request nào');
+  return [...picked].sort((a, b) => a - b);
+}
+
+// Chỉ cho chọn TẬP CON của kết quả quét (không có ô nhập tay); config đi qua đúng parser của engine.
+export function buildApproveJob(params: {
+  scan: { partnerName: string; requests: unknown };
+  selection: number[];
+  action: 'approve' | 'decline';
+  mode: 'dry' | 'full';
+  scanJobId: string;
+  args: BuildArgs;
+}): NewApproveJob {
+  const { scan, selection, action, mode, scanJobId, args } = params;
+  if (!Array.isArray(scan.requests))
+    throw new Error('kết quả quét không có danh sách request');
+  const chosen = selection.map((index) => (scan.requests as unknown[])[index]);
+  const config = parseApproveConfig({
+    partnerName: scan.partnerName,
+    action,
+    requests: chosen,
+  });
+  if (!config)
+    throw new Error(
+      `config duyệt không hợp lệ (cần 1–${MAX_APPROVE_REQUESTS} request, đủ requester/account)`
+    );
+  return {
+    flow: 'partner-approve',
+    mode,
+    businessId: args.businessId,
+    config,
+    scanJobId,
+    approvedBy: args.uid,
+    approval: 'human',
     createdAt: args.createdAt,
     createdBy: args.uid,
     cancelRequested: false,
