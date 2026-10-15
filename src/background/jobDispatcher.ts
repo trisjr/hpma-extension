@@ -143,6 +143,7 @@ type Current = {
 export type Dispatcher = {
   setPending: (jobs: RemoteJob[]) => void;
   setKill: (flags: { global: boolean; bm: boolean }) => void;
+  killLost: () => void;
   onRunEvent: (run: RunState, tabId: number | undefined) => void;
   tick: () => Promise<void>;
   pump: () => Promise<void>;
@@ -528,7 +529,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     }
     // Cổng cuối ngay trước khi chạm BM: cancel/kill/khoá đến trong lúc chuẩn bị tab, hoặc job giữ chờ khoá vừa
     // được resume, đều phải bị chặn tại đây (mọi đường tới `run.start` đi qua điểm này).
-    if (cur.cancelRequested || kill.global || kill.bm) {
+    if (cur.cancelRequested || kill.global || kill.bm || !killKnown) {
       await cancelJob(job);
       return;
     }
@@ -783,6 +784,11 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     );
   }
 
+  // Listener kill-switch bị huỷ (token hết hạn, permission): không còn biết trạng thái thật, coi là đóng.
+  function killLost(): void {
+    killKnown = false;
+  }
+
   function setKill(flags: { global: boolean; bm: boolean }): void {
     kill = flags;
     killKnown = true;
@@ -836,6 +842,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
   return {
     setPending,
     setKill,
+    killLost,
     onRunEvent,
     tick,
     pump,

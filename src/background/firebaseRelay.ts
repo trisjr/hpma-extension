@@ -173,7 +173,12 @@ function ensureDispatcher(claims: MachineClaims): Dispatcher {
       writePersisted({ lastError: String(error) }).catch(() => undefined);
     },
   });
-  unwatchKill = store.watchKill((flags) => created.setKill(flags));
+  // Subscription gắn theo từng dispatcher: snapshot đầu tiên luôn về đúng instance vừa dựng. Listener chết thì
+  // kill-switch thành "chưa biết" (đóng), không giữ giá trị cũ.
+  unwatchKill = store.watchKill(
+    (flags) => created.setKill(flags),
+    () => created.killLost()
+  );
   dispatcher = created;
   dispatcherKey = key;
   return created;

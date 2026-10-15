@@ -738,6 +738,14 @@ describe('jobDispatcher: sửa theo review bảo mật pha 2', () => {
     await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('running'));
   });
 
+  it('L5: listener kill-switch chết sau snapshot đầu thì máy ngừng claim (fail-closed)', async () => {
+    const ctx = setup();
+    ctx.dispatcher.killLost();
+    ctx.dispatcher.setPending([mkJob('j1')]);
+    await settle();
+    expect(ctx.deps.claim).not.toHaveBeenCalled();
+  });
+
   it('H2: job full giữ chờ khoá, kill-switch bật rồi hết khoá: không start, chốt cancelled', async () => {
     const ctx = setup({
       flow: 'partner-approve',

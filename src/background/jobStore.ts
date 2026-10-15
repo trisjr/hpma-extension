@@ -31,7 +31,8 @@ export type JobStore = {
     onChange: (cancelRequested: boolean) => void
   ) => () => void;
   watchKill: (
-    onChange: (flags: { global: boolean; bm: boolean }) => void
+    onChange: (flags: { global: boolean; bm: boolean }) => void,
+    onLost: () => void
   ) => () => void;
 };
 
@@ -99,15 +100,19 @@ export default function createJobStore(
       );
     },
 
-    watchKill(onChange) {
-      return onValue(ref(db, 'ext/killSwitch'), (snapshot) => {
-        const value = snapshot.val() as unknown;
-        const flags = isRecord(value) ? value : {};
-        onChange({
-          global: flags.global === true,
-          bm: flags[claims.bm] === true,
-        });
-      });
+    watchKill(onChange, onLost) {
+      return onValue(
+        ref(db, 'ext/killSwitch'),
+        (snapshot) => {
+          const value = snapshot.val() as unknown;
+          const flags = isRecord(value) ? value : {};
+          onChange({
+            global: flags.global === true,
+            bm: flags[claims.bm] === true,
+          });
+        },
+        onLost
+      );
     },
   };
 }
