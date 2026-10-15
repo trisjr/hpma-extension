@@ -477,6 +477,8 @@ const vi = {
   'remote.card.summaryPartner': 'BM đối tác: {name}',
   'remote.card.queries': 'TKQC của job (chọn ở bước chọn tài khoản)',
   'remote.card.use': 'Dùng cấu hình',
+  'remote.card.bmMismatch':
+    'Job dành cho BM {job} nhưng tab đang mở BM {tab}. Kiểm tra lại trước khi chạy.',
   'opt.loading': 'Đang tải cài đặt…',
   'opt.pacing.delayTitle': 'Độ trễ giữa các bước',
   'opt.pacing.delaySub':
@@ -1193,6 +1195,8 @@ const en: Record<MessageKey, string> = {
   'remote.card.summaryPartner': 'Partner BM: {name}',
   'remote.card.queries': 'Job ad accounts (pick them in the account step)',
   'remote.card.use': 'Use configuration',
+  'remote.card.bmMismatch':
+    'This job is for BM {job} but the open tab is BM {tab}. Check before running.',
   'opt.loading': 'Loading settings…',
   'opt.pacing.delayTitle': 'Delay between steps',
   'opt.pacing.delaySub':

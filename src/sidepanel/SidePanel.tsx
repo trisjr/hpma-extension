@@ -254,6 +254,7 @@ export default function SidePanel(): JSX.Element {
           lang={lang}
           onOpenFlow={setOpenFlow}
           remoteJobs={remoteJobs}
+          tabBusinessId={source.businessId}
           onUseRemoteJob={applyRemoteJob}
         />
       );

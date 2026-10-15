@@ -10,6 +10,7 @@ import { parseRunConfig } from '@/shared/runConfig';
 type RemoteJobsCardProps = {
   lang: Lang;
   jobs: RemoteJob[];
+  tabBusinessId: string | undefined;
   onUse: (job: RemoteJob) => void;
 };
 
@@ -22,6 +23,7 @@ const FLOW_KEYS: Record<RemoteFlow, MessageKey> = {
 export default function RemoteJobsCard({
   lang,
   jobs,
+  tabBusinessId,
   onUse,
 }: RemoteJobsCardProps): JSX.Element | null {
   if (jobs.length === 0) return null;
@@ -79,6 +81,15 @@ export default function RemoteJobsCard({
                 {translate(lang, 'remote.card.use')}
               </button>
             </div>
+            {tabBusinessId !== undefined &&
+              tabBusinessId !== job.businessId && (
+                <p className='m-0 text-[13px] text-warning'>
+                  {translate(lang, 'remote.card.bmMismatch', {
+                    job: job.businessId,
+                    tab: tabBusinessId,
+                  })}
+                </p>
+              )}
             {config && (
               <ul className='m-0 flex list-none flex-wrap gap-1 p-0'>
                 {PARTNER_TASKS.filter((entry) =>

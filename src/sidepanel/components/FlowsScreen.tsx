@@ -14,6 +14,7 @@ type FlowsScreenProps = {
   lang: Lang;
   onOpenFlow: (flow: FlowDef) => void;
   remoteJobs: RemoteJob[];
+  tabBusinessId: string | undefined;
   onUseRemoteJob: (job: RemoteJob) => void;
 };
 
@@ -21,11 +22,17 @@ export default function FlowsScreen({
   lang,
   onOpenFlow,
   remoteJobs,
+  tabBusinessId,
   onUseRemoteJob,
 }: FlowsScreenProps): JSX.Element {
   return (
     <>
-      <RemoteJobsCard lang={lang} jobs={remoteJobs} onUse={onUseRemoteJob} />
+      <RemoteJobsCard
+        lang={lang}
+        jobs={remoteJobs}
+        tabBusinessId={tabBusinessId}
+        onUse={onUseRemoteJob}
+      />
       <div className='flex items-baseline justify-between gap-2'>
         <h1 className='m-0 text-lg font-medium'>
           {translate(lang, 'flows.title')}
