@@ -3,7 +3,7 @@
   "displayName": "HPMA Copilot",
   "description": "Copilot for operating Facebook Business Manager via DOM automation: dry-run, human confirmation, safe pacing and audit log.",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "author": "TrisJr <vokimtrivkt@gmail.com>",
   "license": "UNLICENSED",
   "repository": {

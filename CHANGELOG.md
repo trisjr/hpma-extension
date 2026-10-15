@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.9.0
+
+### What's Changed
+
+- feat(remote): The assign machine can create the chain approve job, and the bridge approves every request of the partner BM within the write budget
+- feat(coordinator): `ops assign` chains every full assign job to an approve job by default
+- fix(engine): Partner-approve is bound to the partner BM ID
+- fix(engine): The approve/decline confirmation dialog is confirmed with the chosen decision, and the probe gate is skipped for the chain bridge
+- fix(engine): After confirming, the engine waits for the dialog to close or the request to leave the list instead of failing with an unexpected dialog while Meta is still processing
+
+Full Changelog: Compare v0.8.0...v0.9.0
+
 ## v0.8.0
 
 ### What's Changed
