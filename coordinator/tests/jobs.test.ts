@@ -28,6 +28,19 @@ describe('kiểm tra đầu vào ops (D3: cùng parser với engine)', () => {
     expect(config.queries).toHaveLength(2);
   });
 
+  it('từ chối tổ hợp quyền mà UI BM không biểu diễn được (ADVERTISE riêng lẻ)', () => {
+    const base = { partnerBmId: '1234567890123456', queries: ['A'] };
+    expect(() =>
+      parseAssignConfig({ ...base, tasks: ['ADVERTISE'] })
+    ).toThrow();
+    expect(
+      parseAssignConfig({ ...base, tasks: ['ADVERTISE', 'ANALYZE'] }).tasks
+    ).toHaveLength(2);
+    expect(parseAssignConfig({ ...base, tasks: ['ANALYZE'] }).tasks).toEqual([
+      'ANALYZE',
+    ]);
+  });
+
   it('từ chối config hỏng, BM sai, tên BM đối tác rỗng', () => {
     expect(() =>
       parseAssignConfig({ partnerBmId: 'abc', queries: [], tasks: [] })
@@ -74,7 +87,7 @@ describe('job do ops CLI dựng ra phải qua Rules thật', () => {
       parseAssignConfig({
         partnerBmId: '1234567890123456',
         queries: ['A'],
-        tasks: ['ADVERTISE'],
+        tasks: ['ADVERTISE', 'ANALYZE'],
       }),
       args
     );

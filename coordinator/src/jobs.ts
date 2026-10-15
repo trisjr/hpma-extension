@@ -7,6 +7,7 @@
  */
 import type { RunConfig } from '@/shared/runConfig';
 
+import { uiTaskKeys } from '@/content/flows/partnerTasks';
 import { validatePartnerName } from '@/shared/approve';
 import { parseRunConfig } from '@/shared/runConfig';
 import { isBusinessId } from '@/shared/surfaces';
@@ -35,6 +36,11 @@ export function parseAssignConfig(raw: unknown): RunConfig {
   if (!config)
     throw new Error(
       'config assign sai: cần { partnerBmId (15–17 số), queries (≤200 mục), tasks (ADVERTISE | ANALYZE | MANAGE) }'
+    );
+  // Engine cũng từ chối tổ hợp quyền mà nhãn UI BM không biểu diễn chính xác (vd ADVERTISE riêng lẻ).
+  if (uiTaskKeys(config.tasks) === undefined)
+    throw new Error(
+      'tasks không biểu diễn được trên UI BM: dùng ADVERTISE+ANALYZE, ANALYZE hoặc MANAGE'
     );
   return config;
 }
