@@ -251,7 +251,9 @@ function launch<C>(
       await sleep(computeDelayMs(kind, pacing), signal);
       await gate();
     },
-    beginBatch: (index, total, targets) =>
+    beginBatch: (index, total, targets) => {
+      // Mỗi mẻ là một hộp thoại Assign riêng: mẻ trước đã bấm không làm target mẻ này thành `unverified`.
+      reachedAssign = false;
       update((run) => ({
         ...run,
         batch: { index, total },
@@ -263,7 +265,8 @@ function launch<C>(
         })),
         stepIndex: 1,
         sub: 0,
-      })),
+      }));
+    },
     step: async (index, body) => {
       setStepState(
         index,

@@ -133,7 +133,8 @@ describe('guard message', () => {
       config: {},
     };
     expect(isRunCommand({ ...base, flow: 'partner-approve' })).toBe(true);
-    expect(isRunCommand({ ...base, flow: 'partner-assign' })).toBe(false);
+    // Full của Gán partner (job từ xa đã qua cổng): phải nêu rõ flow, vắng flow vẫn bị từ chối.
+    expect(isRunCommand({ ...base, flow: 'partner-assign' })).toBe(true);
     expect(isRunCommand(base)).toBe(false);
   });
 });

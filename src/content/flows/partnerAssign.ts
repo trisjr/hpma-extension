@@ -782,9 +782,15 @@ async function runBatchSteps(
       const assignButton = await locate(SELECTORS.assign, ctx);
       h.acted();
       if (ctx.mode === 'full') {
-        clickedBatches.add(ctx);
-        ctx.markWriteStarted();
-        await click(assignButton, ctx);
+        // Đánh dấu "đã có thể ghi" đúng lúc bắt đầu nhấn (sau mọi lần chờ: curfew, tab ẩn, nút disabled), không
+        // sớm hơn: nút bị disabled thì chắc chắn chưa ghi, wizard còn nguyên và phải được huỷ như dry.
+        await click(assignButton, ctx, (phase) => {
+          if (phase !== 'press') return;
+          // Hộp thoại phải còn đúng là wizard đang cấu hình (không bấm khi trang đã đổi dưới chân engine).
+          if (!activeDialog()) throw new EngineError('ERR_UNEXPECTED_DIALOG');
+          clickedBatches.add(ctx);
+          ctx.markWriteStarted();
+        });
         await orUndefined(waitDialogClosedOrDone(ctx, FULL_CLOSE_MS));
         // Hộp thoại còn mở sau thời hạn: không đoán, không bấm thêm; run dừng, target chưa rõ thành unverified.
         if (activeDialog())
