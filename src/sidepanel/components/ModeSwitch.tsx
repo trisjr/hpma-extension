@@ -1,9 +1,9 @@
 /* eslint-disable react/require-default-props -- React 19 bỏ defaultProps cho function component; default nằm ở tham số */
 import { JSX } from 'react';
 import type { Lang } from '@/shared/i18n';
-import { translate } from '@/shared/i18n';
 import type { RunMode } from './riskStyles';
 
+import { translate } from '@/shared/i18n';
 
 import Icon from './Icon';
 import { MODE_STYLES, RUN_MODES } from './riskStyles';

@@ -467,6 +467,16 @@ const vi = {
   'opt.tab.audit': 'Audit log',
   'opt.tab.devtest': 'Devtest',
   'opt.tab.remote': 'Remote',
+  'remote.card.title': 'Job từ xa',
+  'remote.card.sub':
+    'Job đang chờ từ Firebase cho máy này. Bấm để điền sẵn cấu hình; bạn tự xem lại và bấm chạy.',
+  'remote.card.assign': 'Gán partner',
+  'remote.card.approve': 'Duyệt request',
+  'remote.card.scan': 'Quét request',
+  'remote.card.summaryAssign': 'BM đối tác {bm} · {count} TKQC',
+  'remote.card.summaryPartner': 'BM đối tác: {name}',
+  'remote.card.queries': 'TKQC của job (chọn ở bước chọn tài khoản)',
+  'remote.card.use': 'Dùng cấu hình',
   'opt.loading': 'Đang tải cài đặt…',
   'opt.pacing.delayTitle': 'Độ trễ giữa các bước',
   'opt.pacing.delaySub':
@@ -1173,6 +1183,16 @@ const en: Record<MessageKey, string> = {
   'opt.tab.audit': 'Audit log',
   'opt.tab.devtest': 'Devtest',
   'opt.tab.remote': 'Remote',
+  'remote.card.title': 'Remote jobs',
+  'remote.card.sub':
+    'Pending jobs from Firebase for this machine. Tap to prefill the configuration; you review it and press run yourself.',
+  'remote.card.assign': 'Assign partner',
+  'remote.card.approve': 'Approve requests',
+  'remote.card.scan': 'Scan requests',
+  'remote.card.summaryAssign': 'Partner BM {bm} · {count} ad accounts',
+  'remote.card.summaryPartner': 'Partner BM: {name}',
+  'remote.card.queries': 'Job ad accounts (pick them in the account step)',
+  'remote.card.use': 'Use configuration',
   'opt.loading': 'Loading settings…',
   'opt.pacing.delayTitle': 'Delay between steps',
   'opt.pacing.delaySub':

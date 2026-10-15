@@ -1,10 +1,10 @@
 import { JSX } from 'react';
 import type { Lang, MessageKey } from '@/shared/i18n';
 import type { PartnerAssignConfig, WizardStep } from '@/shared/partnerAssign';
+import type { RunMode } from '../riskStyles';
 
 import { translate } from '@/shared/i18n';
 import { PARTNER_TASKS } from '@/shared/partnerAssign';
-import type { RunMode } from '../riskStyles';
 
 import Icon from '../Icon';
 import { MODE_STYLES } from '../riskStyles';

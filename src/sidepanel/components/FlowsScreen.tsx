@@ -1,24 +1,31 @@
 import { JSX } from 'react';
 import type { FlowDef } from '@/shared/flows';
 import type { Lang } from '@/shared/i18n';
+import type { RemoteJob } from '@/shared/remoteJob';
 
 import { FLOWS, groupFlowsByRisk } from '@/shared/flows';
 import { translate } from '@/shared/i18n';
 
 import FlowCard from './FlowCard';
+import RemoteJobsCard from './RemoteJobsCard';
 import { RISK_STYLES } from './riskStyles';
 
 type FlowsScreenProps = {
   lang: Lang;
   onOpenFlow: (flow: FlowDef) => void;
+  remoteJobs: RemoteJob[];
+  onUseRemoteJob: (job: RemoteJob) => void;
 };
 
 export default function FlowsScreen({
   lang,
   onOpenFlow,
+  remoteJobs,
+  onUseRemoteJob,
 }: FlowsScreenProps): JSX.Element {
   return (
     <>
+      <RemoteJobsCard lang={lang} jobs={remoteJobs} onUse={onUseRemoteJob} />
       <div className='flex items-baseline justify-between gap-2'>
         <h1 className='m-0 text-lg font-medium'>
           {translate(lang, 'flows.title')}

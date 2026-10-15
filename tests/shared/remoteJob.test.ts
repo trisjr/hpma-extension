@@ -4,6 +4,8 @@ import {
   acceptsFlow,
   isMachineFlow,
   isModeAllowed,
+  isRemoteJob,
+  jobPartnerName,
   parseRemoteJob,
 } from '@/shared/remoteJob';
 
@@ -119,5 +121,35 @@ describe('flow và mode', () => {
     expect(isMachineFlow('partner-assign')).toBe(true);
     expect(isMachineFlow('requests.scan')).toBe(false);
     expect(isMachineFlow(undefined)).toBe(false);
+  });
+});
+
+describe('isRemoteJob / jobPartnerName', () => {
+  it('job do parseRemoteJob trả về qua được storage (round-trip)', () => {
+    const job = parseRemoteJob('job1', assignJob, BM);
+    expect(isRemoteJob(JSON.parse(JSON.stringify(job)))).toBe(true);
+  });
+
+  it('từ chối dữ liệu storage sai shape hoặc config hỏng', () => {
+    expect(isRemoteJob(null)).toBe(false);
+    expect(isRemoteJob({ id: 'x' })).toBe(false);
+    const job = parseRemoteJob('job1', assignJob, BM);
+    expect(isRemoteJob({ ...job, config: { partnerBmId: 'abc' } })).toBe(false);
+    expect(isRemoteJob({ ...job, flow: 'delete-all' })).toBe(false);
+  });
+
+  it('lấy tên BM đối tác của job quét/duyệt, job gán không có', () => {
+    const scan = parseRemoteJob(
+      's',
+      {
+        ...assignJob,
+        flow: 'requests.scan',
+        config: { partnerName: '  BM  A ' },
+      },
+      BM
+    );
+    expect(scan && jobPartnerName(scan)).toBe('BM A');
+    const assign = parseRemoteJob('a', assignJob, BM);
+    expect(assign && jobPartnerName(assign)).toBeUndefined();
   });
 });

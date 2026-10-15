@@ -3,7 +3,11 @@
  * (cùng triết lý messaging.ts): dữ liệu từ RTDB không đáng tin nên mỗi trường được kiểm lại, và
  * `config` đi qua đúng parser mà engine dùng (D3), không có hình dáng lệnh riêng.
  */
-import { parseApproveConfig, validatePartnerName } from '@/shared/approve';
+import {
+  cleanPartnerName,
+  parseApproveConfig,
+  validatePartnerName,
+} from '@/shared/approve';
 import { parseRunConfig } from '@/shared/runConfig';
 import { isBusinessId } from '@/shared/surfaces';
 
@@ -118,6 +122,34 @@ export function parseRemoteJob(
     status: jobStatus,
     cancelRequested: cancelRequested === true,
   };
+}
+
+// Job đã lưu ở `storage.session` do chính SW ghi, nhưng vẫn kiểm lại trước khi panel dùng (dữ liệu qua storage là ranh giới).
+export function isRemoteJob(value: unknown): value is RemoteJob {
+  if (!isRecord(value)) return false;
+  const { id, flow, mode, businessId, config, createdAt, status } = value;
+  return (
+    typeof id === 'string' &&
+    REMOTE_FLOWS.some((candidate) => candidate === flow) &&
+    REMOTE_MODES.some((candidate) => candidate === mode) &&
+    isBusinessId(businessId) &&
+    typeof createdAt === 'number' &&
+    JOB_STATUSES.some((candidate) => candidate === status) &&
+    typeof value.cancelRequested === 'boolean' &&
+    isValidConfig(flow as RemoteFlow, config)
+  );
+}
+
+// Tên BM đối tác của job duyệt/quét (để panel điền sẵn); job gán không có.
+export function jobPartnerName(job: RemoteJob): string | undefined {
+  if (job.flow === 'partner-approve') {
+    return parseApproveConfig(job.config)?.partnerName;
+  }
+  if (job.flow === 'requests.scan' && isRecord(job.config)) {
+    const name = job.config.partnerName;
+    return typeof name === 'string' ? cleanPartnerName(name) : undefined;
+  }
+  return undefined;
 }
 
 export type MachineStatus = 'idle' | 'busy' | 'blocked';

@@ -1,5 +1,6 @@
 import { JSX, useState } from 'react';
 import type { FlowDef } from '@/shared/flows';
+import type { RemoteJob } from '@/shared/remoteJob';
 import type { RunMode } from './components/riskStyles';
 import type { PanelTab } from './components/TabNav';
 
@@ -11,6 +12,7 @@ import useFlowSurface from '@/shared/hooks/useFlowSurface';
 import useLanguage from '@/shared/hooks/useLanguage';
 import usePartnerDraft from '@/shared/hooks/usePartnerDraft';
 import useProbe from '@/shared/hooks/useProbe';
+import useRemoteJobs from '@/shared/hooks/useRemoteJobs';
 import useRequestsScan from '@/shared/hooks/useRequestsScan';
 import useRunEngine from '@/shared/hooks/useRunEngine';
 import useRunSimulator from '@/shared/hooks/useRunSimulator';
@@ -19,12 +21,14 @@ import useTheme from '@/shared/hooks/useTheme';
 import useWriteBudget from '@/shared/hooks/useWriteBudget';
 import { translate } from '@/shared/i18n';
 import { pickedBusinessId } from '@/shared/partnerAssign';
+import { jobPartnerName } from '@/shared/remoteJob';
 import {
   buildDiff,
   isApproveRun,
   isRunActive,
   isRunFinished,
 } from '@/shared/run';
+import { parseRunConfig } from '@/shared/runConfig';
 
 import PartnerApproveScreen from './components/approve/PartnerApproveScreen';
 import ComingSoon from './components/ComingSoon';
@@ -50,6 +54,7 @@ export default function SidePanel(): JSX.Element {
   const { connection, tabId, refresh } = useConnection();
   const { used, limit } = useWriteBudget();
   const draft = usePartnerDraft();
+  const remoteJobs = useRemoteJobs();
   const devtest = useDevtestSettings();
   // Simulator chỉ khi devtest bật và cờ useSimulator bật; còn lại là engine thật.
   const useSim =
@@ -156,6 +161,30 @@ export default function SidePanel(): JSX.Element {
     goToFlows();
   };
 
+  // Job từ xa chỉ điền sẵn cấu hình (pha 1): người dùng xem lại và tự bấm chạy như bình thường.
+  // Danh sách TKQC của job không điền được vì wizard chọn theo danh sách tài sản đã tải; card job hiển thị để chọn tay.
+  const applyRemoteJob = (job: RemoteJob): void => {
+    controller.clear();
+    setDiffOpen(false);
+    setTab('flows');
+    if (job.flow === 'partner-assign') {
+      const config = parseRunConfig(job.config);
+      if (!config) return;
+      draft.setConfig({
+        ...draft.config,
+        partnerBmId: config.partnerBmId,
+        tasks: config.tasks,
+      });
+      draft.setStep(1);
+      setOpenFlow(FLOWS.find((flow) => flow.id === PARTNER_FLOW_ID));
+      return;
+    }
+    const partnerName = jobPartnerName(job);
+    if (partnerName === undefined) return;
+    approveDraft.setPartnerName(partnerName);
+    setOpenFlow(FLOWS.find((flow) => flow.id === APPROVE_FLOW_ID));
+  };
+
   const reconfigure = (accountIds: string[]): void => {
     controller.clear();
     draft.setConfig({ ...draft.config, accountIds });
@@ -216,7 +245,14 @@ export default function SidePanel(): JSX.Element {
       );
     }
     if (tab === 'flows') {
-      return <FlowsScreen lang={lang} onOpenFlow={setOpenFlow} />;
+      return (
+        <FlowsScreen
+          lang={lang}
+          onOpenFlow={setOpenFlow}
+          remoteJobs={remoteJobs}
+          onUseRemoteJob={applyRemoteJob}
+        />
+      );
     }
     if (tab === 'log') return <LogScreen lang={lang} run={run} />;
     return (
