@@ -31,6 +31,7 @@ import { SERVER_TIMESTAMP } from '@/shared/jobClaim';
 import { approveGate, assignGate } from '@/shared/probe';
 import {
   acceptsFlow,
+  BRIDGE_APPROVAL,
   jobDispatchIssue,
   jobPartnerName,
 } from '@/shared/remoteJob';
@@ -443,7 +444,8 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
   }
 
   // TEMP(D12-bridge): job `approveAll` thành danh sách request bằng một lần quét Needs review ngay trước khi chạy
-  // (tối đa MAX_APPROVE_REQUESTS; phần còn lại cần job khác). Engine vẫn kiểm `partnerBmId` ở từng request.
+  // (tối đa MAX_APPROVE_REQUESTS và không quá ngân sách ghi/ngày; phần vượt không có job nào xử lý tiếp vì khoá job
+  // của chuỗi cố định — ops tạo job approve tay). Engine vẫn kiểm `partnerBmId` ở từng request.
   // undefined = đã xử lý xong (lỗi, thử lại, hoặc không có request nào), caller không chạy tiếp.
   async function expandApproveAll(
     job: RemoteJob,
@@ -474,7 +476,10 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       partnerName: all.partnerName,
       partnerBmId: all.partnerBmId,
       action: 'approve',
-      requests: reply.requests.slice(0, MAX_APPROVE_REQUESTS),
+      requests: reply.requests.slice(
+        0,
+        Math.max(1, Math.min(MAX_APPROVE_REQUESTS, ctx.writesPerDay))
+      ),
     });
     if (!config) {
       await failJob(
@@ -613,7 +618,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     const tabId =
       (await deps.tabs.find(job.businessId)) ??
       (await deps.tabs.open(job.businessId, surface));
-    const ctx = await replyContext(job, claimedAt, renavigated);
+    let ctx = await replyContext(job, claimedAt, renavigated);
     if (tabId === undefined) {
       await applyAction(job, mapPrepareError('ERR_TAB_RELOADED', ctx));
       return;
@@ -628,14 +633,18 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       await runScan(cur, ctx);
       return;
     }
+    // `approveAll` chỉ hợp lệ với job của đường tạm (approval machine-chain); job khác mang config này thì
+    // `startCommand` trả undefined và job chốt ERR_JOB_INVALID.
     const all =
-      job.flow === 'partner-approve'
+      job.flow === 'partner-approve' && job.approval === BRIDGE_APPROVAL
         ? parseApproveAllConfig(job.config)
         : undefined;
     let command = startCommand(job);
     if (all) {
       const config = await expandApproveAll(job, tabId, all, ctx);
       if (!config) return;
+      // Ngân sách ghi theo danh sách vừa quét, để ERR_BUDGET thành lỗi rõ ràng thay vì hold nhiều giờ.
+      ctx = { ...ctx, writesNeeded: config.requests.length };
       command = { ...startCommandBase(job), flow: 'partner-approve', config };
     }
     if (!command) {

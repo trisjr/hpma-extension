@@ -337,6 +337,71 @@ describe('jobDispatcher: chạy job', () => {
       });
     });
 
+    it('D12-bridge: danh sách quét vượt ngân sách ghi/ngày bị cắt theo ngân sách, writesNeeded theo danh sách', async () => {
+      const ctx = setup({
+        flow: 'partner-approve',
+        locks: { fullCap: undefined },
+      });
+      ctx.tabs.scan.mockResolvedValue({
+        ok: true,
+        businessId: BM,
+        requests: Array.from({ length: 45 }, (_, i) => ({
+          requester: `R${i}`,
+          account: `A${i}`,
+        })),
+      });
+      ctx.dispatcher.setPending([
+        mkJob('chain-z-approve', {
+          flow: 'partner-approve',
+          mode: 'full',
+          approval: 'machine-chain',
+          approvedBy: 'uid-m1',
+          createdBy: 'uid-m1',
+          chain: { assignJobId: 'z' },
+          config: {
+            partnerName: 'BM Đối Tác',
+            partnerBmId: '1234567890123456',
+            action: 'approve',
+            approveAll: true,
+          },
+        }),
+      ]);
+      await vi.waitFor(() =>
+        expect(ctx.statusOf('chain-z-approve')).toBe('running')
+      );
+      // writesPerDay mặc định của setup là 20: chỉ 20 request đầu được gửi cho engine.
+      const sent = ctx.tabs.start.mock.calls[0][1] as unknown as {
+        config: { requests: unknown[] };
+      };
+      expect(sent.config.requests).toHaveLength(20);
+    });
+
+    it('D12-bridge: job human mang config approveAll không được mở rộng, chốt ERR_JOB_INVALID', async () => {
+      const ctx = setup({ flow: 'partner-approve' });
+      ctx.dispatcher.setPending([
+        mkJob('h1', {
+          flow: 'partner-approve',
+          mode: 'dry',
+          approval: 'human',
+          approvedBy: 'uid-ops',
+          createdBy: 'uid-ops',
+          scanJobId: 'scan-1',
+          config: {
+            partnerName: 'BM Đối Tác',
+            partnerBmId: '1234567890123456',
+            action: 'approve',
+            approveAll: true,
+          },
+        }),
+      ]);
+      await vi.waitFor(() => expect(ctx.statusOf('h1')).toBe('error'));
+      expect(ctx.last('h1')).toMatchObject({
+        error: { code: 'ERR_JOB_INVALID' },
+      });
+      expect(ctx.tabs.scan).not.toHaveBeenCalled();
+      expect(ctx.tabs.start).not.toHaveBeenCalled();
+    });
+
     it('D12-bridge: quét không thấy request nào của BM đối tác thì job lỗi và không chạy engine', async () => {
       const ctx = setup({ flow: 'partner-approve' });
       ctx.tabs.scan.mockResolvedValue({
