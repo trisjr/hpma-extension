@@ -1,0 +1,19 @@
+{
+  "name": "hpma-coordinator",
+  "private": true,
+  "type": "module",
+  "description": "Ops CLI + coordinator + RTDB rules tests for SPEC-AUTO-001 (not part of the extension build)",
+  "scripts": {
+    "test": "firebase emulators:exec --only database --project demo-hpma \"vitest run\"",
+    "claims": "tsx scripts/setClaims.ts"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "@types/node": "^22.0.0",
+    "firebase": "^13.0.0",
+    "firebase-admin": "^14.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0",
+    "vitest": "^3.0.0"
+  }
+}

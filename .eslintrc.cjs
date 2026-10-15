@@ -9,7 +9,8 @@ module.exports = {
     'airbnb',
     'prettier',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs', '.husky'],
+  // `coordinator/` là package Node riêng (SPEC-AUTO-001), không thuộc bản build extension.
+  ignorePatterns: ['dist', '.eslintrc.cjs', '.husky', 'coordinator'],
   parser: '@typescript-eslint/parser',
   plugins: ['react-refresh', 'react', '@typescript-eslint', 'import'],
   rules: {

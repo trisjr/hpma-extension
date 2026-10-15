@@ -1,0 +1,53 @@
+{
+  "rules": {
+    "ext": {
+      ".read": false,
+      ".write": false,
+      "machines": {
+        ".read": "auth.token.ops === true || auth.token.coordinator === true",
+        "$machineId": {
+          ".read": "auth.token.machineId === $machineId",
+          ".write": "auth.token.machineId === $machineId",
+          ".validate": "newData.child('businessId').val() === auth.token.bm && newData.child('flow').val() === auth.token.flow"
+        }
+      },
+      "killSwitch": {
+        ".read": "auth.token.ops === true || auth.token.coordinator === true || auth.token.machineId != null",
+        ".write": "auth.token.ops === true"
+      },
+      "chains": {
+        ".read": "auth.token.ops === true || auth.token.coordinator === true",
+        ".indexOn": ["nextActionAt"],
+        "$assignJobId": {
+          ".write": "auth.token.coordinator === true"
+        }
+      },
+      "jobs": {
+        "$businessId": {
+          ".indexOn": ["state/status", "state/claimedBy"],
+          ".read": "auth.token.ops === true || auth.token.coordinator === true || auth.token.bm === $businessId",
+          "$jobId": {
+            ".write": "(auth.token.ops === true && (!data.exists() || !newData.exists())) || (auth.token.coordinator === true && !data.exists()) || (auth.token.coordinator === true && !newData.exists() && data.child('state/status').val().matches(/^(done|error|cancelled)$/) && data.child('state/finishedAt').val() < now - 2592000000)",
+            ".validate": "data.exists() || (newData.hasChildren(['flow','mode','businessId','config','createdAt','createdBy','state']) && newData.child('businessId').val() === $businessId && newData.child('createdAt').val() === now && newData.child('createdBy').val() === auth.uid && (newData.child('flow').val() === 'partner-assign' || newData.child('flow').val() === 'partner-approve' || newData.child('flow').val() === 'requests.scan') && newData.child('mode').val() === 'dry' && newData.child('state/status').val() === 'pending' && !newData.child('state/claimedBy').exists() && (newData.child('flow').val() !== 'partner-approve' || ((newData.child('approval').val() === 'human' && auth.token.ops === true && newData.child('approvedBy').val() === auth.uid && root.child('ext/jobs/' + $businessId + '/' + newData.child('scanJobId').val() + '/flow').val() === 'requests.scan' && root.child('ext/jobs/' + $businessId + '/' + newData.child('scanJobId').val() + '/state/status').val() === 'done') || (newData.child('approval').val() === 'auto-match' && auth.token.coordinator === true && newData.child('approvedBy').val() === auth.uid && newData.child('config/action').val() === 'approve' && root.child('ext/jobs/' + $businessId + '/' + newData.child('scanJobId').val() + '/flow').val() === 'requests.scan' && root.child('ext/jobs/' + $businessId + '/' + newData.child('scanJobId').val() + '/state/status').val() === 'done'))) && (auth.token.coordinator !== true || ((newData.child('flow').val() === 'requests.scan' || newData.child('approval').val() === 'auto-match') && root.child('ext/jobs/' + $businessId + '/' + newData.child('chain/assignJobId').val() + '/flow').val() === 'partner-assign' && root.child('ext/jobs/' + $businessId + '/' + newData.child('chain/assignJobId').val() + '/state/status').val() === 'done' && root.child('ext/jobs/' + $businessId + '/' + newData.child('chain/assignJobId').val() + '/state/result/runStatus').val() === 'pending-approval' && root.child('ext/jobs/' + $businessId + '/' + newData.child('chain/assignJobId').val() + '/chain/auto').val() === true && root.child('ext/jobs/' + $businessId + '/' + newData.child('chain/assignJobId').val() + '/chain/mode').val() === newData.child('mode').val() && root.child('ext/jobs/' + $businessId + '/' + newData.child('chain/assignJobId').val() + '/chain/partnerName').val() === newData.child('config/partnerName').val())) && !newData.child('chain/auto').exists())",
+            "cancelRequested": {
+              ".write": "auth.token.ops === true || (auth.token.coordinator === true && data.parent().child('chain/assignJobId').exists())",
+              ".validate": "newData.isBoolean()"
+            },
+            "state": {
+              ".write": "(auth.token.bm === $businessId && data.child('status').val() === 'pending' && (data.parent().child('flow').val() === auth.token.flow || (auth.token.flow === 'partner-approve' && data.parent().child('flow').val() === 'requests.scan')) && newData.child('status').val() === 'claimed' && newData.child('claimedBy').val() === auth.token.machineId && root.child('ext/killSwitch/global').val() !== true && root.child('ext/killSwitch/' + $businessId).val() !== true) || (auth.token.bm === $businessId && data.child('claimedBy').val() === auth.token.machineId) || auth.token.ops === true || (auth.token.coordinator === true && root.child('ext/machines/' + data.child('claimedBy').val() + '/lastHeartbeatAt').val() < now - 300000 && ((data.child('status').val() === 'claimed' && data.child('claimedAt').val() < now - 900000 && newData.child('status').val() === 'pending' && !newData.child('claimedBy').exists()) || (data.child('status').val() === 'running' && data.child('progressAt').val() < now - 900000 && newData.child('status').val() === 'error' && newData.child('error/code').val() === 'ERR_MACHINE_LOST')))",
+              ".validate": "newData.child('status').val().matches(/^(pending|claimed|running|done|error|cancelled)$/)",
+              "result": {
+                "scan": {
+                  ".write": "auth.token.coordinator === true && !newData.exists()"
+                },
+                "awaitingApproval": {
+                  ".write": "auth.token.coordinator === true && !newData.exists()"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
