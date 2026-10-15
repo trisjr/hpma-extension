@@ -30,6 +30,7 @@ import {
 } from 'firebase/database';
 
 import firebaseConfig from '@/shared/firebaseConfig';
+import { cancelPendingHandler, ClaimState } from '@/shared/jobClaim';
 
 import { runJanitor } from './janitor';
 import { clientIo } from './janitorIo';
@@ -295,17 +296,18 @@ const main = async (): Promise<void> => {
       // Job còn pending thì chưa máy nào giữ nên không máy nào ghi được `state`: tự chốt cancelled (§5.3). Dùng
       // transaction để không ghi đè một job máy vừa claim giữa lúc đọc và ghi (khi đó máy tự dừng nhờ cancelRequested).
       const stateRef = ref(db, `ext/jobs/${businessId}/${jobId}/state`);
+      await get(stateRef);
       const settled = await runTransaction(stateRef, (state) =>
-        (state as { status?: string } | null)?.status === 'pending'
-          ? { ...(state as object), status: 'cancelled' }
-          : undefined
+        cancelPendingHandler(state as ClaimState)
       );
-      if (settled.committed)
-        await update(stateRef, { finishedAt: serverTimestamp() });
+      const finalStatus = (settled.snapshot.val() as { status?: string } | null)
+        ?.status;
+      const cancelled = settled.committed && finalStatus === 'cancelled';
+      if (cancelled) await update(stateRef, { finishedAt: serverTimestamp() });
       console.log(
-        settled.committed
+        cancelled
           ? `Đã huỷ job ${jobId} (chưa máy nào giữ)`
-          : `Đã yêu cầu huỷ job ${jobId} (đang ${(settled.snapshot.val() as { status?: string } | null)?.status}): máy giữ job sẽ dừng ≤ 1 bước`
+          : `Đã yêu cầu huỷ job ${jobId} (đang ${finalStatus}): máy giữ job sẽ dừng ≤ 1 bước`
       );
       break;
     }

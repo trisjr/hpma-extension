@@ -222,6 +222,17 @@ describe('vòng đời do máy giữ job ghi (§4.2)', () => {
     await assertFails(update(state, { status: 'running' }));
   });
 
+  it('M4: job đang running không bị máy giữ nó đưa về pending (D9: không tự chạy lại)', async () => {
+    await seed();
+    const m1 = machine('m1', 'partner-assign');
+    expect(await claim(m1, 'm1')).toBe(true);
+    const state = ref(m1.database(), `${JOB}/state`);
+    await assertSucceeds(update(state, { status: 'running', runId: 'r1' }));
+    await assertFails(
+      update(state, { status: 'pending', claimedBy: null, claimedAt: null })
+    );
+  });
+
   it('H1: janitor không reclaim job claimed đã có dispatchingAt, chỉ chốt ERR_MACHINE_LOST', async () => {
     const old = Date.now() - 3600_000;
     await seed({

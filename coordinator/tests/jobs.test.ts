@@ -5,8 +5,16 @@ import {
   initializeTestEnvironment,
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { ref, serverTimestamp, set, update } from 'firebase/database';
+import {
+  ref,
+  runTransaction,
+  serverTimestamp,
+  set,
+  update,
+} from 'firebase/database';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+import { cancelPendingHandler, ClaimState } from '@/shared/jobClaim';
 
 import {
   buildApproveJob,
@@ -205,6 +213,34 @@ describe('job do ops CLI dựng ra phải qua Rules thật', () => {
         approvedBy: 'uid-khac',
       })
     );
+  });
+
+  it('cancelPendingHandler qua transaction thật (cache lạnh): huỷ job pending, giữ nguyên job đã claim', async () => {
+    const db = ops().database();
+    await assertSucceeds(
+      set(ref(db, `ext/jobs/${BM}/t1`), buildScanJob('BM ĐỐI TÁC', args))
+    );
+    const cancelled = await runTransaction(
+      ref(db, `ext/jobs/${BM}/t1/state`),
+      (state) => cancelPendingHandler(state as ClaimState)
+    );
+    expect(cancelled.committed).toBe(true);
+    expect((cancelled.snapshot.val() as { status: string }).status).toBe(
+      'cancelled'
+    );
+
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), `ext/jobs/${BM}/t2/state`), {
+        status: 'claimed',
+        claimedBy: 'm1',
+      });
+    });
+    const kept = await runTransaction(
+      ref(db, `ext/jobs/${BM}/t2/state`),
+      (state) => cancelPendingHandler(state as ClaimState)
+    );
+    expect(kept.committed).toBe(false);
+    expect((kept.snapshot.val() as { status: string }).status).toBe('claimed');
   });
 
   it('cancel job pending: đặt cancelRequested và chốt state cancelled', async () => {
