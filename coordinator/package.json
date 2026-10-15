@@ -5,7 +5,8 @@
   "description": "Ops CLI + coordinator + RTDB rules tests for SPEC-AUTO-001 (not part of the extension build)",
   "scripts": {
     "test": "firebase emulators:exec --only database --project demo-hpma \"vitest run\"",
-    "claims": "tsx scripts/setClaims.ts"
+    "claims": "tsx scripts/setClaims.ts",
+    "smoke": "tsx scripts/smokeTest.ts"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
