@@ -87,6 +87,7 @@ export default function createJobStore(
           runId: typeof state.runId === 'string' ? state.runId : undefined,
           claimedAt:
             typeof state.claimedAt === 'number' ? state.claimedAt : undefined,
+          dispatching: state.dispatchingAt != null,
         });
       });
       return owned;

@@ -61,6 +61,7 @@ function setup(
     memory?: Partial<DispatchMemory>;
     flow?: 'partner-assign' | 'partner-approve';
     probe?: ProbeReports;
+    killUnknown?: boolean;
   } = {}
 ) {
   const clock = { now: T0 };
@@ -136,6 +137,8 @@ function setup(
     onError: (error: unknown) => errors.push(error),
   };
   const dispatcher = createDispatcher(deps);
+  // Kill-switch chưa biết = đóng (fail-closed): mặc định giả lập snapshot đầu tiên đã về, tắt.
+  if (!options.killUnknown) dispatcher.setKill({ global: false, bm: false });
   return {
     dispatcher,
     deps,
@@ -220,6 +223,10 @@ describe('jobDispatcher: chạy job', () => {
       flow: 'partner-approve',
       mode: 'full',
       createdAt,
+      approval: 'human',
+      approvedBy: 'uid-ops',
+      createdBy: 'uid-ops',
+      scanJobId: 'scan1',
       config: {
         partnerName: 'BM',
         action: 'approve',
@@ -667,5 +674,122 @@ describe('jobDispatcher: requests.scan', () => {
     ctx.dispatcher.setPending([mkJob('s1', scanNode)]);
     await vi.waitFor(() => expect(ctx.statusOf('s1')).toBe('error'));
     expect(ctx.last('s1')).not.toHaveProperty('result');
+  });
+});
+
+describe('jobDispatcher: sửa theo review bảo mật pha 2', () => {
+  const approveNode = (extra: Record<string, unknown> = {}) => ({
+    flow: 'partner-approve',
+    mode: 'full',
+    approval: 'human',
+    approvedBy: 'uid-ops',
+    createdBy: 'uid-ops',
+    scanJobId: 'scan1',
+    config: {
+      partnerName: 'BM',
+      action: 'approve',
+      requests: [{ requester: 'R', account: 'A' }],
+    },
+    ...extra,
+  });
+
+  it('H1: đã ghi dấu gửi lệnh trước run.start; claimed có dấu khi reconcile thì chốt lỗi, không về pending', async () => {
+    const ctx = setup();
+    ctx.dispatcher.setPending([mkJob('j1')]);
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('running'));
+    const marker = ctx.writes.findIndex(
+      (entry) => entry.patch.dispatchingAt !== undefined
+    );
+    expect(marker).toBeGreaterThanOrEqual(0);
+    expect(ctx.tabs.start).toHaveBeenCalledTimes(1);
+
+    const lost = setup({
+      owned: [
+        {
+          job: mkJob('j2', { state: { status: 'claimed' } }),
+          dispatching: true,
+        },
+      ],
+    });
+    lost.tabs.sync.mockResolvedValue({ reachable: true, run: run() });
+    lost.dispatcher.setPending([]);
+    await vi.waitFor(() => expect(lost.statusOf('j2')).toBe('error'));
+    expect(lost.last('j2')).toMatchObject({
+      error: { code: 'ERR_STATE_UNKNOWN' },
+    });
+    expect(lost.tabs.stop).toHaveBeenCalledWith(7, 'run1');
+    expect(lost.tabs.start).not.toHaveBeenCalled();
+  });
+
+  it('H1: start bị từ chối (ERR_BUSY) thì un-claim xoá dấu gửi lệnh', async () => {
+    const ctx = setup();
+    ctx.tabs.start.mockResolvedValueOnce({ ok: false, code: 'ERR_BUSY' });
+    ctx.dispatcher.setPending([mkJob('j1')]);
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('pending'));
+    expect(ctx.last('j1')).toMatchObject({ dispatchingAt: null });
+  });
+
+  it('H2: kill-switch chưa biết thì không claim; có snapshot tắt thì chạy', async () => {
+    const ctx = setup({ killUnknown: true });
+    ctx.dispatcher.setPending([mkJob('j1')]);
+    await settle();
+    expect(ctx.deps.claim).not.toHaveBeenCalled();
+    ctx.dispatcher.setKill({ global: false, bm: false });
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('running'));
+  });
+
+  it('H2: job full giữ chờ khoá, kill-switch bật rồi hết khoá: không start, chốt cancelled', async () => {
+    const ctx = setup({
+      flow: 'partner-approve',
+      memory: {
+        held: {
+          jobId: 'f',
+          block: { reason: 'curfew', until: T0 + 1000 },
+        },
+      },
+      owned: [
+        {
+          job: mkJob('f', approveNode({ state: { status: 'claimed' } })),
+          claimedAt: T0 - 5000,
+        },
+      ],
+    });
+    ctx.dispatcher.setKill({ global: false, bm: true });
+    ctx.clock.now = T0 + 2000;
+    await ctx.dispatcher.tick();
+    await vi.waitFor(() => expect(ctx.statusOf('f')).toBe('cancelled'));
+    expect(ctx.tabs.start).not.toHaveBeenCalled();
+  });
+
+  it('M2: job full thiếu dấu vết người duyệt bị chốt ERR_JOB_INVALID, không gửi lệnh', async () => {
+    const ctx = setup({ flow: 'partner-approve' });
+    ctx.dispatcher.setPending([
+      mkJob('f1', approveNode({ approval: undefined })),
+      mkJob('f2', approveNode({ approvedBy: 'someone-else', createdAt: 2 })),
+    ]);
+    await vi.waitFor(() => expect(ctx.statusOf('f2')).toBe('error'));
+    expect(ctx.last('f1')).toMatchObject({
+      error: { code: 'ERR_JOB_INVALID', message: 'provenance' },
+    });
+    expect(ctx.tabs.start).not.toHaveBeenCalled();
+  });
+
+  it('M3: cancel đến trong lúc chuẩn bị tab thì không gửi run.start', async () => {
+    const ctx = setup();
+    ctx.tabs.prepare.mockImplementationOnce(async () => {
+      ctx.cancel('j1');
+      return { ok: true };
+    });
+    ctx.dispatcher.setPending([mkJob('j1')]);
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('cancelled'));
+    expect(ctx.tabs.start).not.toHaveBeenCalled();
+  });
+
+  it('M1: pump và tick chồng nhau chỉ reconcile một lần', async () => {
+    const ctx = setup({
+      owned: [{ job: mkJob('j1', { state: { status: 'claimed' } }) }],
+    });
+    await Promise.all([ctx.dispatcher.tick(), ctx.dispatcher.pump()]);
+    expect(ctx.deps.readOwnJobs).toHaveBeenCalledTimes(1);
   });
 });

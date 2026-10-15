@@ -35,6 +35,7 @@ import {
   mapRunEnd,
   mapStartReply,
   MAX_SURFACE_ATTEMPTS,
+  MIN_HOLD_MS,
   pruneIncidents,
 } from './dispatchLogic';
 
@@ -61,7 +62,13 @@ export const machinePatchOf = (view: MachineView): MachinePatch => ({
   currentJobId: view.currentJobId ?? null,
 });
 
-export type OwnJob = { job: RemoteJob; runId?: string; claimedAt?: number };
+// `dispatching`: máy đã ghi `dispatchingAt` trước khi gửi `run.start`, nên run có thể đã chạm BM dù state chưa kịp `running`.
+export type OwnJob = {
+  job: RemoteJob;
+  runId?: string;
+  claimedAt?: number;
+  dispatching?: boolean;
+};
 
 export type SyncOutcome = { reachable: boolean; run?: RunState };
 
@@ -129,6 +136,7 @@ type Current = {
   lastProgressAt: number;
   lastRunStatus?: string;
   unreachable: number;
+  finishing?: boolean;
   unwatch?: () => void;
 };
 
@@ -147,9 +155,12 @@ const surfaceOf = (flow: RemoteJob['flow']): Surface =>
 export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
   let pending: RemoteJob[] = [];
   let kill = { global: false, bm: false };
+  // Chưa nhận snapshot kill-switch đầu tiên thì coi là đóng: không claim/start (fail-closed).
+  let killKnown = false;
   let current: Current | undefined;
   let memory: DispatchMemory | undefined;
   let reconciled = false;
+  let reconciling: Promise<void> | undefined;
   let pumping = false;
   let again = false;
   let lastGateBlock: Block | undefined;
@@ -158,6 +169,11 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
 
   const guard = (work: Promise<unknown>): void => {
     work.catch(deps.onError);
+  };
+
+  // `Current` là bản ghi đổi dần theo vòng đời job; sửa qua một chỗ này để thấy rõ mọi điểm đổi.
+  const patchCurrent = (cur: Current, patch: Partial<Current>): void => {
+    Object.assign(cur, patch);
   };
 
   async function mem(): Promise<DispatchMemory> {
@@ -220,6 +236,19 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     });
   }
 
+  // Chốt `cancelled` cho job chưa chạm BM rồi nhả máy.
+  async function cancelJob(job: RemoteJob): Promise<void> {
+    await deps.writeState(job.id, {
+      status: 'cancelled',
+      finishedAt: SERVER_TIMESTAMP,
+    });
+    await persist((m) => ({
+      ...m,
+      held: m.held?.jobId === job.id ? undefined : m.held,
+    }));
+    await release();
+  }
+
   async function unclaim(
     job: RemoteJob,
     attempts: number,
@@ -229,6 +258,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       status: 'pending',
       claimedBy: null,
       claimedAt: null,
+      dispatchingAt: null,
     });
     await persist((m) => ({
       ...m,
@@ -239,7 +269,8 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
   }
 
   async function finishRun(cur: Current, run: RunState): Promise<void> {
-    if (current !== cur) return;
+    if (current !== cur || cur.finishing) return;
+    patchCurrent(cur, { finishing: true });
     const locks = await deps.readLocks();
     const limitedUntil =
       typeof locks.rateLimitedUntil === 'number'
@@ -289,6 +320,8 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
         await release();
         return 'settled';
       case 'hold':
+        // Engine đã từ chối start nên run chưa chạm BM: bỏ dấu "đang gửi lệnh" để reclaim còn hợp lệ.
+        await deps.writeState(job.id, { dispatchingAt: null });
         await persist((m) => ({
           ...m,
           held: { jobId: job.id, block: action.block },
@@ -349,11 +382,6 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       businessId: job.businessId,
     };
   }
-
-  // `Current` là bản ghi đổi dần theo vòng đời job; sửa qua một chỗ này để thấy rõ mọi điểm đổi.
-  const patchCurrent = (cur: Current, patch: Partial<Current>): void => {
-    Object.assign(cur, patch);
-  };
 
   function watch(cur: Current): void {
     const unwatch = deps.watchCancel(cur.job.id, (requested) => {
@@ -426,6 +454,22 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     }
   }
 
+  // `ownsMachine`: job này chính là job đang giữ máy (kiểm lại trước khi start) nên không tính là "busy".
+  async function gateFor(job: RemoteJob, ownsMachine = false): Promise<Gate> {
+    const [locks, m] = await Promise.all([deps.readLocks(), mem()]);
+    return claimGate({
+      now: deps.now(),
+      machine: current && !ownsMachine ? 'busy' : 'idle',
+      killGlobal: kill.global,
+      killBm: kill.bm,
+      emergency: locks.emergency,
+      rateLimitedUntil: locks.rateLimitedUntil,
+      incidents: m.incidents,
+      fullStarts: m.fullStarts,
+      job: { flow: job.flow, mode: job.mode },
+    });
+  }
+
   // Job đã được claim (hoặc đang giữ chờ khoá): đưa tab tới trang, gửi lệnh, ghi `running`.
   // `renavigated`: đã điều hướng lại theo BM của máy một lần (engine báo sai BM) — chỉ thử lại đúng một lần.
   async function dispatch(
@@ -441,11 +485,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       return;
     }
     if (job.cancelRequested) {
-      await deps.writeState(job.id, {
-        status: 'cancelled',
-        finishedAt: SERVER_TIMESTAMP,
-      });
-      await release();
+      await cancelJob(job);
       return;
     }
     // Job duyệt `full` ghi thật lên Meta: chỉ chạy khi selector của hai màn duyệt vừa được đo và đạt ≥ 95% (Q4).
@@ -486,6 +526,39 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       await release();
       return;
     }
+    // Cổng cuối ngay trước khi chạm BM: cancel/kill/khoá đến trong lúc chuẩn bị tab, hoặc job giữ chờ khoá vừa
+    // được resume, đều phải bị chặn tại đây (mọi đường tới `run.start` đi qua điểm này).
+    if (cur.cancelRequested || kill.global || kill.bm) {
+      await cancelJob(job);
+      return;
+    }
+    const last = await gateFor(job, true);
+    if (!last.open) {
+      const block = last.why === 'blocked' ? last.block : undefined;
+      if (!block) {
+        await cancelJob(job);
+        return;
+      }
+      await applyAction(
+        job,
+        block.reason === 'emergency'
+          ? { kind: 'error', code: 'ERR_EMERGENCY', block }
+          : {
+              kind: 'hold',
+              block: {
+                ...block,
+                until:
+                  block.until === null
+                    ? null
+                    : Math.max(block.until, deps.now() + MIN_HOLD_MS),
+              },
+            }
+      );
+      return;
+    }
+    // Ghi dấu "đang gửi lệnh" TRƯỚC run.start (D9): từ đây job không bao giờ được trả về `pending`, vì run có thể
+    // đã chạm BM dù lần ghi `running` chưa tới server.
+    await deps.writeState(job.id, { dispatchingAt: SERVER_TIMESTAMP });
     // Đếm vào trần ngày TRƯỚC khi gửi lệnh: SW chết giữa chừng vẫn không làm hụt đếm.
     const countsFull = job.flow === 'partner-approve' && job.mode === 'full';
     if (countsFull)
@@ -540,6 +613,14 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       await setView(idleView());
       return;
     }
+    // Đã ghi dấu "đang gửi lệnh" mà chưa thấy `running`: run có thể đã chạm BM, không tự chạy lại và không biết
+    // kết quả (D9). Dừng run còn sống (nếu thấy) rồi chốt lỗi, không bao giờ về `pending`.
+    if (own.dispatching) {
+      if (tabId !== undefined && synced.run && isRunActive(synced.run))
+        await deps.tabs.stop(tabId, synced.run.runId).catch(() => undefined);
+      await failJob(job, 'ERR_STATE_UNKNOWN');
+      return;
+    }
     // Bị huỷ khi đang `claimed` (chưa chạm BM): chốt `cancelled`, không start.
     if (job.cancelRequested) {
       await deps.writeState(job.id, {
@@ -564,6 +645,16 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       await reconcileOne(owned[i]);
     }
     reconciled = true;
+  }
+
+  // Một lần reconcile duy nhất cho mọi người gọi (pump và tick có thể chồng nhau): hai lần chạy song song
+  // có thể trả về `pending` một job vừa được claim lại.
+  async function ensureReconciled(): Promise<void> {
+    if (reconciled) return;
+    reconciling ??= reconcile().finally(() => {
+      reconciling = undefined;
+    });
+    await reconciling;
   }
 
   // Job đang giữ chờ khoá hết hạn: start lại khi đến hạn (§5.1 "Thoát blocked").
@@ -594,24 +685,9 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
 
   // ---- Vòng nhặt job -------------------------------------------------------
 
-  async function gateFor(job: RemoteJob): Promise<Gate> {
-    const [locks, m] = await Promise.all([deps.readLocks(), mem()]);
-    return claimGate({
-      now: deps.now(),
-      machine: current ? 'busy' : 'idle',
-      killGlobal: kill.global,
-      killBm: kill.bm,
-      emergency: locks.emergency,
-      rateLimitedUntil: locks.rateLimitedUntil,
-      incidents: m.incidents,
-      fullStarts: m.fullStarts,
-      job: { flow: job.flow, mode: job.mode },
-    });
-  }
-
   async function pumpOnce(): Promise<void> {
-    if (!reconciled) await reconcile();
-    if (current) return;
+    await ensureReconciled();
+    if (current || !killKnown) return;
     const m = await mem();
     if (m.held) {
       await resumeHeld();
@@ -709,6 +785,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
 
   function setKill(flags: { global: boolean; bm: boolean }): void {
     kill = flags;
+    killKnown = true;
     const cur = current;
     if ((flags.global || flags.bm) && cur && !cur.cancelRequested) {
       cur.cancelRequested = true;
@@ -725,7 +802,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
 
   // Alarm 1 phút: nguồn sự thật cho run kết thúc khi event bị lỡ, thoát `logged-out`, start lại job giữ chờ.
   async function tick(): Promise<void> {
-    if (!reconciled) await reconcile();
+    await ensureReconciled();
     const cur = current;
     if (cur && cur.tabId !== undefined && cur.runId) {
       const synced = await deps.tabs.sync(cur.tabId);

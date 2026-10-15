@@ -80,7 +80,15 @@ export type RemoteJob = {
   createdAt: number;
   status: JobStatus;
   cancelRequested: boolean;
+  // Dấu vết người duyệt (chỉ job duyệt): dispatcher tự kiểm lại trước khi chạy `full`, không chỉ tin Rules.
+  approval?: string;
+  approvedBy?: string;
+  createdBy?: string;
+  scanJobId?: string;
 };
+
+const str = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -131,6 +139,10 @@ export function parseJobEnvelope(
     createdAt,
     status: jobStatus,
     cancelRequested: cancelRequested === true,
+    approval: str(value.approval),
+    approvedBy: str(value.approvedBy),
+    createdBy: str(value.createdBy),
+    scanJobId: str(value.scanJobId),
   };
 }
 
@@ -151,8 +163,19 @@ export function parseRemoteJob(
 // Vì sao dispatcher không được chạy job này (→ `ERR_JOB_INVALID`, không gửi lệnh, không retry).
 export function jobDispatchIssue(
   job: RemoteJob
-): 'mode' | 'config' | undefined {
+): 'mode' | 'config' | 'provenance' | undefined {
   if (!isModeAllowed(job.flow, job.mode)) return 'mode';
+  // `full` ghi thật: bắt buộc do người duyệt từ một lần quét (D6, §8.1). Rules cũng kiểm, đây là lớp thứ hai.
+  if (
+    job.mode === 'full' &&
+    !(
+      job.approval === 'human' &&
+      job.scanJobId !== undefined &&
+      job.approvedBy !== undefined &&
+      job.approvedBy === job.createdBy
+    )
+  )
+    return 'provenance';
   return hasValidConfig(job) ? undefined : 'config';
 }
 

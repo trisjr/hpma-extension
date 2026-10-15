@@ -164,8 +164,13 @@ export function approveGate(
   APPROVE_STAGES.forEach((stage) => {
     const report = reports[stage];
     if (!report) missing.push(stage);
-    else if (now - report.at > maxAgeMs) stale.push(stage);
-    else if ((report.rate ?? 0) < PROBE_PASS_RATE) below.push(stage);
+    // Mốc ở tương lai (đồng hồ lệch/dữ liệu bị sửa) hoặc quá hạn đều coi là hết hạn; rate phải là số trong [ngưỡng, 1].
+    else if (!(now - report.at <= maxAgeMs && report.at <= now + 60_000))
+      stale.push(stage);
+    else if (
+      !((report.rate ?? 0) >= PROBE_PASS_RATE && (report.rate ?? 0) <= 1)
+    )
+      below.push(stage);
   });
   if (missing.length + below.length + stale.length === 0) return { ok: true };
   return { ok: false, missing, below, stale };
