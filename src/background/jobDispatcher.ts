@@ -52,6 +52,13 @@ export type MachinePatch = {
 };
 
 // Job do chính máy này đang giữ (claimedBy = machineId, status claimed|running), kèm trường state cần để nối lại.
+export const machinePatchOf = (view: MachineView): MachinePatch => ({
+  status: view.status,
+  blockedReason: view.block?.reason ?? null,
+  blockedUntil: view.block?.until ?? null,
+  currentJobId: view.currentJobId ?? null,
+});
+
 export type OwnJob = { job: RemoteJob; runId?: string; claimedAt?: number };
 
 export type SyncOutcome = { reachable: boolean; run?: RunState };
@@ -166,12 +173,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
   // Ghi máy lên RTDB khi view đổi (idle/busy/blocked + lý do + job đang giữ).
   async function setView(next: MachineView): Promise<void> {
     view = next;
-    const patch: MachinePatch = {
-      status: next.status,
-      blockedReason: next.block?.reason ?? null,
-      blockedUntil: next.block?.until ?? null,
-      currentJobId: next.currentJobId ?? null,
-    };
+    const patch = machinePatchOf(next);
     const key = JSON.stringify(patch);
     if (key === lastWritten) return;
     lastWritten = key;

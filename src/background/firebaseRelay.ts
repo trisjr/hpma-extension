@@ -34,15 +34,22 @@ import {
 } from 'firebase/database';
 import browser from 'webextension-polyfill';
 
+import { EMERGENCY_KEY, RATE_LIMIT_KEY } from '@/shared/budget';
 import firebaseConfig from '@/shared/firebaseConfig';
 import { getMachineId } from '@/shared/machineId';
-import { isLocationReply } from '@/shared/messaging';
+import { isLocationReply, isRunEvent } from '@/shared/messaging';
 import { isRemoteCommand } from '@/shared/remoteMessages';
+import { PACING_KEY, parsePacing } from '@/shared/settings';
 
+import { DISPATCH_KEY, parseMemory } from './dispatchMemory';
+import createDispatcher, { Dispatcher, machinePatchOf } from './jobDispatcher';
+import createJobStore from './jobStore';
+import tabDriver from './jobTabs';
 import {
   badgeText,
   deriveProvision,
   MachineClaims,
+  pendingEnvelopesFor,
   pendingJobsFor,
   readClaims,
 } from './relayLogic';
@@ -60,6 +67,9 @@ let db: Database | undefined;
 let connectedWritten = false;
 let unsubscribeJobs: (() => void) | undefined;
 let subscribedKey: string | undefined;
+let dispatcher: Dispatcher | undefined;
+let dispatcherKey: string | undefined;
+let unwatchKill: (() => void) | undefined;
 
 function sdk(): { auth: Auth; db: Database } {
   if (!app || !auth || !db) {
@@ -103,6 +113,65 @@ function stopListening(): void {
   subscribedKey = undefined;
 }
 
+function disposeDispatcher(): void {
+  unwatchKill?.();
+  unwatchKill = undefined;
+  dispatcher = undefined;
+  dispatcherKey = undefined;
+}
+
+// Khoá an toàn cục bộ do engine giữ (emergency/rate-limit) cùng cấu hình pacing: dispatcher đọc trước mỗi lần claim.
+async function readLocks(): Promise<{
+  emergency: unknown;
+  rateLimitedUntil: unknown;
+  curfew: ReturnType<typeof parsePacing>['curfew'];
+  writesPerDay: number;
+}> {
+  const stored = await browser.storage.local
+    .get([EMERGENCY_KEY, RATE_LIMIT_KEY, PACING_KEY])
+    .catch(() => ({}) as Record<string, unknown>);
+  const pacing = parsePacing(stored[PACING_KEY]);
+  return {
+    emergency: stored[EMERGENCY_KEY],
+    rateLimitedUntil: stored[RATE_LIMIT_KEY],
+    curfew: pacing.curfew,
+    // Engine kiểm ngân sách theo hàng `standard` (controller.ts), dispatcher dùng cùng con số.
+    writesPerDay: pacing.limits.standard.writesPerDay,
+  };
+}
+
+// Dispatcher gắn với danh tính máy (claim): đổi máy/BM/flow thì dựng lại.
+function ensureDispatcher(claims: MachineClaims): Dispatcher {
+  const key = `${claims.machineId}/${claims.bm}/${claims.flow}`;
+  if (dispatcher && dispatcherKey === key) return dispatcher;
+  disposeDispatcher();
+  const { db: database } = sdk();
+  const store = createJobStore(database, claims);
+  const created = createDispatcher({
+    now: () => Date.now(),
+    machineId: claims.machineId,
+    businessId: claims.bm,
+    flow: claims.flow,
+    ...store,
+    readLocks,
+    loadMemory: async () => {
+      const stored = await browser.storage.local.get(DISPATCH_KEY);
+      return parseMemory(stored[DISPATCH_KEY]);
+    },
+    saveMemory: async (memory) => {
+      await browser.storage.local.set({ [DISPATCH_KEY]: memory });
+    },
+    tabs: tabDriver,
+    onError: (error) => {
+      writePersisted({ lastError: String(error) }).catch(() => undefined);
+    },
+  });
+  unwatchKill = store.watchKill((flags) => created.setKill(flags));
+  dispatcher = created;
+  dispatcherKey = key;
+  return created;
+}
+
 // Pha 1: chỉ đọc. Listen đúng nhánh BM của máy (D10), job `pending`, lọc theo flow chấp nhận ở client.
 function listenJobs(claims: MachineClaims): void {
   const key = `${claims.bm}/${claims.flow}`;
@@ -119,7 +188,9 @@ function listenJobs(claims: MachineClaims): void {
     pending,
     (snapshot) => {
       const raw = snapshot.val() as Record<string, unknown> | null;
+      // Danh sách hiển thị (badge/panel) chỉ gồm job hợp lệ; dispatcher nhận cả job sai config để chốt ERR_JOB_INVALID.
       publishJobs(pendingJobsFor(raw, claims)).catch(() => undefined);
+      dispatcher?.setPending(pendingEnvelopesFor(raw, claims));
     },
     (error) => {
       writePersisted({ lastError: error.message }).catch(() => undefined);
@@ -151,18 +222,20 @@ async function tick(): Promise<void> {
   const provision = deriveProvision(signedIn, claims, machineId);
   if (provision !== 'ok' || !claims) {
     stopListening();
+    disposeDispatcher();
     await publishJobs([]);
     return;
   }
   const { db: database } = sdk();
+  const active = ensureDispatcher(claims);
   try {
     await update(ref(database, `ext/machines/${machineId}`), {
       ...(connectedWritten ? {} : { connectedAt: serverTimestamp() }),
       lastHeartbeatAt: serverTimestamp(),
       flow: claims.flow,
       businessId: claims.bm,
-      // Pha 1 không chạy job nên luôn rảnh; busy/blocked thuộc dispatcher (pha 2).
-      status: 'idle',
+      // busy/blocked + lý do + job đang giữ do dispatcher quyết định (§4.1).
+      ...machinePatchOf(active.view()),
       extensionVersion: browser.runtime.getManifest().version,
     });
     connectedWritten = true;
@@ -171,6 +244,10 @@ async function tick(): Promise<void> {
     await writePersisted({ lastError: String(error) });
   }
   listenJobs(claims);
+  // Sau heartbeat: reconcile lần đầu, chốt run kết thúc bị lỡ event, thoát khoá, start lại job giữ chờ.
+  await active.tick().catch((error: unknown) => {
+    writePersisted({ lastError: String(error) }).catch(() => undefined);
+  });
 }
 
 async function buildStatus(): Promise<RemoteStatus> {
@@ -249,6 +326,7 @@ async function handleCommand(message: RemoteCommand): Promise<unknown> {
     }
     case 'remote.signOut': {
       stopListening();
+      disposeDispatcher();
       await sdk().auth.signOut();
       connectedWritten = false;
       await publishJobs([]);
@@ -279,6 +357,20 @@ export default function registerRelay(): void {
       )
         return undefined;
       return handleCommand(message);
+    }
+  );
+  // Sự kiện tiến độ run từ content script (đánh thức SW, nên phải đăng ký đồng bộ ở top-level, §5.5.6). Event tới
+  // khi dispatcher chưa dựng thì bị bỏ: `run.sync` theo alarm là nguồn sự thật cho trạng thái cuối.
+  browser.runtime.onMessage.addListener(
+    (message: unknown, sender: browser.Runtime.MessageSender) => {
+      if (
+        sender.id !== browser.runtime.id ||
+        sender.tab === undefined ||
+        !isRunEvent(message)
+      )
+        return undefined;
+      dispatcher?.onRunEvent(message.run, sender.tab.id);
+      return undefined;
     }
   );
   // SW vừa khởi động (cài mới, Chrome mở lại, SW thức dậy do event): bảo đảm alarm tồn tại và chạy một nhịp ngay.

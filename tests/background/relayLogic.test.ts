@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   badgeText,
   deriveProvision,
+  pendingEnvelopesFor,
   pendingJobsFor,
   readClaims,
 } from '@/background/relayLogic';
@@ -102,6 +103,35 @@ describe('pendingJobsFor', () => {
   it('nhánh rỗng hoặc null', () => {
     expect(pendingJobsFor(null, claims)).toEqual([]);
     expect(pendingJobsFor({}, claims)).toEqual([]);
+  });
+});
+
+describe('pendingEnvelopesFor', () => {
+  const claims = {
+    machineId: MACHINE,
+    bm: BM,
+    flow: 'partner-assign' as const,
+  };
+
+  it('giữ cả job sai config/mode để dispatcher chốt ERR_JOB_INVALID, nhưng loại shape hỏng', () => {
+    const branch = {
+      good: job({ createdAt: 2 }),
+      badConfig: job({ createdAt: 1, config: { partnerBmId: 'abc' } }),
+      assist: job({ createdAt: 3, mode: 'assist' }),
+      claimed: job({ state: { status: 'claimed' } }),
+      cancelled: job({ cancelRequested: true }),
+      broken: { flow: 'partner-assign' },
+    };
+    expect(pendingEnvelopesFor(branch, claims).map((j) => j.id)).toEqual([
+      'badConfig',
+      'good',
+      'assist',
+    ]);
+    // Danh sách hiển thị vẫn chỉ có job hợp lệ.
+    expect(pendingJobsFor(branch, claims).map((j) => j.id)).toEqual([
+      'good',
+      'assist',
+    ]);
   });
 });
 

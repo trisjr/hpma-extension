@@ -5,7 +5,12 @@
 import type { MachineFlow, RemoteJob } from '@/shared/remoteJob';
 import type { Provision } from '@/shared/remoteMessages';
 
-import { acceptsFlow, isMachineFlow, parseRemoteJob } from '@/shared/remoteJob';
+import {
+  acceptsFlow,
+  isMachineFlow,
+  parseJobEnvelope,
+  parseRemoteJob,
+} from '@/shared/remoteJob';
 import { isBusinessId } from '@/shared/surfaces';
 
 export type MachineClaims = {
@@ -47,6 +52,25 @@ export function pendingJobsFor(
   if (!branch) return [];
   return Object.entries(branch)
     .map(([id, value]) => parseRemoteJob(id, value, claims.bm))
+    .filter((job): job is RemoteJob => job !== undefined)
+    .filter(
+      (job) =>
+        job.status === 'pending' &&
+        !job.cancelRequested &&
+        acceptsFlow(claims.flow, job.flow)
+    )
+    .sort((a, b) => a.createdAt - b.createdAt);
+}
+
+// Cho dispatcher: như `pendingJobsFor` nhưng KHÔNG loại job sai config/mode. Job đó phải được claim rồi chốt
+// `ERR_JOB_INVALID` (chỉ máy giữ job mới ghi được `state`, §5.1 bước 3) thay vì nằm `pending` mãi.
+export function pendingEnvelopesFor(
+  branch: Record<string, unknown> | null,
+  claims: MachineClaims
+): RemoteJob[] {
+  if (!branch) return [];
+  return Object.entries(branch)
+    .map(([id, value]) => parseJobEnvelope(id, value, claims.bm))
     .filter((job): job is RemoteJob => job !== undefined)
     .filter(
       (job) =>
