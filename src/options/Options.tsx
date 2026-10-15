@@ -8,6 +8,7 @@ import AuditTab from './components/AuditTab';
 import DevtestTab from './components/DevtestTab';
 import OptionsShell from './components/OptionsShell';
 import PacingTab from './components/PacingTab';
+import RemoteTab from './components/RemoteTab';
 import { OPTIONS_TABS, OptionsTab } from './components/tabs';
 
 // Tab nhớ trong URL hash (#pacing, #audit, #devtest) để reload không mất vị trí.
@@ -58,6 +59,7 @@ export default function Options(): JSX.Element {
       >
         {panel('pacing', <PacingTab lang={lang} />)}
         {panel('audit', <AuditTab lang={lang} />)}
+        {panel('remote', <RemoteTab lang={lang} />)}
         {panel('devtest', <DevtestTab lang={lang} />)}
       </OptionsShell>
     </div>

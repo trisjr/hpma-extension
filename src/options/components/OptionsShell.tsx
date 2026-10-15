@@ -1,8 +1,8 @@
 import { JSX, KeyboardEvent, ReactNode } from 'react';
 import type { Lang } from '@/shared/i18n';
-import { translate } from '@/shared/i18n';
 import type { OptionsTab } from './tabs';
 
+import { translate } from '@/shared/i18n';
 
 import { OPTIONS_TABS } from './tabs';
 

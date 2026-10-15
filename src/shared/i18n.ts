@@ -466,6 +466,7 @@ const vi = {
   'opt.tab.pacing': 'Pacing & limit',
   'opt.tab.audit': 'Audit log',
   'opt.tab.devtest': 'Devtest',
+  'opt.tab.remote': 'Remote',
   'opt.loading': 'Đang tải cài đặt…',
   'opt.pacing.delayTitle': 'Độ trễ giữa các bước',
   'opt.pacing.delaySub':
@@ -607,6 +608,40 @@ const vi = {
     'Engine đã dừng khẩn cấp (checkpoint, đăng nhập, chặn tần suất) và Assist đang bị khoá. Chỉ gỡ sau khi bạn đã xử lý tay trên BM. Dry-run vẫn chạy được.',
   'opt.dev.unlockBtn': 'Gỡ khoá khẩn cấp',
   'opt.dev.unlockFail': 'Không gỡ được khoá. Thử lại.',
+  'opt.remote.title': 'Điều khiển từ xa',
+  'opt.remote.sub':
+    'Profile này nhận job từ Firebase RTDB. Hiện chỉ gửi heartbeat và báo job đang chờ (badge); chưa tự chạy gì.',
+  'opt.remote.loadFail': 'Không liên lạc được service worker.',
+  'opt.remote.unsupported': 'Kênh điều khiển từ xa hiện chỉ có trên Chrome.',
+  'opt.remote.machineId': 'machineId',
+  'opt.remote.machineIdHint':
+    'Gửi mã này cho ops để cấp quyền (claim) cho profile.',
+  'opt.remote.account': 'Tài khoản',
+  'opt.remote.flow': 'Flow',
+  'opt.remote.bm': 'Business Manager',
+  'opt.remote.none': '—',
+  'opt.remote.state.signed-out': 'Chưa đăng nhập.',
+  'opt.remote.state.unprovisioned':
+    'Đã đăng nhập nhưng chưa được cấp quyền máy (token thiếu claim). Nhờ ops gán claim rồi đăng nhập lại.',
+  'opt.remote.state.machine-mismatch':
+    'Claim machineId khác machineId của profile này. Nhờ ops gán lại claim cho đúng mã ở trên.',
+  'opt.remote.state.ok': 'Đã kết nối.',
+  'opt.remote.heartbeat': 'Heartbeat gần nhất',
+  'opt.remote.never': 'Chưa có',
+  'opt.remote.pending': 'Job đang chờ',
+  'opt.remote.error': 'Lỗi gần nhất',
+  'opt.remote.email': 'Email',
+  'opt.remote.password': 'Mật khẩu',
+  'opt.remote.signIn': 'Đăng nhập',
+  'opt.remote.signingIn': 'Đang đăng nhập…',
+  'opt.remote.signOut': 'Ngắt kết nối',
+  'opt.remote.probe': 'Kiểm tra tab BM',
+  'opt.remote.probing': 'Đang kiểm tra…',
+  'opt.remote.probeFound':
+    'Tìm thấy tab BM khớp ({count} tab BM có content script).',
+  'opt.remote.probeNone':
+    'Không thấy tab BM khớp. Mở business.facebook.com đúng BM của máy rồi thử lại.',
+  'opt.remote.probeFail': 'Không kiểm tra được tab.',
   'err.ERR_BUSY':
     'Đang có một run khác trong tab BM này. Đợi run đó xong hoặc dừng nó rồi chạy lại.',
   'err.ERR_INVALID_CONFIG':
@@ -1137,6 +1172,7 @@ const en: Record<MessageKey, string> = {
   'opt.tab.pacing': 'Pacing & limit',
   'opt.tab.audit': 'Audit log',
   'opt.tab.devtest': 'Devtest',
+  'opt.tab.remote': 'Remote',
   'opt.loading': 'Loading settings…',
   'opt.pacing.delayTitle': 'Delay between steps',
   'opt.pacing.delaySub':
@@ -1280,6 +1316,41 @@ const en: Record<MessageKey, string> = {
     'The engine made an emergency stop (checkpoint, login, rate limit) and Assist is locked. Only remove it after you have handled the BM by hand. Dry-run still works.',
   'opt.dev.unlockBtn': 'Remove emergency lock',
   'opt.dev.unlockFail': 'Could not remove the lock. Try again.',
+  'opt.remote.title': 'Remote control',
+  'opt.remote.sub':
+    'This profile receives jobs from Firebase RTDB. For now it only sends a heartbeat and shows pending jobs (badge); it does not run anything by itself.',
+  'opt.remote.loadFail': 'Could not reach the service worker.',
+  'opt.remote.unsupported':
+    'Remote control is only available on Chrome for now.',
+  'opt.remote.machineId': 'machineId',
+  'opt.remote.machineIdHint':
+    'Give this ID to ops so they can grant the profile its claims.',
+  'opt.remote.account': 'Account',
+  'opt.remote.flow': 'Flow',
+  'opt.remote.bm': 'Business Manager',
+  'opt.remote.none': '—',
+  'opt.remote.state.signed-out': 'Not signed in.',
+  'opt.remote.state.unprovisioned':
+    'Signed in but this machine has not been granted access (token has no claims). Ask ops to set the claims, then sign in again.',
+  'opt.remote.state.machine-mismatch':
+    'The machineId claim differs from this profile’s machineId. Ask ops to re-grant the claims for the ID above.',
+  'opt.remote.state.ok': 'Connected.',
+  'opt.remote.heartbeat': 'Last heartbeat',
+  'opt.remote.never': 'None yet',
+  'opt.remote.pending': 'Pending jobs',
+  'opt.remote.error': 'Last error',
+  'opt.remote.email': 'Email',
+  'opt.remote.password': 'Password',
+  'opt.remote.signIn': 'Sign in',
+  'opt.remote.signingIn': 'Signing in…',
+  'opt.remote.signOut': 'Disconnect',
+  'opt.remote.probe': 'Check BM tab',
+  'opt.remote.probing': 'Checking…',
+  'opt.remote.probeFound':
+    'Matching BM tab found ({count} BM tabs with a content script).',
+  'opt.remote.probeNone':
+    'No matching BM tab. Open business.facebook.com on this machine’s BM and try again.',
+  'opt.remote.probeFail': 'Could not check tabs.',
   'err.ERR_BUSY':
     'Another run is already active in this BM tab. Wait for it to finish or stop it, then run again.',
   'err.ERR_INVALID_CONFIG':
