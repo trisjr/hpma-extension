@@ -2,12 +2,14 @@ import type { ProbeKeyResult, ProbeReport } from '@/shared/probe';
 import { describe, expect, it } from 'vitest';
 
 import {
+  approveGate,
   gateStatus,
   isProbeCore,
   isProbeReply,
   isProbeReport,
   latestReport,
   parseProbeReports,
+  PROBE_MAX_AGE_MS,
   PROBE_STAGES,
   rateOf,
   stageOfKey,
@@ -96,6 +98,63 @@ describe('rateOf', () => {
       rateOf([key({ measured: false, hits: 0, samples: 0 })])
     ).toBeUndefined();
     expect(rateOf([])).toBeUndefined();
+  });
+});
+
+describe('approveGate', () => {
+  const NOW = 10_000_000_000;
+  const at = (rate: number | undefined, stage: 'requests' | 'request-detail') =>
+    report({ stage, rate, at: NOW - 1000 });
+
+  it('đạt khi cả hai màn duyệt có báo cáo mới ≥ 95%', () => {
+    expect(
+      approveGate(
+        {
+          requests: at(0.95, 'requests'),
+          'request-detail': at(1, 'request-detail'),
+        },
+        NOW
+      )
+    ).toEqual({ ok: true });
+  });
+
+  it('thiếu màn, dưới ngưỡng hoặc hết hạn thì không đạt và nêu rõ màn nào', () => {
+    expect(approveGate({}, NOW)).toEqual({
+      ok: false,
+      missing: ['requests', 'request-detail'],
+      below: [],
+      stale: [],
+    });
+    expect(
+      approveGate(
+        {
+          requests: at(0.9, 'requests'),
+          'request-detail': report({
+            stage: 'request-detail',
+            rate: 1,
+            at: NOW - PROBE_MAX_AGE_MS - 1,
+          }),
+        },
+        NOW
+      )
+    ).toEqual({
+      ok: false,
+      missing: [],
+      below: ['requests'],
+      stale: ['request-detail'],
+    });
+  });
+
+  it('báo cáo không có rate coi như dưới ngưỡng; màn Gán partner không ảnh hưởng', () => {
+    const gate = approveGate(
+      {
+        requests: at(undefined, 'requests'),
+        'request-detail': at(1, 'request-detail'),
+        'dialog-bm': report({ stage: 'dialog-bm', rate: 0 }),
+      },
+      NOW
+    );
+    expect(gate).toMatchObject({ ok: false, below: ['requests'] });
   });
 });
 

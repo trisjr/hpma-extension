@@ -1,3 +1,4 @@
+import type { ProbeReports } from '@/shared/probe';
 import type { RemoteJob } from '@/shared/remoteJob';
 import type { RunState } from '@/shared/run';
 import { describe, expect, it, vi } from 'vitest';
@@ -47,12 +48,19 @@ const run = (patch: Record<string, unknown> = {}): RunState =>
 
 type Write = { id: string; patch: Record<string, unknown> };
 
+// Chỉ `at` và `rate` được cổng probe đọc.
+const PASSING_PROBE = {
+  requests: { stage: 'requests', at: T0 - 1000, rate: 1 },
+  'request-detail': { stage: 'request-detail', at: T0 - 1000, rate: 0.97 },
+} as unknown as ProbeReports;
+
 function setup(
   options: {
     owned?: OwnJob[];
     locks?: Partial<{ emergency: unknown; rateLimitedUntil: unknown }>;
     memory?: Partial<DispatchMemory>;
     flow?: 'partner-assign' | 'partner-approve';
+    probe?: ProbeReports;
   } = {}
 ) {
   const clock = { now: T0 };
@@ -103,6 +111,9 @@ function setup(
       cancelCallbacks.set(jobId, onChange);
       return () => cancelCallbacks.delete(jobId);
     }),
+    readProbe: vi.fn(
+      async (): Promise<ProbeReports> => options.probe ?? PASSING_PROBE
+    ),
     readLocks: vi.fn(
       async (): Promise<Locks> => ({
         emergency: undefined,
@@ -204,12 +215,49 @@ describe('jobDispatcher: chạy job', () => {
     expect(ctx.tabs.prepare).not.toHaveBeenCalled();
   });
 
-  it('job full bị chặn khi allowlist chưa mở full', async () => {
+  const approveFull = (id: string, createdAt = 1): RemoteJob =>
+    mkJob(id, {
+      flow: 'partner-approve',
+      mode: 'full',
+      createdAt,
+      config: {
+        partnerName: 'BM',
+        action: 'approve',
+        requests: [{ requester: 'R', account: 'A' }],
+      },
+    });
+
+  it('job duyệt full chạy khi probe hai màn duyệt đạt, và gửi mode full', async () => {
     const ctx = setup({ flow: 'partner-approve' });
+    ctx.dispatcher.setPending([approveFull('f')]);
+    await vi.waitFor(() => expect(ctx.statusOf('f')).toBe('running'));
+    expect(ctx.tabs.start.mock.calls[0][1]).toMatchObject({
+      flow: 'partner-approve',
+      mode: 'full',
+    });
+    expect(ctx.memory().fullStarts).toHaveLength(1);
+  });
+
+  it('probe thiếu/dưới ngưỡng/hết hạn: job full bị chốt ERR_PROBE_GATE, không gửi lệnh', async () => {
+    const ctx = setup({ flow: 'partner-approve', probe: {} });
+    ctx.dispatcher.setPending([approveFull('f')]);
+    await vi.waitFor(() => expect(ctx.statusOf('f')).toBe('error'));
+    expect(ctx.last('f')).toMatchObject({
+      error: {
+        code: 'ERR_PROBE_GATE',
+        message: 'missing:requests+request-detail',
+      },
+    });
+    expect(ctx.tabs.start).not.toHaveBeenCalled();
+    expect(ctx.tabs.prepare).not.toHaveBeenCalled();
+  });
+
+  it('job duyệt dry không cần probe', async () => {
+    const ctx = setup({ flow: 'partner-approve', probe: {} });
     ctx.dispatcher.setPending([
-      mkJob('f', {
+      mkJob('d', {
         flow: 'partner-approve',
-        mode: 'full',
+        mode: 'dry',
         config: {
           partnerName: 'BM',
           action: 'approve',
@@ -217,8 +265,49 @@ describe('jobDispatcher: chạy job', () => {
         },
       }),
     ]);
-    await vi.waitFor(() => expect(ctx.statusOf('f')).toBe('error'));
-    expect(ctx.tabs.start).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(ctx.statusOf('d')).toBe('running'));
+  });
+
+  it('trần 3 job duyệt full mỗi ngày: job thứ tư không được claim, máy blocked budget', async () => {
+    const ctx = setup({
+      flow: 'partner-approve',
+      memory: { fullStarts: [T0 - 3000, T0 - 2000, T0 - 1000] },
+    });
+    ctx.dispatcher.setPending([approveFull('f4')]);
+    await vi.waitFor(() =>
+      expect(ctx.dispatcher.view()).toMatchObject({
+        status: 'blocked',
+        block: { reason: 'budget' },
+      })
+    );
+    expect(ctx.deps.claim).not.toHaveBeenCalled();
+  });
+
+  it('start không thành công thì không tính vào trần ngày', async () => {
+    const ctx = setup({ flow: 'partner-approve' });
+    ctx.tabs.start.mockResolvedValueOnce({ ok: false, code: 'ERR_BUSY' });
+    ctx.dispatcher.setPending([approveFull('f')]);
+    await vi.waitFor(() => expect(ctx.statusOf('f')).toBe('pending'));
+    expect(ctx.memory().fullStarts).toEqual([]);
+  });
+
+  it('assign/scan không có full: job full của flow khác bị chốt ERR_JOB_INVALID', async () => {
+    const assign = setup();
+    assign.dispatcher.setPending([mkJob('a', { mode: 'full' })]);
+    await vi.waitFor(() => expect(assign.statusOf('a')).toBe('error'));
+    expect(assign.last('a')).toMatchObject({
+      error: { code: 'ERR_JOB_INVALID', message: 'mode' },
+    });
+    const scan = setup({ flow: 'partner-approve' });
+    scan.dispatcher.setPending([
+      mkJob('s', {
+        flow: 'requests.scan',
+        mode: 'full',
+        config: { partnerName: 'BM' },
+      }),
+    ]);
+    await vi.waitFor(() => expect(scan.statusOf('s')).toBe('error'));
+    expect(scan.tabs.scan).not.toHaveBeenCalled();
   });
 
   it('job config sai (ADVERTISE đơn lẻ) bị chốt ERR_JOB_INVALID trước khi gửi lệnh', async () => {

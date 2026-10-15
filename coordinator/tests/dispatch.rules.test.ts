@@ -92,7 +92,7 @@ beforeEach(async () => {
 });
 
 describe('claim không trùng (D5)', () => {
-  it('hai máy cùng BM + flow tranh một job: đúng một máy thắng', async () => {
+  it('hai máy cùng BM + flow cùng nhận một job: đúng một máy thắng', async () => {
     await seed();
     const results = await Promise.all([
       claim(machine('m1', 'partner-assign'), 'm1'),
@@ -277,6 +277,49 @@ describe('bản ghi máy và reconcile', () => {
       )
     );
     expect(Object.keys(snapshot.val() as object)).toEqual(['job1']);
+  });
+});
+
+describe('heartbeat phải là giờ server (L5)', () => {
+  const record = {
+    businessId: BM,
+    flow: 'partner-assign',
+    status: 'idle',
+  };
+
+  it('lastHeartbeatAt/connectedAt = server timestamp được ghi, giá trị tự đặt bị từ chối', async () => {
+    const db = machine('m1', 'partner-assign').database();
+    await assertSucceeds(
+      set(ref(db, 'ext/machines/m1'), {
+        ...record,
+        connectedAt: serverTimestamp(),
+        lastHeartbeatAt: serverTimestamp(),
+      })
+    );
+    await assertFails(
+      update(ref(db, 'ext/machines/m1'), {
+        lastHeartbeatAt: Date.now() + 10 * 3600_000,
+      })
+    );
+    await assertFails(update(ref(db, 'ext/machines/m1'), { connectedAt: 1 }));
+  });
+
+  it('cập nhật các trường khác (status/blocked) không đụng heartbeat vẫn được', async () => {
+    const db = machine('m1', 'partner-assign').database();
+    await assertSucceeds(
+      set(ref(db, 'ext/machines/m1'), {
+        ...record,
+        lastHeartbeatAt: serverTimestamp(),
+      })
+    );
+    await assertSucceeds(
+      update(ref(db, 'ext/machines/m1'), {
+        status: 'blocked',
+        blockedReason: 'emergency',
+        blockedUntil: null,
+        currentJobId: null,
+      })
+    );
   });
 });
 

@@ -113,10 +113,14 @@ describe('flow và mode', () => {
     expect(acceptsFlow('partner-assign', 'partner-approve')).toBe(false);
   });
 
-  it('chỉ dry được phép từ xa khi chưa mở full (D8)', () => {
+  it('allowlist mode theo flow (D8, Q4): chỉ partner-approve có full, assist chưa mở', () => {
     expect(isModeAllowed('partner-assign', 'dry')).toBe(true);
     expect(isModeAllowed('partner-assign', 'assist')).toBe(false);
-    expect(isModeAllowed('partner-approve', 'full')).toBe(false);
+    expect(isModeAllowed('partner-assign', 'full')).toBe(false);
+    expect(isModeAllowed('partner-approve', 'dry')).toBe(true);
+    expect(isModeAllowed('partner-approve', 'full')).toBe(true);
+    expect(isModeAllowed('partner-approve', 'assist')).toBe(false);
+    expect(isModeAllowed('requests.scan', 'dry')).toBe(true);
     expect(isModeAllowed('requests.scan', 'full')).toBe(false);
   });
 

@@ -134,6 +134,43 @@ export function gateStatus(reports: ProbeReports): GateStatus {
   return below ? 'below' : 'pass';
 }
 
+// Màn mà flow duyệt request (partner-approve) đứng trên đó: danh sách Needs review và khung chi tiết có nút Approve.
+export const APPROVE_STAGES: readonly ProbeStage[] = [
+  'requests',
+  'request-detail',
+];
+// Báo cáo probe cũ hơn mức này coi như hết hạn: DOM của BM đổi theo bản phát hành của Meta.
+export const PROBE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type ApproveGate =
+  | { ok: true }
+  | {
+      ok: false;
+      missing: ProbeStage[];
+      below: ProbeStage[];
+      stale: ProbeStage[];
+    };
+
+// Cổng cho job duyệt `full` (Q4): hai màn của flow duyệt đều có báo cáo mới và đạt ngưỡng ≥ 95%.
+// Hẹp hơn `gateStatus` (đòi mọi màn của cả hai flow) vì job duyệt không đụng các màn Gán partner.
+export function approveGate(
+  reports: ProbeReports,
+  now: number,
+  maxAgeMs: number = PROBE_MAX_AGE_MS
+): ApproveGate {
+  const missing: ProbeStage[] = [];
+  const below: ProbeStage[] = [];
+  const stale: ProbeStage[] = [];
+  APPROVE_STAGES.forEach((stage) => {
+    const report = reports[stage];
+    if (!report) missing.push(stage);
+    else if (now - report.at > maxAgeMs) stale.push(stage);
+    else if ((report.rate ?? 0) < PROBE_PASS_RATE) below.push(stage);
+  });
+  if (missing.length + below.length + stale.length === 0) return { ok: true };
+  return { ok: false, missing, below, stale };
+}
+
 export function latestReport(reports: ProbeReports): ProbeReport | undefined {
   return Object.values(reports).reduce<ProbeReport | undefined>(
     (best, item) => (!best || item.at > best.at ? item : best),

@@ -37,7 +37,9 @@ const ACCEPTED_FLOWS: Record<MachineFlow, readonly RemoteFlow[]> = {
 // Mode job được phép chạy từ xa, theo flow (D8, Q4). Rules cưỡng chế độc lập; mở mode mới phải sửa cả hai.
 export const REMOTE_ALLOWED_MODES: Record<RemoteFlow, readonly RemoteMode[]> = {
   'partner-assign': ['dry'],
-  'partner-approve': ['dry'],
+  // Q4: chỉ flow duyệt được `full` (engine không có `full` cho assign/scan, controller.ts:77). Dispatcher còn ép cổng
+  // probe ≥ 95% và trần 3 job/ngày trước khi chạy.
+  'partner-approve': ['dry', 'full'],
   'requests.scan': ['dry'],
 };
 

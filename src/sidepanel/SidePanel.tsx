@@ -9,6 +9,7 @@ import useAdAccounts from '@/shared/hooks/useAdAccounts';
 import useApproveDraft from '@/shared/hooks/useApproveDraft';
 import useConnection from '@/shared/hooks/useConnection';
 import useFlowSurface from '@/shared/hooks/useFlowSurface';
+import useFullGate from '@/shared/hooks/useFullGate';
 import useLanguage from '@/shared/hooks/useLanguage';
 import usePartnerDraft from '@/shared/hooks/usePartnerDraft';
 import useProbe from '@/shared/hooks/useProbe';
@@ -44,8 +45,6 @@ import ResultScreen from './components/run/ResultScreen';
 import RunEmpty from './components/run/RunEmpty';
 import RunScreen from './components/run/RunScreen';
 
-// Full chỉ mở sau cổng probe ≥ 95% + dry-run pass (PRD §4.1b, M3).
-const FULL_LOCKED = true;
 const PARTNER_FLOW_ID = 'partner-assign';
 const APPROVE_FLOW_ID = 'partner-approve';
 
@@ -57,6 +56,8 @@ export default function SidePanel(): JSX.Element {
   const draft = usePartnerDraft();
   const remoteJobs = useRemoteJobs();
   const { focusId, clearFocus } = useRemoteFocus();
+  // Full chỉ mở khi probe hai màn duyệt request vừa đo ≥ 95% (PRD §4.1b, Q4); thiếu dữ liệu thì khoá.
+  const fullLocked = !useFullGate().ok;
   const devtest = useDevtestSettings();
   // Simulator chỉ khi devtest bật và cờ useSimulator bật; còn lại là engine thật.
   const useSim =
@@ -143,7 +144,7 @@ export default function SidePanel(): JSX.Element {
     if (scanned.status !== 'ok') return;
     controller.startApprove({
       // Full chỉ chạy được khi cổng ghi mở: flow này là nơi duy nhất engine tự bấm.
-      mode: mode === 'full' && !FULL_LOCKED ? 'full' : runnableMode,
+      mode: mode === 'full' && !fullLocked ? 'full' : runnableMode,
       config: {
         partnerName: scanned.partnerName,
         action: approveDraft.action,
@@ -218,7 +219,7 @@ export default function SidePanel(): JSX.Element {
           rows={buildDiff(draft.config, source.accounts, engineMode)}
           partnerBmId={draft.config.partnerBmId}
           budgetLeft={Math.max(0, limit - used)}
-          fullLocked={FULL_LOCKED}
+          fullLocked={fullLocked}
           onBack={closeDiff}
         />
       );
@@ -331,7 +332,7 @@ export default function SidePanel(): JSX.Element {
           lang={lang}
           connection={connection}
           mode={mode}
-          fullLocked={FULL_LOCKED}
+          fullLocked={fullLocked}
           engineMode={engineMode}
           banner={notice}
           draft={draft}
@@ -348,7 +349,7 @@ export default function SidePanel(): JSX.Element {
           lang={lang}
           connection={connection}
           mode={mode}
-          fullLocked={FULL_LOCKED}
+          fullLocked={fullLocked}
           engineMode={engineMode}
           banner={notice}
           draft={approveDraft}
@@ -375,7 +376,7 @@ export default function SidePanel(): JSX.Element {
           lang={lang}
           connection={connection}
           mode={mode}
-          fullLocked={FULL_LOCKED}
+          fullLocked={fullLocked}
           modeLocked={isRunActive(run)}
           tab={tab}
           probeEnabled={probeEnabled}

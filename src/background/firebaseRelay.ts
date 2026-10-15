@@ -38,6 +38,7 @@ import { EMERGENCY_KEY, RATE_LIMIT_KEY } from '@/shared/budget';
 import firebaseConfig from '@/shared/firebaseConfig';
 import { getMachineId } from '@/shared/machineId';
 import { isLocationReply, isRunEvent } from '@/shared/messaging';
+import { parseProbeReports, PROBE_STORAGE_KEY } from '@/shared/probe';
 import { isRemoteCommand } from '@/shared/remoteMessages';
 import { PACING_KEY, parsePacing } from '@/shared/settings';
 
@@ -154,6 +155,12 @@ function ensureDispatcher(claims: MachineClaims): Dispatcher {
     flow: claims.flow,
     ...store,
     readLocks,
+    readProbe: async () => {
+      const stored = await browser.storage.local
+        .get(PROBE_STORAGE_KEY)
+        .catch(() => ({}) as Record<string, unknown>);
+      return parseProbeReports(stored[PROBE_STORAGE_KEY]);
+    },
     loadMemory: async () => {
       const stored = await browser.storage.local.get(DISPATCH_KEY);
       return parseMemory(stored[DISPATCH_KEY]);

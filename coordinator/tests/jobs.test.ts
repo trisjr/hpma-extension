@@ -150,17 +150,50 @@ describe('job do ops CLI dựng ra phải qua Rules thật', () => {
     );
   });
 
-  it('job approve bị từ chối khi scan chưa done, hoặc mode full khi chưa mở', async () => {
+  it('job approve bị từ chối khi scan chưa done', async () => {
     await seedScan('running');
     await assertFails(
       set(ref(ops().database(), `ext/jobs/${BM}/a1`), approve([0]))
     );
-    await seedScan('done');
     await assertFails(
       set(
-        ref(ops().database(), `ext/jobs/${BM}/a2`),
+        ref(ops().database(), `ext/jobs/${BM}/a1`),
         approve([0], 'uid-ops', 'full')
       )
+    );
+  });
+
+  it('mode full chỉ có ở job duyệt của người (Q4): approve full được ghi, assign/scan full và approve full không-human bị từ chối', async () => {
+    await seedScan('done');
+    const db = ops().database();
+    await assertSucceeds(
+      set(ref(db, `ext/jobs/${BM}/a2`), approve([0, 1], 'uid-ops', 'full'))
+    );
+    await assertFails(
+      set(ref(db, `ext/jobs/${BM}/a3`), {
+        ...buildAssignJob(
+          parseAssignConfig({
+            partnerBmId: '1234567890123456',
+            queries: ['A'],
+            tasks: ['ANALYZE'],
+          }),
+          args
+        ),
+        mode: 'full',
+      })
+    );
+    await assertFails(
+      set(ref(db, `ext/jobs/${BM}/a4`), {
+        ...buildScanJob('BM', args),
+        mode: 'full',
+      })
+    );
+    // Không có approval: human thì không được full (đường auto-match của coordinator vẫn chỉ dry).
+    await assertFails(
+      set(ref(db, `ext/jobs/${BM}/a5`), {
+        ...approve([0], 'uid-ops', 'full'),
+        approval: 'auto-match',
+      })
     );
   });
 

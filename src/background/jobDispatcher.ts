@@ -9,6 +9,7 @@
 import type { RequestsReply } from '@/shared/approve';
 import type { SurfaceResult } from '@/shared/hooks/ensureSurface';
 import type { RunStartCommand, StartReply } from '@/shared/messaging';
+import type { ProbeReports } from '@/shared/probe';
 import type { MachineFlow, RemoteJob } from '@/shared/remoteJob';
 import type { RunState } from '@/shared/run';
 import type { CurfewConfig } from '@/shared/settings';
@@ -18,6 +19,7 @@ import type { DispatchMemory } from './dispatchMemory';
 
 import { parseApproveConfig } from '@/shared/approve';
 import { SERVER_TIMESTAMP } from '@/shared/jobClaim';
+import { approveGate } from '@/shared/probe';
 import {
   acceptsFlow,
   jobDispatchIssue,
@@ -111,6 +113,8 @@ export type DispatcherDeps = {
   ) => () => void;
   // Cục bộ
   readLocks: () => Promise<Locks>;
+  // Báo cáo probe đã lưu của profile này (cổng probe ≥ 95% cho job duyệt `full`, Q4).
+  readProbe: () => Promise<ProbeReports>;
   loadMemory: () => Promise<DispatchMemory>;
   saveMemory: (memory: DispatchMemory) => Promise<void>;
   tabs: TabDriver;
@@ -443,6 +447,19 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       });
       await release();
       return;
+    }
+    // Job duyệt `full` ghi thật lên Meta: chỉ chạy khi selector của hai màn duyệt vừa được đo và đạt ≥ 95% (Q4).
+    if (job.flow === 'partner-approve' && job.mode === 'full') {
+      const gate = approveGate(await deps.readProbe(), deps.now());
+      if (!gate.ok) {
+        const detail = (['missing', 'below', 'stale'] as const)
+          .filter((kind) => gate[kind].length > 0)
+          .map((kind) => `${kind}:${gate[kind].join('+')}`)
+          .join(' ');
+        await failJob(job, 'ERR_PROBE_GATE', detail);
+        await release();
+        return;
+      }
     }
     const surface = surfaceOf(job.flow);
     const tabId =
