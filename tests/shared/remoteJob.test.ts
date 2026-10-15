@@ -194,28 +194,43 @@ describe('flow và mode', () => {
 
     // TEMP(D12-bridge): gỡ khối này cùng `isBridgeApprove`.
     it('D12-bridge: approve machine-chain full do máy tạo (không scan, có partnerBmId) được chạy', () => {
+      const allConfig = {
+        partnerName: 'BM Đối Tác',
+        partnerBmId: '1234567890123456',
+        action: 'approve',
+        approveAll: true,
+      };
       const bridge = {
         ...approveJob,
+        config: allConfig,
         scanJobId: undefined,
         approval: 'machine-chain',
         createdBy: 'uid-m1',
         approvedBy: 'uid-m1',
       };
       expect(issueOf(bridge)).toBeUndefined();
-      // Có scan, thiếu partnerBmId, decline, approvedBy khác người tạo, hoặc do coordinator: bị từ chối.
+      // Có scan, thiếu partnerBmId, decline, kèm danh sách requests, không approveAll, approvedBy khác người tạo,
+      // hoặc do coordinator: bị từ chối.
       expect(issueOf({ ...bridge, scanJobId: 'scan-1' })).toBe('provenance');
       expect(
-        issueOf({
-          ...bridge,
-          config: { ...approveJob.config, partnerBmId: undefined },
-        })
+        issueOf({ ...bridge, config: { ...allConfig, partnerBmId: undefined } })
+      ).toBe('provenance');
+      expect(
+        issueOf({ ...bridge, config: { ...allConfig, action: 'decline' } })
       ).toBe('provenance');
       expect(
         issueOf({
           ...bridge,
-          config: { ...approveJob.config, action: 'decline' },
+          config: { ...allConfig, requests: approveJob.config.requests },
         })
       ).toBe('provenance');
+      expect(
+        issueOf({ ...bridge, config: { ...allConfig, approveAll: false } })
+      ).toBe('provenance');
+      // Config danh sách (không approveAll) với approval machine-chain: không phải đường tạm, không chạy full.
+      expect(issueOf({ ...bridge, config: approveJob.config })).toBe(
+        'provenance'
+      );
       expect(issueOf({ ...bridge, approvedBy: 'uid-khac' })).toBe('provenance');
       expect(
         issueOf({

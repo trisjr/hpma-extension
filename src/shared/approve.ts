@@ -97,6 +97,33 @@ export function parseApproveConfig(raw: unknown): ApproveConfig | undefined {
   };
 }
 
+// TEMP(D12-bridge): "duyệt mọi request của BM đối tác" (quyết định của anh, 15/10/2026): không có danh sách
+// `requests`; dispatcher quét Needs review lúc chạy rồi biến kết quả thành `ApproveConfig` cho engine. Luôn
+// `approve` (không bao giờ decline) và bắt buộc `partnerBmId` để engine kiểm BM ID ở từng request (M3).
+export type ApproveAllConfig = {
+  partnerName: string;
+  partnerBmId: string;
+  action: 'approve';
+  approveAll: true;
+};
+
+export function parseApproveAllConfig(
+  raw: unknown
+): ApproveAllConfig | undefined {
+  if (!isRecord(raw) || typeof raw.partnerName !== 'string') return undefined;
+  if (validatePartnerName(raw.partnerName) !== undefined) return undefined;
+  if (raw.action !== 'approve' || raw.approveAll !== true) return undefined;
+  if (!isBusinessId(raw.partnerBmId) || raw.requests !== undefined) {
+    return undefined;
+  }
+  return {
+    partnerName: cleanPartnerName(raw.partnerName),
+    partnerBmId: raw.partnerBmId,
+    action: 'approve',
+    approveAll: true,
+  };
+}
+
 // ---- Quét chỉ-đọc: panel → content script -----------------------------------
 
 export type RequestsRead = { kind: 'requests.read'; partnerName: string };

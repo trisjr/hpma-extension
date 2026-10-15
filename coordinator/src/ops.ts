@@ -4,8 +4,8 @@
  *
  *   pnpm ops status
  *   pnpm ops assign <bm> --file job.json [--mode dry|full]   (full: gõ xác nhận, không nhận --yes)
- *       full luôn nối chuỗi D12 sang approve: tên đối tác lấy từ --chain-partner hoặc `partnerName` trong job.json,
- *       tên admin yêu cầu từ --chain-requester hoặc HPMA_CHAIN_REQUESTER; thiếu thì hỏi. Tắt bằng --no-chain.
+ *       full luôn nối chuỗi D12 sang approve (duyệt mọi request của BM đối tác): tên đối tác lấy từ --chain-partner
+ *       hoặc `partnerName` trong job.json; thiếu thì hỏi. Tắt bằng --no-chain.
  *   pnpm ops scan <bm> --partner "TÊN BM ĐỐI TÁC"
  *   pnpm ops approve <bm> <scanJobId> [--action approve|decline] [--select 1,3-5|all] [--mode dry|full] [--yes]
  *   pnpm ops cancel <bm> <jobId>
@@ -164,7 +164,6 @@ const main = async (): Promise<void> => {
       action: { type: 'string' },
       mode: { type: 'string' },
       'chain-partner': { type: 'string' },
-      'chain-requester': { type: 'string' },
       'no-chain': { type: 'boolean' },
       yes: { type: 'boolean' },
     },
@@ -204,8 +203,8 @@ const main = async (): Promise<void> => {
       const mode = values.mode ?? 'dry';
       if (mode !== 'dry' && mode !== 'full') fail('mode phải là dry hoặc full');
       // Chuỗi D12: mọi job assign full đều nối sang approve (tắt bằng --no-chain). Khai ngay từ đầu, trước mọi
-      // xác nhận, để sai tham số thì dừng sớm. Thiếu tên thì hỏi tại chỗ: tên BM đối tác lấy từ cờ hoặc `partnerName`
-      // trong job.json, tên admin yêu cầu lấy từ cờ hoặc HPMA_CHAIN_REQUESTER.
+      // xác nhận, để sai tham số thì dừng sớm. Tên BM đối tác lấy từ cờ hoặc `partnerName` trong job.json, thiếu thì hỏi.
+      // Máy admin 2 duyệt mọi request của BM đó (không ràng người yêu cầu).
       let chain: ChainDecl | undefined;
       if (mode === 'full' && !values['no-chain']) {
         const fileName =
@@ -218,12 +217,8 @@ const main = async (): Promise<void> => {
           values['chain-partner'] ?? fileName,
           'Tên BM đối tác (đúng như hiện ở Needs review): '
         );
-        const requester = await ask(
-          values['chain-requester'] ?? process.env.HPMA_CHAIN_REQUESTER,
-          'Tên admin 1 gửi yêu cầu (đúng như hiện ở Needs review): '
-        );
         try {
-          chain = buildChain(partner, requester, 'full');
+          chain = buildChain(partner, 'full');
         } catch (error) {
           fail((error as Error).message);
         }
@@ -241,7 +236,7 @@ const main = async (): Promise<void> => {
         console.log(`Sẽ GÁN THẬT (full) ở BM ${businessId}:`);
         if (chain)
           console.log(
-            `  Chuỗi auto-approve: BM "${chain.partnerName}", người yêu cầu "${chain.requesterName}" → máy admin 2 sẽ DUYỆT THẬT (${chain.mode})`
+            `  Chuỗi auto-approve: máy admin 2 sẽ DUYỆT THẬT MỌI request của BM "${chain.partnerName}" (${chain.mode})`
           );
         console.log(`  BM đối tác: ${config.partnerBmId}`);
         console.log(`  Quyền: ${config.tasks.join(', ')}`);

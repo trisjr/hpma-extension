@@ -6,6 +6,7 @@
 import { uiTaskKeys } from '@/content/flows/partnerTasks';
 import {
   cleanPartnerName,
+  parseApproveAllConfig,
   parseApproveConfig,
   validatePartnerName,
 } from '@/shared/approve';
@@ -116,7 +117,10 @@ function isValidConfig(flow: RemoteFlow, config: unknown): boolean {
       return parsed !== undefined && uiTaskKeys(parsed.tasks) !== undefined;
     }
     case 'partner-approve':
-      return parseApproveConfig(config) !== undefined;
+      return (
+        parseApproveConfig(config) !== undefined ||
+        parseApproveAllConfig(config) !== undefined
+      );
     case 'requests.scan':
       return (
         isRecord(config) &&
@@ -229,15 +233,13 @@ function isAutoMatchApprove(job: RemoteJob): boolean {
 // `machine-chain` trong `coordinator/database.rules.json` khi coordinator (phase B) được triển khai.
 export const BRIDGE_APPROVAL = 'machine-chain';
 
-// Job approve của đường tạm: chỉ approve, do chính máy tạo (createdBy = approvedBy), trỏ về job assign của chuỗi,
-// không có scan và bắt buộc có partnerBmId (M3).
+// Job approve của đường tạm: config `approveAll` (luôn approve, bắt buộc partnerBmId — M3), do chính máy tạo
+// (createdBy = approvedBy), trỏ về job assign của chuỗi, không có scan.
 function isBridgeApprove(job: RemoteJob): boolean {
   if (job.flow !== 'partner-approve' || job.approval !== BRIDGE_APPROVAL)
     return false;
-  const config = parseApproveConfig(job.config);
   return (
-    config?.action === 'approve' &&
-    config.partnerBmId !== undefined &&
+    parseApproveAllConfig(job.config) !== undefined &&
     job.scanJobId === undefined &&
     job.chainAssignJobId !== undefined &&
     job.createdBy !== undefined &&
@@ -287,7 +289,8 @@ export function isRemoteJob(value: unknown): value is RemoteJob {
 // Tên BM đối tác của job duyệt/quét (để panel điền sẵn); job gán không có.
 export function jobPartnerName(job: RemoteJob): string | undefined {
   if (job.flow === 'partner-approve') {
-    return parseApproveConfig(job.config)?.partnerName;
+    return (parseApproveConfig(job.config) ?? parseApproveAllConfig(job.config))
+      ?.partnerName;
   }
   if (job.flow === 'requests.scan' && isRecord(job.config)) {
     const name = job.config.partnerName;

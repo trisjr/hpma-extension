@@ -8,15 +8,15 @@
  *   2. xoá `BRIDGE_APPROVAL`/`isBridgeApprove` ở `src/shared/remoteJob.ts`;
  *   3. xoá nhánh `machine-chain` ở `coordinator/database.rules.json` và test tương ứng.
  *
- * Gate là engine: chỉ duyệt request đang có thật ở Needs review khớp đủ `partnerName`, `partnerBmId` (từ config
- * assign, bất biến), requester và tên TKQC. Rules cưỡng chế `partnerName`/`partnerBmId`/mode/action và MỌI
- * `requests[i].requester` bằng `chain.requesterName` của job assign, nhưng không so được tên TKQC với
- * `awaitingApproval`: một profile admin 1 bị chiếm có thể khai tên TKQC tuỳ ý. Trần thực tế là "mọi TKQC mà
- * admin 1 xin cấp cho đúng BM đối tác" (vì chính admin 1 cũng tự gửi được request mới trên Meta).
+ * Quyết định của anh (15/10/2026): duyệt MỌI request của BM đối tác, không ràng requester hay danh sách TKQC.
+ * Job approve mang config `approveAll`; máy approve quét Needs review lúc chạy (tối đa 50 request/job) rồi
+ * engine duyệt từng request, chỉ khi khung chi tiết hiện đúng `partnerName` và `partnerBmId` (từ config assign,
+ * bất biến — M3). Rules cưỡng chế `partnerName`/`partnerBmId`/mode/`approve`. Trần thực tế: mọi request ở Needs
+ * review của BM này gửi cho đúng BM đối tác (theo ID), từ bất kỳ người gửi nào.
  */
 import type { JobResult } from './dispatchLogic';
 
-import { parseApproveConfig } from '@/shared/approve';
+import { parseApproveAllConfig } from '@/shared/approve';
 import { BRIDGE_APPROVAL, RemoteJob } from '@/shared/remoteJob';
 import { parseRunConfig } from '@/shared/runConfig';
 
@@ -36,22 +36,17 @@ export type BridgeJob = {
   state: { status: 'pending' };
 };
 
-export function buildBridgeApprove(
-  job: RemoteJob,
-  awaiting: NonNullable<JobResult['awaitingApproval']>
-): BridgeJob | undefined {
+// `awaiting` chỉ là điều kiện kích hoạt (run dừng chờ duyệt); job approve không mang danh sách TKQC.
+export function buildBridgeApprove(job: RemoteJob): BridgeJob | undefined {
   const { chain } = job;
   const assign =
     job.flow === 'partner-assign' ? parseRunConfig(job.config) : undefined;
-  if (!chain?.auto || !chain.requesterName || !assign) return undefined;
-  const config = parseApproveConfig({
+  if (!chain?.auto || !assign) return undefined;
+  const config = parseApproveAllConfig({
     partnerName: chain.partnerName,
     partnerBmId: assign.partnerBmId,
     action: 'approve',
-    requests: awaiting.map(({ name }) => ({
-      requester: chain.requesterName,
-      account: name,
-    })),
+    approveAll: true,
   });
   if (!config) return undefined;
   return {
@@ -74,7 +69,7 @@ export default async function bridgeApprove(
   createJob: ((jobId: string, job: BridgeJob) => Promise<void>) | undefined
 ): Promise<void> {
   if (!createJob || !awaiting || !job.chain?.auto) return;
-  const built = buildBridgeApprove(job, awaiting);
+  const built = buildBridgeApprove(job);
   if (!built) throw new Error('D12-bridge: không dựng được job approve');
   await createJob(bridgeJobId(job.id), built);
 }

@@ -21,19 +21,18 @@ const assignConfig = parseAssignConfig({
   tasks: ['ANALYZE'],
 });
 
-describe('buildChain (ops assign --chain-*)', () => {
-  it('chuỗi chỉ có với full, tên đối tác và người yêu cầu đều bắt buộc', () => {
-    expect(() => buildChain(PARTNER, 'Admin 1', 'dry')).toThrow(/full/);
-    expect(() => buildChain(undefined, 'Admin 1', 'full')).toThrow(/partner/);
-    expect(() => buildChain(PARTNER, undefined, 'full')).toThrow(/requester/);
-    expect(() => buildChain('   ', 'Admin 1', 'full')).toThrow();
-    const chain = buildChain(`  ${PARTNER} `, 'Admin 1', 'full');
+describe('buildChain (ops assign full)', () => {
+  it('chuỗi chỉ có với full và tên đối tác bắt buộc; không có người yêu cầu', () => {
+    expect(() => buildChain(PARTNER, 'dry')).toThrow(/full/);
+    expect(() => buildChain(undefined, 'full')).toThrow(/partner/);
+    expect(() => buildChain('   ', 'full')).toThrow();
+    const chain = buildChain(`  ${PARTNER} `, 'full');
     expect(chain).toMatchObject({
       auto: true,
       partnerName: PARTNER,
-      requesterName: 'Admin 1',
       mode: 'full',
     });
+    expect(chain).not.toHaveProperty('requesterName');
     expect(chain.scanDelaysSec.length).toBeGreaterThan(0);
   });
 });
@@ -71,7 +70,7 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
     uid: 'uid-ops',
     createdAt: serverTimestamp(),
   };
-  const chain = buildChain(PARTNER, 'Admin 1', 'full');
+  const chain = buildChain(PARTNER, 'full');
 
   // Job assign đã xong, dừng ở pending-approval, ops khai chain (như sau khi máy admin 1 chạy xong).
   const seed = async (
@@ -148,7 +147,7 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
     ...over,
   });
 
-  it('ops khai chain trên assign full; dry, thiếu requesterName hoặc coordinator tạo thì bị từ chối', async () => {
+  it('ops khai chain trên assign full; dry hoặc coordinator tạo thì bị từ chối', async () => {
     const db = ops().database();
     await assertSucceeds(
       set(
@@ -162,11 +161,13 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
         chain,
       })
     );
-    const { requesterName: _drop, ...noRequester } = chain;
     await assertFails(
       set(
         ref(db, `ext/jobs/${BM}/c3`),
-        buildAssignJob(assignConfig, opsArgs, 'full', noRequester as never)
+        buildAssignJob(assignConfig, opsArgs, 'full', {
+          ...chain,
+          partnerName: '',
+        })
       )
     );
     await assertFails(
@@ -371,6 +372,13 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
       bm = BM
     ): ReturnType<RulesTestEnvironment['authenticatedContext']> =>
       env.authenticatedContext(`uid-${id}`, { machineId: id, bm, flow });
+    // Config "duyệt mọi request của BM đối tác": không có danh sách requests.
+    const bridgeConfig = {
+      partnerName: PARTNER,
+      partnerBmId: assignConfig.partnerBmId,
+      action: 'approve',
+      approveAll: true,
+    };
     const bridge = (
       uid = 'uid-m1',
       over: Record<string, unknown> = {}
@@ -378,6 +386,7 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
       const { scanJobId: _s, ...rest } = approveJob();
       return {
         ...rest,
+        config: bridgeConfig,
         approval: 'machine-chain',
         approvedBy: uid,
         createdBy: uid,
@@ -427,7 +436,7 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
     it('partnerBmId, partnerName, mode, action phải khớp job assign; scanJobId không được có', async () => {
       await seed();
       const db = machine().database();
-      const config = approveJob().config as Record<string, unknown>;
+      const config = bridgeConfig as Record<string, unknown>;
       await assertFails(
         set(
           ref(db, KEY),
@@ -454,11 +463,19 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
       );
     });
 
-    it('mọi requester phải bằng chain.requesterName của job assign (kể cả mục thứ hai)', async () => {
+    it('machine-chain chỉ nhận config approveAll: không kèm danh sách requests, không thiếu approveAll', async () => {
       await seed();
       const db = machine().database();
-      const config = approveJob().config as Record<string, unknown>;
+      const config = bridgeConfig as Record<string, unknown>;
       const other = { requester: 'Another Employee', account: 'SHOP A' };
+      const { approveAll: _a, ...noAll } = config;
+      await assertFails(set(ref(db, KEY), bridge('uid-m1', { config: noAll })));
+      await assertFails(
+        set(
+          ref(db, KEY),
+          bridge('uid-m1', { config: { ...config, approveAll: false } })
+        )
+      );
       await assertFails(
         set(
           ref(db, KEY),
@@ -476,7 +493,7 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
           })
         )
       );
-      await assertSucceeds(
+      await assertFails(
         set(
           ref(db, KEY),
           bridge('uid-m1', {

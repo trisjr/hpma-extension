@@ -229,7 +229,6 @@ describe('jobDispatcher: chạy job', () => {
     const chain = {
       auto: true,
       partnerName: 'BM Đối Tác',
-      requesterName: 'Admin 1',
       mode: 'full',
       scanDelaysSec: [120],
       ttlSec: 86400,
@@ -286,13 +285,91 @@ describe('jobDispatcher: chạy job', () => {
             partnerName: 'BM Đối Tác',
             partnerBmId: '1234567890123456',
             action: 'approve',
-            requests: [{ requester: 'Admin 1', account: 'SHOP B' }],
+            approveAll: true,
           },
+        },
+      });
+      expect(ctx.createdJobs[0].job.config).not.toHaveProperty('requests');
+    });
+
+    it('D12-bridge: máy approve nhận job approveAll, quét Needs review rồi chạy với danh sách vừa quét', async () => {
+      const ctx = setup({ flow: 'partner-approve' });
+      ctx.tabs.scan.mockResolvedValue({
+        ok: true,
+        businessId: BM,
+        requests: [
+          { requester: 'Ai Do', account: 'SHOP A' },
+          { requester: 'Ai Khac', account: 'SHOP B' },
+        ],
+      });
+      ctx.dispatcher.setPending([
+        mkJob('chain-x-approve', {
+          flow: 'partner-approve',
+          mode: 'full',
+          approval: 'machine-chain',
+          approvedBy: 'uid-m1',
+          createdBy: 'uid-m1',
+          chain: { assignJobId: 'x' },
+          config: {
+            partnerName: 'BM Đối Tác',
+            partnerBmId: '1234567890123456',
+            action: 'approve',
+            approveAll: true,
+          },
+        }),
+      ]);
+      await vi.waitFor(() =>
+        expect(ctx.statusOf('chain-x-approve')).toBe('running')
+      );
+      expect(ctx.tabs.scan).toHaveBeenCalledWith(7, 'BM Đối Tác');
+      expect(ctx.tabs.start.mock.calls[0][1]).toMatchObject({
+        flow: 'partner-approve',
+        mode: 'full',
+        config: {
+          partnerName: 'BM Đối Tác',
+          partnerBmId: '1234567890123456',
+          action: 'approve',
+          requests: [
+            { requester: 'Ai Do', account: 'SHOP A' },
+            { requester: 'Ai Khac', account: 'SHOP B' },
+          ],
         },
       });
     });
 
-    it('D12-bridge: không có chain.auto, run không chờ duyệt, hoặc thiếu requesterName thì không tạo job', async () => {
+    it('D12-bridge: quét không thấy request nào của BM đối tác thì job lỗi và không chạy engine', async () => {
+      const ctx = setup({ flow: 'partner-approve' });
+      ctx.tabs.scan.mockResolvedValue({
+        ok: true,
+        businessId: BM,
+        requests: [],
+      });
+      ctx.dispatcher.setPending([
+        mkJob('chain-y-approve', {
+          flow: 'partner-approve',
+          mode: 'full',
+          approval: 'machine-chain',
+          approvedBy: 'uid-m1',
+          createdBy: 'uid-m1',
+          chain: { assignJobId: 'y' },
+          config: {
+            partnerName: 'BM Đối Tác',
+            partnerBmId: '1234567890123456',
+            action: 'approve',
+            approveAll: true,
+          },
+        }),
+      ]);
+      await vi.waitFor(() =>
+        expect(ctx.statusOf('chain-y-approve')).toBe('error')
+      );
+      expect(ctx.last('chain-y-approve')).toMatchObject({
+        error: { code: 'ERR_TARGET_NOT_FOUND' },
+      });
+      expect(ctx.tabs.start).not.toHaveBeenCalled();
+    });
+
+    it('D12-bridge: không có chain.auto hoặc run không chờ duyệt thì không tạo job', async () => {
       const plain = setup();
       plain.dispatcher.setPending([mkJob('n1')]);
       await vi.waitFor(() => expect(plain.statusOf('n1')).toBe('running'));
@@ -306,18 +383,6 @@ describe('jobDispatcher: chạy job', () => {
       done.dispatcher.onRunEvent(run({ status: 'done' }), 7);
       await vi.waitFor(() => expect(done.statusOf('n2')).toBe('done'));
       expect(done.createdJobs).toHaveLength(0);
-
-      const noRequester = setup();
-      noRequester.dispatcher.setPending([
-        mkJob('n3', { chain: { ...chain, requesterName: undefined } }),
-      ]);
-      await vi.waitFor(() =>
-        expect(noRequester.statusOf('n3')).toBe('running')
-      );
-      noRequester.dispatcher.onRunEvent(pendingRun, 7);
-      await vi.waitFor(() => expect(noRequester.statusOf('n3')).toBe('done'));
-      expect(noRequester.createdJobs).toHaveLength(0);
-      expect(noRequester.errors).toHaveLength(1);
     });
 
     it('D12-bridge: bị huỷ hoặc kill-switch đang bật thì không tạo job approve', async () => {

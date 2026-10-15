@@ -6,7 +6,11 @@
  * `browser`: logic được test bằng bản giả. Chỉ một job chạy mỗi lúc; mọi chuyển trạng thái đều ghi lại
  * lên RTDB ngay, nên SW chết ở bất kỳ điểm nào cũng được `reconcile` nối lại hoặc chốt đúng.
  */
-import type { RequestsReply } from '@/shared/approve';
+import type {
+  ApproveAllConfig,
+  ApproveConfig,
+  RequestsReply,
+} from '@/shared/approve';
 import type { SurfaceResult } from '@/shared/hooks/ensureSurface';
 import type { RunStartCommand, StartReply } from '@/shared/messaging';
 import type { ProbeReports } from '@/shared/probe';
@@ -18,7 +22,11 @@ import type { BridgeJob } from './chainBridge';
 import type { Block, Gate, ReplyAction, ReplyContext } from './dispatchLogic';
 import type { DispatchMemory } from './dispatchMemory';
 
-import { parseApproveConfig } from '@/shared/approve';
+import {
+  MAX_APPROVE_REQUESTS,
+  parseApproveAllConfig,
+  parseApproveConfig,
+} from '@/shared/approve';
 import { SERVER_TIMESTAMP } from '@/shared/jobClaim';
 import { approveGate, assignGate } from '@/shared/probe';
 import {
@@ -411,20 +419,73 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     };
   }
 
+  function startCommandBase(job: RemoteJob): {
+    kind: 'run.start';
+    requestId: string;
+    mode: RemoteJob['mode'];
+    businessId: string;
+  } {
+    return {
+      kind: 'run.start',
+      requestId: `remote-${job.id}`,
+      mode: job.mode,
+      businessId: job.businessId,
+    };
+  }
+
   function startCommand(job: RemoteJob): RunStartCommand | undefined {
     const config =
       job.flow === 'partner-approve'
         ? parseApproveConfig(job.config)
         : parseRunConfig(job.config);
     if (!config || job.flow === 'requests.scan') return undefined;
-    return {
-      kind: 'run.start',
-      requestId: `remote-${job.id}`,
-      flow: job.flow,
-      mode: job.mode,
-      config,
-      businessId: job.businessId,
-    };
+    return { ...startCommandBase(job), flow: job.flow, config };
+  }
+
+  // TEMP(D12-bridge): job `approveAll` thành danh sách request bằng một lần quét Needs review ngay trước khi chạy
+  // (tối đa MAX_APPROVE_REQUESTS; phần còn lại cần job khác). Engine vẫn kiểm `partnerBmId` ở từng request.
+  // undefined = đã xử lý xong (lỗi, thử lại, hoặc không có request nào), caller không chạy tiếp.
+  async function expandApproveAll(
+    job: RemoteJob,
+    tabId: number,
+    all: ApproveAllConfig,
+    ctx: ReplyContext
+  ): Promise<ApproveConfig | undefined> {
+    const { run } = await deps.tabs.sync(tabId);
+    if (run && isRunActive(run)) {
+      await applyAction(job, mapStartReply('ERR_BUSY', ctx));
+      return undefined;
+    }
+    const reply = await deps.tabs.scan(tabId, all.partnerName);
+    if (!reply) {
+      await applyAction(job, mapPrepareError('ERR_TAB_RELOADED', ctx));
+      return undefined;
+    }
+    if (!reply.ok) {
+      if (reply.error === 'busy')
+        await applyAction(job, mapStartReply('ERR_BUSY', ctx));
+      else {
+        await failJob(job, 'ERR_SCAN_FAILED', reply.error);
+        await release();
+      }
+      return undefined;
+    }
+    const config = parseApproveConfig({
+      partnerName: all.partnerName,
+      partnerBmId: all.partnerBmId,
+      action: 'approve',
+      requests: reply.requests.slice(0, MAX_APPROVE_REQUESTS),
+    });
+    if (!config) {
+      await failJob(
+        job,
+        'ERR_TARGET_NOT_FOUND',
+        'không có request nào của BM đối tác'
+      );
+      await release();
+      return undefined;
+    }
+    return config;
   }
 
   function watch(cur: Current): void {
@@ -567,7 +628,16 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       await runScan(cur, ctx);
       return;
     }
-    const command = startCommand(job);
+    const all =
+      job.flow === 'partner-approve'
+        ? parseApproveAllConfig(job.config)
+        : undefined;
+    let command = startCommand(job);
+    if (all) {
+      const config = await expandApproveAll(job, tabId, all, ctx);
+      if (!config) return;
+      command = { ...startCommandBase(job), flow: 'partner-approve', config };
+    }
     if (!command) {
       await failJob(job, 'ERR_JOB_INVALID', 'config');
       await release();

@@ -38,10 +38,10 @@ export type NewJob = {
 export const DEFAULT_SCAN_DELAYS_SEC = [120, 300, 600];
 export const DEFAULT_CHAIN_TTL_SEC = 86_400;
 
-// Khai chuỗi của `ops assign --chain-partner`: tên người yêu cầu bắt buộc (quyết định D12: ít request mơ hồ).
+// Khai chuỗi của `ops assign` (full): chỉ cần tên BM đối tác. Quyết định của anh (15/10/2026): duyệt mọi request của
+// BM đó, không ràng người yêu cầu.
 export function buildChain(
   partnerName: string | undefined,
-  requesterName: string | undefined,
   mode: 'dry' | 'full'
 ): ChainDecl {
   if (mode !== 'full')
@@ -53,15 +53,9 @@ export function buildChain(
   const partnerIssue = validatePartnerName(partnerName);
   if (partnerIssue)
     throw new Error(`--chain-partner không hợp lệ (${partnerIssue})`);
-  if (requesterName === undefined)
-    throw new Error('thiếu --chain-requester "<tên admin yêu cầu>"');
-  const requesterIssue = validatePartnerName(requesterName);
-  if (requesterIssue)
-    throw new Error(`--chain-requester không hợp lệ (${requesterIssue})`);
   return {
     auto: true,
     partnerName: cleanPartnerName(partnerName),
-    requesterName: cleanPartnerName(requesterName),
     mode: 'full',
     scanDelaysSec: DEFAULT_SCAN_DELAYS_SEC,
     ttlSec: DEFAULT_CHAIN_TTL_SEC,
