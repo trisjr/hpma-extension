@@ -28,3 +28,7 @@ dist*
 .cspellcache
 
 tnm---hpma-firebase-adminsdk-fbsvc-d6da022178.json
+# Local secrets
+.env
+.env.*
+!.env.example
