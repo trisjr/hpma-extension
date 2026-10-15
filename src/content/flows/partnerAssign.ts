@@ -569,6 +569,34 @@ async function cancelWizard(ctx: FlowContext): Promise<void> {
   }
 }
 
+// Yêu cầu duyệt đã được Meta ghi nhận; hộp thoại "Approval needed" chỉ là thông báo, đóng nó không ghi gì thêm
+// và không để nó chặn tab. Tốt nhất có thể: không tìm thấy nút thì để nguyên cho user.
+async function dismissApprovalNotice(ctx: FlowContext): Promise<void> {
+  try {
+    const dialog = activeDialog();
+    if (!dialog) return;
+    // Chỉ đóng đúng thông báo duyệt: dialog khác (checkpoint, rate-limit...) phải để nguyên cho watcher và user.
+    const text = normalizeText(dialog.textContent ?? '');
+    const isApprovalNotice = labelsOf('signal.approval', ctx.lang)
+      .map(normalizeText)
+      .some((phrase) => text.includes(phrase));
+    if (!isApprovalNotice) return;
+    const button =
+      tryResolve(SELECTORS.done, ctx.lang) ??
+      tryResolve(SELECTORS.close, ctx.lang);
+    if (!button) return;
+    await click(button, ctx);
+    await orUndefined(
+      waitGone(() => activeDialog() !== null, {
+        signal: ctx.signal,
+        timeoutMs: 8000,
+      })
+    );
+  } catch (error) {
+    if (!(error instanceof EngineError)) throw error;
+  }
+}
+
 // Theo dõi văn bản hộp thoại cuối cùng và mọi toast từng hiện (toast tự tắt sau vài giây)
 // để nhận ra yêu cầu duyệt sau khi user bấm Assign.
 function trackNotices(): { read: () => string; stop: () => void } {
@@ -826,6 +854,7 @@ async function runBatchSteps(
   ) {
     // Cần admin thứ hai duyệt: không replay, dừng toàn run (FR-04).
     selected.forEach(({ index }) => ctx.setTarget(index, 'pending-approval'));
+    await dismissApprovalNotice(ctx);
     ctx.skipStep(7, { locate: 'skip', act: 'skip', verify: 'skip' });
     return 'stop';
   }

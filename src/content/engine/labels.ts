@@ -30,6 +30,7 @@ export type LabelKey =
   | 'dialog.assign'
   | 'dialog.cancel'
   | 'dialog.close'
+  | 'dialog.done'
   | 'asset.alreadyAssigned'
   | 'asset.selectAll'
   | 'partner.assignedAssets'
@@ -136,6 +137,12 @@ export const LABELS: Record<LabelKey, Label> = {
     vi: ['Đóng'],
     en: ['Close'],
     verified: true,
+  },
+  // Nút của dialog "Approval needed" sau khi bấm Assign (ảnh chụp 15/10/2026); `vi` chưa có báo cáo thực địa.
+  'dialog.done': {
+    vi: ['Xong'],
+    en: ['Done'],
+    verified: false,
   },
   'asset.alreadyAssigned': {
     vi: ['Đã được chỉ định', 'Đã chia sẻ'],

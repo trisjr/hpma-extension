@@ -145,6 +145,12 @@ const SELECTORS = {
     label: 'dialog.close',
     scope: 'dialog',
   },
+  done: {
+    key: 'dialog.done',
+    css: BUTTON,
+    label: 'dialog.done',
+    scope: 'dialog',
+  },
   // Settings › Requests (SPEC-ENG-002). Engine chỉ định vị nút khớp quyết định user đã chọn.
   requestsNeedsReview: {
     key: 'requests.needsReview',
