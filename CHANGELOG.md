@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.8.0
+
+### What's Changed
+
+- feat(remote): Remote jobs from Firebase: the extension relays a heartbeat, lists pending jobs in the popup and side panel, claims and runs them (Dry-run, plus Full for approved jobs behind the probe gate, daily cap and rules), and shows the running job with progress
+- feat(remote): A partner-assign job can declare a chain; when Meta reports "Approval needed", the job result records `awaitingApproval` so the coordinator can create the follow-up approve job
+- feat(remote): The daily Full job cap is configurable in options, unlimited by default; the popup shows why the machine is blocked while a job stays pending
+- feat(coordinator): New coordinator package with ops CLI (assign, scan, approve, cancel, status, kill-switch, janitor), Firebase rules and emulator tests; `ops assign --chain-partner --chain-requester` declares an assign → approve chain
+- feat(engine): Full mode for partner assign behind the probe gate and approval; the engine records the matched danger keyword and can unlock a rate limit
+- fix(flow): Meta's "Approval needed" dialog is treated as pending-approval, dismissed after the request is sent, including a stacked dialog over the wizard
+- fix(remote): The dispatcher fails closed when the kill-switch listener dies, and the rate-limit unlock keeps checkpoint incidents
+- fix(popup): The middle area scrolls and the block banner no longer collapses into columns
+
+Full Changelog: Compare v0.7.0...v0.8.0
+
 ## v0.7.0
 
 ### What's Changed
