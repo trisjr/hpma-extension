@@ -22,3 +22,7 @@ Chứa SDD, ADR, RFC, API Specs, DB Schema, Security Specs — dùng [Template-S
 
 - [SPEC-ENG-001 — Action engine và flow "Gán partner vào TKQC" (Dry-run / Assist)](SPEC-ENG-001-engine-partner-assign.md) — `approved`
 - [SPEC-ENG-002 — Flow "Duyệt request cấp quyền TKQC" (Dry-run / Assist)](SPEC-ENG-002-engine-partner-approve.md) — `draft` (code xong, chưa chạy trên BM thật)
+
+### 🤖 Automation Specs
+
+- [SPEC-AUTO-001 — Điều khiển flow từ xa qua Firebase Realtime Database](SPEC-AUTO-001-firebase-remote-trigger.md) — `draft`
