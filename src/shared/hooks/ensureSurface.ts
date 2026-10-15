@@ -46,16 +46,24 @@ function sleep(ms: number): Promise<void> {
 // Đưa tab về trang flow cần. Chỉ điều hướng khi không có run đang chạy và đã biết
 // business_id; sau khi tải lại phải thấy content script trả lời đúng trang và đúng BM
 // (không chỉ `status: complete`, vì content script nạp muộn hơn và FB có thể redirect).
+// `businessId` (tuỳ chọn): BM đích; panel không truyền nên giữ BM hiện tại của tab. Dispatcher luôn truyền BM của máy
+// để tab đang ở BM khác/trang không có business_id vẫn được đưa về đúng BM (SPEC-AUTO-001 §5.5.3).
 export default async function ensureSurface(
   tabId: number,
   surface: Surface,
-  isCancelled: () => boolean = () => false
+  isCancelled: () => boolean = () => false,
+  businessId: string | undefined = undefined
 ): Promise<SurfaceResult> {
   const before = await readLocation(tabId);
   if (!before) return { ok: false, code: 'ERR_TAB_RELOADED' };
-  if (isOnSurface(surface, before.pathname)) return { ok: true };
+  const targetBm = businessId ?? before.businessId;
+  if (
+    isOnSurface(surface, before.pathname) &&
+    (businessId === undefined || before.businessId === businessId)
+  )
+    return { ok: true };
   if (await hasActiveRun(tabId)) return { ok: false, code: 'ERR_BUSY' };
-  const url = surfaceUrl(surface, before.businessId);
+  const url = surfaceUrl(surface, targetBm);
   if (!url) return { ok: false, code: 'ERR_NO_BUSINESS' };
   try {
     await browser.tabs.update(tabId, { url });
@@ -70,7 +78,7 @@ export default async function ensureSurface(
     const now = await readLocation(tabId);
     if (
       now &&
-      now.businessId === before.businessId &&
+      now.businessId === targetBm &&
       isOnSurface(surface, now.pathname)
     ) {
       return { ok: true };

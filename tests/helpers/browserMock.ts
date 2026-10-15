@@ -98,8 +98,21 @@ function createMock() {
     messageListeners.push(listener);
   });
   const contains = vi.fn(async (): Promise<boolean> => true);
+  // `tabs`: mặc định như tab không có content script (sendMessage trả undefined).
+  const tabsSendMessage = vi.fn<
+    (tabId: number, message: unknown) => Promise<unknown>
+  >(async () => undefined);
+  const tabsUpdate = vi.fn(async (): Promise<unknown> => undefined);
+  const tabsQuery = vi.fn(async (): Promise<unknown[]> => []);
+  const tabsCreate = vi.fn(async (): Promise<unknown> => ({ id: 1 }));
 
   const browserMock = {
+    tabs: {
+      sendMessage: tabsSendMessage,
+      update: tabsUpdate,
+      query: tabsQuery,
+      create: tabsCreate,
+    },
     storage: {
       local: { get, set, remove },
       onChanged: {
@@ -131,7 +144,15 @@ function createMock() {
       contains,
       addStorageListener,
       removeStorageListener,
+      tabsSendMessage,
+      tabsUpdate,
+      tabsQuery,
+      tabsCreate,
     ].forEach((fn) => fn.mockClear());
+    tabsSendMessage.mockImplementation(async () => undefined);
+    tabsUpdate.mockImplementation(async () => undefined);
+    tabsQuery.mockImplementation(async () => []);
+    tabsCreate.mockImplementation(async () => ({ id: 1 }));
     sendMessage.mockImplementation(async () => undefined);
     contains.mockImplementation(async () => true);
   };
