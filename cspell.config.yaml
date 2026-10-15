@@ -29,8 +29,14 @@ words:
   - fontsource
   - gstatic
   - HITL
+  - ABCDEFGHJKMNPQRS
+  - ABCDEFGHJKMNPQRSTVWXYZ
+  - Crockford
   - HJKMNP
+  - KHAC
   - RTDB
+  - unkill
+  - unprovisioned
   - ianvs
   - khai
   - mang
