@@ -8,6 +8,7 @@ import curfewLabel from '@/shared/curfewLabel';
 import useConnection from '@/shared/hooks/useConnection';
 import useKillSwitch from '@/shared/hooks/useKillSwitch';
 import useLanguage from '@/shared/hooks/useLanguage';
+import { requestJobFocus } from '@/shared/hooks/useRemoteFocus';
 import useRemoteJobs from '@/shared/hooks/useRemoteJobs';
 import { usePacingConfig } from '@/shared/hooks/useSettings';
 import useTheme from '@/shared/hooks/useTheme';
@@ -45,6 +46,16 @@ export default function Popup(): JSX.Element {
   }, []);
 
   const { statusKey, dotClass } = STATUS_VIEW[connection.status];
+
+  // Đồng bộ trong click handler (user gesture): ghi yêu cầu rồi mở panel ngay, không await trước.
+  const openPanel = (jobId?: string): void => {
+    if (windowId === undefined) return;
+    if (jobId !== undefined) requestJobFocus(jobId).catch(() => undefined);
+    openSidePanel(windowId).then(
+      () => setOpenFailed(false),
+      () => setOpenFailed(true)
+    );
+  };
 
   // PostCSS prefix `#my-ext ` chỉ khớp phần tử con → layout nằm ở div con.
   return (
@@ -93,13 +104,7 @@ export default function Popup(): JSX.Element {
         <button
           type='button'
           disabled={windowId === undefined}
-          onClick={() => {
-            if (windowId === undefined) return;
-            openSidePanel(windowId).then(
-              () => setOpenFailed(false),
-              () => setOpenFailed(true)
-            );
-          }}
+          onClick={() => openPanel()}
           className='btn btn-primary h-10 min-h-10 text-sm font-semibold'
         >
           <Icon name='panel' />
@@ -121,13 +126,20 @@ export default function Popup(): JSX.Element {
             </h2>
             <ul className='m-0 flex min-h-0 list-none flex-col gap-1.5 overflow-y-auto p-0'>
               {remoteJobs.map((job) => (
-                <li key={job.id} className='flex flex-col text-xs'>
-                  <span className='font-medium'>
-                    {translate(lang, FLOW_KEYS[job.flow])}
-                  </span>
-                  <span className='text-base-content/70 break-words'>
-                    {summarizeJob(lang, job)}
-                  </span>
+                <li key={job.id}>
+                  <button
+                    type='button'
+                    disabled={windowId === undefined}
+                    onClick={() => openPanel(job.id)}
+                    className='flex w-full flex-col rounded-md p-1 text-left text-xs hover:bg-base-200'
+                  >
+                    <span className='font-medium'>
+                      {translate(lang, FLOW_KEYS[job.flow])}
+                    </span>
+                    <span className='text-base-content/70 break-words'>
+                      {summarizeJob(lang, job)}
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>

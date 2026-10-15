@@ -1,4 +1,4 @@
-import { JSX, useState } from 'react';
+import { JSX, useEffect, useState } from 'react';
 import type { FlowDef } from '@/shared/flows';
 import type { RemoteJob } from '@/shared/remoteJob';
 import type { RunMode } from './components/riskStyles';
@@ -12,6 +12,7 @@ import useFlowSurface from '@/shared/hooks/useFlowSurface';
 import useLanguage from '@/shared/hooks/useLanguage';
 import usePartnerDraft from '@/shared/hooks/usePartnerDraft';
 import useProbe from '@/shared/hooks/useProbe';
+import useRemoteFocus from '@/shared/hooks/useRemoteFocus';
 import useRemoteJobs from '@/shared/hooks/useRemoteJobs';
 import useRequestsScan from '@/shared/hooks/useRequestsScan';
 import useRunEngine from '@/shared/hooks/useRunEngine';
@@ -55,6 +56,7 @@ export default function SidePanel(): JSX.Element {
   const { used, limit } = useWriteBudget();
   const draft = usePartnerDraft();
   const remoteJobs = useRemoteJobs();
+  const { focusId, clearFocus } = useRemoteFocus();
   const devtest = useDevtestSettings();
   // Simulator chỉ khi devtest bật và cờ useSimulator bật; còn lại là engine thật.
   const useSim =
@@ -188,6 +190,16 @@ export default function SidePanel(): JSX.Element {
     approveDraft.setPartnerName(partnerName);
     setOpenFlow(FLOWS.find((flow) => flow.id === APPROVE_FLOW_ID));
   };
+
+  // Popup bấm một job: mở panel và áp đúng job đó (chờ job vào danh sách nếu storage chưa kịp tới).
+  useEffect(() => {
+    if (focusId === undefined) return;
+    const job = remoteJobs.find((entry) => entry.id === focusId);
+    if (!job) return;
+    clearFocus();
+    applyRemoteJob(job);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- applyRemoteJob đổi mỗi render; chỉ chạy khi có yêu cầu mới
+  }, [focusId, remoteJobs]);
 
   const reconfigure = (accountIds: string[]): void => {
     controller.clear();
