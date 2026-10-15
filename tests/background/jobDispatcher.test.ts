@@ -487,6 +487,32 @@ describe('jobDispatcher: cổng an toàn trước claim', () => {
   });
 });
 
+describe('jobDispatcher: clearIncidents giữ sự cố checkpoint', () => {
+  it('sau khi gỡ rate-limit, incident checkpoint vẫn chặn job kế tiếp', async () => {
+    const ctx = setup();
+    ctx.dispatcher.setPending([mkJob('j1', { createdAt: 1 })]);
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('running'));
+    ctx.dispatcher.onRunEvent(
+      run({
+        status: 'failed',
+        error: { code: 'ERR_CHECKPOINT', stepIndex: 2 },
+      }),
+      7
+    );
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('error'));
+    await ctx.dispatcher.clearIncidents();
+    expect(ctx.memory().incidents).toHaveLength(1);
+    ctx.dispatcher.setPending([mkJob('j2', { createdAt: 2 })]);
+    await vi.waitFor(() =>
+      expect(ctx.dispatcher.view()).toMatchObject({
+        status: 'blocked',
+        block: { reason: 'checkpoint' },
+      })
+    );
+    expect(ctx.statusOf('j2')).toBeUndefined();
+  });
+});
+
 describe('jobDispatcher: lỗi khi start (§5.2)', () => {
   it('ERR_BUSY: trả job về pending và nghỉ, không nhặt lại ngay', async () => {
     const ctx = setup();

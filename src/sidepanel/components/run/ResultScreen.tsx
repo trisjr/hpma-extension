@@ -212,7 +212,8 @@ export default function ResultScreen({
     }
     const { code, detail } = run.error;
     const body = errorBody(code);
-    // Văn bản để user gửi lại cho dev: không chứa nội dung trang.
+    // Văn bản để user gửi lại cho dev. `detail` chỉ có khi Devtest logDetail ≠ off và khi đó có thể kèm đoạn đầu
+    // của dialog Meta (user tự bật mức log đó và tự bấm sao chép).
     const copyText = [
       `runId: ${run.runId}`,
       `stepIndex: ${run.error.stepIndex}`,

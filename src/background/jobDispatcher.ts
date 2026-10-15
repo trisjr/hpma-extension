@@ -157,7 +157,7 @@ export type Dispatcher = {
   tick: () => Promise<void>;
   pump: () => Promise<void>;
   view: () => MachineView;
-  // Người dùng gỡ khoá rate-limit/checkpoint đã ghi nhận: xoá lịch sự cố và cho job đang giữ chờ khoá chạy lại.
+  // Người dùng gỡ khoá rate-limit đã ghi nhận: xoá sự cố rate-limit (giữ sự cố checkpoint) và cho job đang giữ chờ khoá chạy lại.
   clearIncidents: () => Promise<void>;
 };
 
@@ -877,12 +877,11 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     await ensureReconciled();
     await persist((m) => ({
       ...m,
-      incidents: [],
-      // Job giữ chờ khoá do sự cố: đến hạn ngay để lần pump kế start lại (cổng cuối vẫn kiểm lại mọi khoá còn lại).
+      // Chỉ rate-limit: incident checkpoint là lớp chặn độc lập với khoá khẩn cấp, không ai gỡ ở đây.
+      incidents: m.incidents.filter((item) => item.code !== 'ERR_RATE_LIMITED'),
+      // Job giữ chờ khoá rate-limit: đến hạn ngay để lần pump kế start lại (cổng cuối vẫn kiểm lại mọi khoá còn lại).
       held:
-        m.held &&
-        (m.held.block.reason === 'rate-limited' ||
-          m.held.block.reason === 'checkpoint')
+        m.held && m.held.block.reason === 'rate-limited'
           ? { ...m.held, block: { ...m.held.block, until: deps.now() } }
           : m.held,
     }));
