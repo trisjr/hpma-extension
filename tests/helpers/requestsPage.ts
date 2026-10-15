@@ -29,8 +29,12 @@ export const SEED: RequestSeed = {
 const row = (seed: RequestSeed, i: number): string =>
   `<div role="row" data-i="${i}"><span>${seed.requester} requests to give ${seed.bm} access to the ${seed.account} ad account.</span><span>Received on October 14, 2026</span><button>Respond</button></div>`;
 
-const detail = (seed: RequestSeed, approveDisabled: boolean): string =>
-  `<div id="detail"><p>${seed.requester} requested to give ${seed.bm} access to the ${seed.account} ad account. Please review this request and approve it only if it's legitimate.</p><div><span>${seed.bm}</span><span>Business Manager ID: ${seed.bmId ?? PARTNER_ID}</span></div><button id="approve"${approveDisabled ? ' aria-disabled="true"' : ''}>Approve</button><button id="decline">Decline</button></div>`;
+const detail = (
+  seed: RequestSeed,
+  approveDisabled: boolean,
+  omitBmId = false
+): string =>
+  `<div id="detail"><p>${seed.requester} requested to give ${seed.bm} access to the ${seed.account} ad account. Please review this request and approve it only if it's legitimate.</p><div><span>${seed.bm}</span>${omitBmId ? '' : `<span>Business Manager ID: ${seed.bmId ?? PARTNER_ID}</span>`}</div><button id="approve"${approveDisabled ? ' aria-disabled="true"' : ''}>Approve</button><button id="decline">Decline</button></div>`;
 
 export type PageOptions = {
   // Hàng thêm vào danh sách (vd. request loại khác, hàng không parse được).
@@ -41,6 +45,8 @@ export type PageOptions = {
   approveDelayMs?: number;
   // Sau Approve trang chuyển sang tab khác và danh sách trống, nhưng request CHƯA rời Needs review.
   approveSwitchesTab?: boolean;
+  // Khung chi tiết không hiện BM ID (DOM đổi hoặc không đọc được).
+  omitBmId?: boolean;
 };
 
 export function mountRequestsPage(
@@ -74,7 +80,11 @@ export function mountRequestsPage(
         const seed = remaining[index];
         if (!seed) return;
         page.counters.opens += 1;
-        pane.innerHTML = detail(seed, options.approveDisabled === true);
+        pane.innerHTML = detail(
+          seed,
+          options.approveDisabled === true,
+          options.omitBmId === true
+        );
         const approve = pane.querySelector('#approve') as HTMLElement;
         const finish =
           (counter: 'approves' | 'declines', delay = 0) =>

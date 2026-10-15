@@ -24,6 +24,9 @@ export type ApproveConfig = {
   action: ApproveAction;
   // Danh sách đã quét và user đã xem: engine không duyệt gì ngoài danh sách này.
   requests: ApproveRequest[];
+  // Tuỳ chọn: BM ID của đối tác. Có thì engine chỉ duyệt khi khung chi tiết hiện đúng BM ID này
+  // (tên BM có thể trùng); không đọc được BM ID thì không duyệt. Chuỗi auto-match (D12) bắt buộc có.
+  partnerBmId?: string;
 };
 
 // Định danh hiển thị của một target duyệt. Kèm số thứ tự vì hai request trùng hệt nhau là hợp lệ
@@ -74,6 +77,9 @@ export function parseApproveConfig(raw: unknown): ApproveConfig | undefined {
   if (!isRecord(raw) || typeof raw.partnerName !== 'string') return undefined;
   if (validatePartnerName(raw.partnerName) !== undefined) return undefined;
   if (!isApproveAction(raw.action)) return undefined;
+  if (raw.partnerBmId !== undefined && !isBusinessId(raw.partnerBmId)) {
+    return undefined;
+  }
   const { requests } = raw;
   if (!Array.isArray(requests) || requests.length === 0) return undefined;
   if (requests.length > MAX_APPROVE_REQUESTS) return undefined;
@@ -87,6 +93,7 @@ export function parseApproveConfig(raw: unknown): ApproveConfig | undefined {
     partnerName: cleanPartnerName(raw.partnerName),
     action: raw.action,
     requests: parsed,
+    ...(raw.partnerBmId === undefined ? {} : { partnerBmId: raw.partnerBmId }),
   };
 }
 

@@ -158,6 +158,7 @@ describe('flow và mode', () => {
       businessId: BM,
       config: {
         partnerName: 'BM Đối Tác',
+        partnerBmId: '1234567890123456',
         action: 'approve',
         requests: [{ requester: 'Admin 1', account: 'SHOP A' }],
       },
@@ -204,6 +205,13 @@ describe('flow và mode', () => {
         config: { ...approveJob.config, action: 'decline' },
       };
       expect(issueOf(decline)).toBe('provenance');
+      // Thiếu partnerBmId: engine chỉ so tên BM (có thể trùng), nên không chạy full (M3).
+      expect(
+        issueOf({
+          ...approveJob,
+          config: { ...approveJob.config, partnerBmId: undefined },
+        })
+      ).toBe('provenance');
       expect(issueOf({ ...approveJob, scanJobId: undefined })).toBe(
         'provenance'
       );

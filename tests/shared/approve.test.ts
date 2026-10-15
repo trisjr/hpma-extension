@@ -41,6 +41,21 @@ describe('validatePartnerName / parseApproveConfig', () => {
     });
   });
 
+  it('partnerBmId tuỳ chọn: giữ nguyên khi hợp lệ, từ chối khi sai dạng', () => {
+    const base = {
+      partnerName: 'Tris BM',
+      action: 'approve',
+      requests: [{ requester: 'Duc TNM', account: 'AA' }],
+    };
+    expect(
+      parseApproveConfig({ ...base, partnerBmId: '4680448748947419' })
+        ?.partnerBmId
+    ).toBe('4680448748947419');
+    expect(parseApproveConfig(base)).not.toHaveProperty('partnerBmId');
+    expect(parseApproveConfig({ ...base, partnerBmId: 'abc' })).toBeUndefined();
+    expect(parseApproveConfig({ ...base, partnerBmId: 123 })).toBeUndefined();
+  });
+
   it.each([
     ['không phải object', 'x'],
     ['thiếu tên', { action: 'approve', requests: [request] }],

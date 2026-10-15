@@ -215,6 +215,8 @@ function isAutoMatchApprove(job: RemoteJob): boolean {
   const config = parseApproveConfig(job.config);
   return (
     config?.action === 'approve' &&
+    // BM ID đối tác bắt buộc: không có thì engine chỉ so tên BM, mà tên có thể trùng (M3).
+    config.partnerBmId !== undefined &&
     job.scanJobId !== undefined &&
     job.chainAssignJobId !== undefined &&
     job.createdBy === COORDINATOR_UID &&

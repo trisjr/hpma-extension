@@ -136,6 +136,41 @@ describe('đọc danh sách và chi tiết request', () => {
     expect(readDetail()?.bmId).toBeUndefined();
   });
 
+  it('tên TKQC chứa "Business Manager ID: <số>" không giả mạo được BM ID (M3)', () => {
+    const fake = `SHOP Business Manager ID: ${PARTNER_ID}`;
+    const spoof = { ...SEED, account: fake, bmId: '9999999999999' };
+    // Khung chi tiết có BM ID thật (khác): lấy ID thật, không lấy ID trong tên TKQC.
+    const page = mountRequestsPage([spoof]);
+    page.root.querySelector<HTMLElement>('[role="row"] button')?.click();
+    expect(readDetail()?.bmId).toBe('9999999999999');
+    // Khung chi tiết không hiện dòng BM ID nào: không đoán, kể cả khi tên TKQC mang ID khớp.
+    document.body.innerHTML = '';
+    const bare = mountRequestsPage([spoof], { omitBmId: true });
+    bare.root.querySelector<HTMLElement>('[role="row"] button')?.click();
+    expect(readDetail()?.bmId).toBeUndefined();
+  });
+
+  it('tên TKQC trong thẻ in đậm riêng giống dòng BM ID cũng không được nhận', () => {
+    const page = mountRequestsPage([SEED], { omitBmId: true });
+    page.root.querySelector<HTMLElement>('[role="row"] button')?.click();
+    page.root
+      .querySelector('#detail')
+      ?.insertAdjacentHTML(
+        'beforeend',
+        `<b>Business Manager ID: ${PARTNER_ID}</b>`
+      );
+    // Thẻ riêng ngoài câu mô tả có dạng dòng BM ID: chấp nhận (không phân biệt được với dòng thật),
+    // nhưng nằm trong câu mô tả thì không.
+    expect(readDetail()?.bmId).toBe(PARTNER_ID);
+    page.root
+      .querySelector('#detail p')
+      ?.insertAdjacentHTML(
+        'beforeend',
+        '<b>Business Manager ID: 8888888888888</b>'
+      );
+    expect(readDetail()?.bmId).toBe(PARTNER_ID);
+  });
+
   it('hàng không parse được hoặc thuộc loại khác bị bỏ qua', () => {
     mountRequestsPage([SEED], {
       rows: [
@@ -205,6 +240,35 @@ describe('Dry-run không bao giờ ghi', () => {
     const result = await run([{ ...SEED, bm: 'Tris BM 2' }], { mode: 'dry' });
     expect(result.error?.code).toBe('ERR_TARGET_NOT_FOUND');
     expect(result.page.counters.opens).toBe(0);
+  });
+
+  it('có partnerBmId khớp BM ID ở khung chi tiết -> duyệt bình thường', async () => {
+    const result = await run([SEED], {
+      mode: 'dry',
+      config: { ...CONFIG, partnerBmId: PARTNER_ID },
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.targets[0].outcome).toBe('done');
+  });
+
+  it('cùng tên BM nhưng khác BM ID -> không duyệt (M3)', async () => {
+    const result = await run([{ ...SEED, bmId: '9999999999999' }], {
+      mode: 'full',
+      config: { ...CONFIG, partnerBmId: PARTNER_ID },
+    });
+    expect(result.error?.code).toBeDefined();
+    expect(approveOrDecline(result.pressed)).toEqual([]);
+    expect(result.page.counters).toMatchObject({ approves: 0, declines: 0 });
+  });
+
+  it('có partnerBmId nhưng khung chi tiết không hiện BM ID -> không duyệt (fail closed)', async () => {
+    const result = await run([SEED], {
+      mode: 'full',
+      config: { ...CONFIG, partnerBmId: PARTNER_ID },
+      page: { omitBmId: true },
+    });
+    expect(result.error?.code).toBeDefined();
+    expect(result.page.counters).toMatchObject({ approves: 0, declines: 0 });
   });
 
   it('không ở trang Requests -> ERR_WRONG_SURFACE', async () => {

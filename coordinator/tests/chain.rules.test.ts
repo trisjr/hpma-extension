@@ -132,6 +132,7 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
     businessId: BM,
     config: {
       partnerName: PARTNER,
+      partnerBmId: assignConfig.partnerBmId,
       action: 'approve',
       requests: [{ requester: 'Admin 1', account: 'SHOP A' }],
     },
@@ -231,10 +232,35 @@ describe('Rules cho chuỗi assign → approve (D12)', () => {
         approveJob({
           config: {
             partnerName: PARTNER,
+            partnerBmId: assignConfig.partnerBmId,
             action: 'decline',
             requests: [{ requester: 'Admin 1', account: 'SHOP A' }],
           },
         })
+      )
+    );
+  });
+
+  it('approve auto-match phải mang partnerBmId đúng bằng BM ID của job assign (M3)', async () => {
+    await seed();
+    const config = approveJob().config as Record<string, unknown>;
+    const { partnerBmId: _drop, ...noBmId } = config;
+    await assertFails(
+      set(
+        ref(coordinator().database(), `ext/jobs/${BM}/chain-assign1-approve`),
+        approveJob({ config: noBmId })
+      )
+    );
+    await assertFails(
+      set(
+        ref(coordinator().database(), `ext/jobs/${BM}/chain-assign1-approve`),
+        approveJob({ config: { ...config, partnerBmId: '9999999999999' } })
+      )
+    );
+    await assertSucceeds(
+      set(
+        ref(coordinator().database(), `ext/jobs/${BM}/chain-assign1-approve`),
+        approveJob()
       )
     );
   });

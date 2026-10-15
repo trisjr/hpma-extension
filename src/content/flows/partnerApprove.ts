@@ -184,7 +184,12 @@ async function openDetail(
   await click(target, ctx);
   await waitFor(
     () =>
-      detailMatches(readDetail(), ctx.config.partnerName, request)
+      detailMatches(
+        readDetail(),
+        ctx.config.partnerName,
+        request,
+        ctx.config.partnerBmId
+      )
         ? true
         : undefined,
     { signal: ctx.signal }
@@ -195,11 +200,19 @@ async function openDetail(
   });
 }
 
-// Đối chiếu khung chi tiết với request đã quét; BM ID chỉ để user nhìn thấy (tên BM có thể trùng).
+// Đối chiếu khung chi tiết với request đã quét; BM ID vừa hiện cho user, vừa là điều kiện bắt buộc khi
+// config có `partnerBmId` (tên BM có thể trùng).
 function verifyDetail(ctx: Ctx, index: number, acted: () => void): void {
   const request = ctx.config.requests[index];
   const detail = readDetail();
-  if (!detailMatches(detail, ctx.config.partnerName, request)) {
+  if (
+    !detailMatches(
+      detail,
+      ctx.config.partnerName,
+      request,
+      ctx.config.partnerBmId
+    )
+  ) {
     notFound(ctx, index);
   }
   acted();
@@ -374,7 +387,12 @@ async function clickAction(
   const verifyTarget = (button: HTMLElement): void => {
     if (superseded()) throw new Superseded();
     if (
-      !detailMatches(readDetail(), ctx.config.partnerName, request) ||
+      !detailMatches(
+        readDetail(),
+        ctx.config.partnerName,
+        request,
+        ctx.config.partnerBmId
+      ) ||
       !detailPane(ctx.lang)?.contains(button)
     ) {
       notFound(ctx, index);

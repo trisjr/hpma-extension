@@ -42,8 +42,10 @@ const KEY_PHRASES: readonly RegExp[] = [
 
 const isAmbiguous = (sentence: string): boolean =>
   KEY_PHRASES.some((phrase) => (sentence.match(phrase) ?? []).length > 1);
-const ID_PATTERN =
-  /(?:business\s*(?:manager|portfolio)\s*id|id\s*trình\s*quản\s*lý\s*doanh\s*nghiệp|id\s*danh\s*mục\s*doanh\s*nghiệp)\s*:?\s*(\d{10,30})/i;
+// Neo đầu-cuối: chỉ phần tử mà TOÀN BỘ text là "Business Manager ID: <số>" mới được coi là dòng BM ID.
+// Tên TKQC/BM do bên ngoài đặt có thể chứa đúng cụm này giữa câu, nên không tìm kiểu "nằm đâu đó trong text".
+const ID_LINE =
+  /^(?:business\s*(?:manager|portfolio)\s*id|id\s*trình\s*quản\s*lý\s*doanh\s*nghiệp|id\s*danh\s*mục\s*doanh\s*nghiệp)\s*:?\s*(\d{10,30})$/i;
 
 export type ParsedSentence = {
   requester: string;
@@ -165,16 +167,30 @@ export function respondButtonOf(
 export type DetailRead = ParsedSentence & { bmId?: string };
 
 const MAX_PANE_TEXT = 4000;
-const ID_GLOBAL = new RegExp(ID_PATTERN.source, 'gi');
 
-// BM ID của đúng request đang mở: tìm ở tổ tiên gần nhất của câu mô tả có chứa ID, không quét
+// BM ID của đúng request đang mở: tìm ở tổ tiên gần nhất của câu mô tả có chứa dòng BM ID, không quét
 // cả trang. Khung chứa nhiều ID khác nhau thì không biết cái nào của BM này: không đoán.
-function bmIdNear(el: HTMLElement): string | undefined {
+// Chống giả mạo: chỉ nhận phần tử hiện, có text là đúng một dòng BM ID, và không nằm trong/chứa bất kỳ
+// câu mô tả nào (danh sách hay chi tiết) — tên TKQC có thể được đặt thành "Business Manager ID: <số>"
+// và hiện ở câu mô tả hoặc trong một thẻ in đậm riêng.
+function bmIdNear(
+  el: HTMLElement,
+  sentences: HTMLElement[]
+): string | undefined {
+  const isSentenceRelated = (node: HTMLElement): boolean =>
+    sentences.some((s) => s.contains(node) || node.contains(s));
   let node: HTMLElement | null = el;
   for (let depth = 0; node && depth < 8; depth += 1) {
-    const text = cleanQuery(node.textContent ?? '');
-    if (text.length > MAX_PANE_TEXT) return undefined;
-    const ids = new Set(Array.from(text.matchAll(ID_GLOBAL), (m) => m[1]));
+    if (cleanQuery(node.textContent ?? '').length > MAX_PANE_TEXT) {
+      return undefined;
+    }
+    const ids = new Set(
+      Array.from(node.querySelectorAll<HTMLElement>('*')).flatMap((child) => {
+        if (!isVisible(child) || isSentenceRelated(child)) return [];
+        const match = ID_LINE.exec(cleanQuery(child.textContent ?? ''));
+        return match ? [match[1]] : [];
+      })
+    );
     if (ids.size === 1) return Array.from(ids)[0];
     if (ids.size > 1) return undefined;
     node = node.parentElement;
@@ -186,7 +202,13 @@ function bmIdNear(el: HTMLElement): string | undefined {
 export function readDetail(): DetailRead | undefined {
   const [first] = sentenceElements(DETAIL_PATTERNS);
   if (!first) return undefined;
-  const bmId = bmIdNear(first.el);
+  const bmId = bmIdNear(
+    first.el,
+    [
+      ...sentenceElements(DETAIL_PATTERNS),
+      ...sentenceElements(LIST_PATTERNS),
+    ].map(({ el }) => el)
+  );
   return { ...first.parsed, ...(bmId ? { bmId } : {}) };
 }
 
@@ -214,11 +236,14 @@ export function detailPane(lang: string): HTMLElement | undefined {
 export function detailMatches(
   detail: DetailRead | undefined,
   partnerName: string,
-  request: ApproveRequest
+  request: ApproveRequest,
+  partnerBmId?: string
 ): detail is DetailRead {
   return (
     detail !== undefined &&
     sameName(detail.bmName, partnerName) &&
+    // Có `partnerBmId` thì BM ID đọc được phải khớp; không đọc được thì coi như không khớp (fail closed).
+    (partnerBmId === undefined || detail.bmId === partnerBmId) &&
     requestKey(detail) === requestKey(request)
   );
 }
