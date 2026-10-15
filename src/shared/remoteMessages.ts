@@ -17,11 +17,16 @@ export type RemoteStatusRead = { kind: 'remote.status' };
 // Spike §5.5: SW có tìm được tab BM bằng `location.read` không (kiểm `sender.url` của SW ở content).
 export type RemoteProbeTab = { kind: 'remote.probeTab' };
 
+// Gỡ khoá rate-limit: xoá cờ của engine và lịch sự cố của dispatcher. Không đụng khoá khẩn cấp (checkpoint),
+// chỉ Options › Devtest gỡ được khoá đó.
+export type RemoteUnlockRateLimit = { kind: 'remote.unlockRateLimit' };
+
 export type RemoteCommand =
   | RemoteSignIn
   | RemoteSignOut
   | RemoteStatusRead
-  | RemoteProbeTab;
+  | RemoteProbeTab
+  | RemoteUnlockRateLimit;
 
 // `unprovisioned`: token chưa có claim (ops chưa cấp máy); `machine-mismatch`: claim.machineId khác
 // machineId của profile này (ops gán nhầm hoặc profile bị xoá dữ liệu); `ok`: được phép ghi presence.
@@ -74,6 +79,7 @@ export function isRemoteCommand(value: unknown): value is RemoteCommand {
     case 'remote.signOut':
     case 'remote.status':
     case 'remote.probeTab':
+    case 'remote.unlockRateLimit':
       return true;
     default:
       return false;

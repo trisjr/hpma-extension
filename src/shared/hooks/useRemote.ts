@@ -17,6 +17,8 @@ export type RemoteApi = {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   probeTab: () => Promise<RemoteProbeReply | undefined>;
+  // Gỡ khoá rate-limit (engine + lịch sự cố của dispatcher); true khi service worker xác nhận.
+  unlockRateLimit: () => Promise<boolean>;
 };
 
 const isSupported = (): boolean =>
@@ -82,7 +84,14 @@ export default function useRemote(): RemoteApi {
     return isRemoteProbeReply(reply) ? reply : undefined;
   }, [run]);
 
+  const unlockRateLimit = useCallback(async (): Promise<boolean> => {
+    const reply = await run({ kind: 'remote.unlockRateLimit' });
+    apply(reply);
+    return isRemoteStatus(reply);
+  }, [apply, run]);
+
   return {
+    unlockRateLimit,
     supported,
     loading,
     status,

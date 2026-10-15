@@ -371,6 +371,12 @@ async function handleCommand(message: RemoteCommand): Promise<unknown> {
     }
     case 'remote.probeTab':
       return probeTabs();
+    case 'remote.unlockRateLimit':
+      await browser.storage.local.remove(RATE_LIMIT_KEY);
+      await dispatcher?.clearIncidents().catch((error: unknown) => {
+        writePersisted({ lastError: String(error) }).catch(() => undefined);
+      });
+      return buildStatus();
     default:
       return buildStatus();
   }

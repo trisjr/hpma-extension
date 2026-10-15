@@ -4,6 +4,7 @@ import {
   businessChanged,
   classifyPath,
   classifyText,
+  matchText,
 } from '@/content/engine/signals';
 
 describe('businessChanged', () => {
@@ -55,7 +56,40 @@ describe('classifyText (EN + VI)', () => {
   });
 
   it('chịu được ký tự vô hình chen giữa từ khoá', () => {
-    expect(classifyText('Try​ again later')).toBe('ERR_RATE_LIMITED');
+    expect(classifyText('Blocked, try​ again later')).toBe('ERR_RATE_LIMITED');
+  });
+
+  it('"thử lại sau" đứng riêng là lỗi tạm thời, không phải rate-limit', () => {
+    expect(
+      classifyText('Something went wrong. Try again later')
+    ).toBeUndefined();
+    expect(classifyText('Đã xảy ra lỗi. Hãy thử lại sau')).toBeUndefined();
+  });
+
+  it('"thử lại sau" kèm từ nói rõ bị chặn/giới hạn thì vẫn là rate-limit', () => {
+    expect(classifyText("You're blocked. Try again later")).toBe(
+      'ERR_RATE_LIMITED'
+    );
+    expect(classifyText('Bạn bị chặn tạm thời, thử lại sau')).toBe(
+      'ERR_RATE_LIMITED'
+    );
+  });
+
+  it('matchText trả từ khoá đã khớp và đoạn đầu dialog làm bằng chứng', () => {
+    expect(matchText('You are temporarily blocked from this feature')).toEqual({
+      code: 'ERR_RATE_LIMITED',
+      evidence: {
+        keyword: 'temporarily blocked',
+        snippet: 'you are temporarily blocked from this feature',
+      },
+    });
+    expect(matchText('Blocked. Try again later')?.evidence.keyword).toBe(
+      'try again later+blocked'
+    );
+    expect(matchText('x'.repeat(500))).toBeUndefined();
+    expect(
+      matchText(`captcha ${'y'.repeat(500)}`)?.evidence.snippet
+    ).toHaveLength(160);
   });
 
   it('văn bản bình thường thì không có tín hiệu', () => {

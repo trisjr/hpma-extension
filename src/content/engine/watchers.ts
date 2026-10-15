@@ -3,12 +3,12 @@
  * (checkpoint/đăng nhập) kiểm mỗi 500 ms, dialog/alert mới mount quét từ khoá.
  * Tín hiệu đầu tiên thắng; runner dừng run và không tự chạy lại.
  */
-import type { DangerCode } from './signals';
+import type { DangerCode, DangerEvidence } from './signals';
 
 import { isBusinessId } from '@/shared/surfaces';
 
 import { isVisible } from './locator';
-import { businessChanged, classifyPath, classifyText } from './signals';
+import { businessChanged, classifyPath, matchText } from './signals';
 
 const PATH_POLL_MS = 500;
 // URL tạm thiếu `business_id` khi SPA chuyển trang là bình thường; thiếu liên tục từng này lần
@@ -37,18 +37,23 @@ function popupsIn(node: Node): HTMLElement[] {
 export default function startWatchers(
   // BM panel đã chọn: đổi BM giữa run (điều hướng SPA) thì dừng, không chạy tiếp trên BM sai.
   baseline: string,
-  onSignal: (code: DangerCode) => void
+  onSignal: (code: DangerCode, evidence?: DangerEvidence) => void
 ): () => void {
   let missingPolls = 0;
   let fired = false;
-  const fire = (code: DangerCode | undefined): void => {
+  const fire = (
+    code: DangerCode | undefined,
+    evidence?: DangerEvidence
+  ): void => {
     if (code === undefined || fired) return;
     fired = true;
-    onSignal(code);
+    if (evidence) onSignal(code, evidence);
+    else onSignal(code);
   };
 
   const check = (): void => {
-    fire(classifyPath(window.location.pathname));
+    const pathSignal = classifyPath(window.location.pathname);
+    fire(pathSignal, pathSignal ? { keyword: 'path' } : undefined);
     const current = currentBusinessId();
     if (isBusinessId(current)) {
       missingPolls = 0;
@@ -57,7 +62,7 @@ export default function startWatchers(
       missingPolls += 1;
       if (missingPolls >= BM_MISSING_POLLS) fire('ERR_BM_CHANGED');
     }
-    if (hasLoginForm()) fire('ERR_LOGGED_OUT');
+    if (hasLoginForm()) fire('ERR_LOGGED_OUT', { keyword: 'login-form' });
   };
   const timer = window.setInterval(check, PATH_POLL_MS);
   check();
@@ -65,9 +70,10 @@ export default function startWatchers(
   const observer = new MutationObserver((records) => {
     records.forEach((record) =>
       record.addedNodes.forEach((node) =>
-        popupsIn(node).forEach((popup) =>
-          fire(classifyText(popup.textContent ?? ''))
-        )
+        popupsIn(node).forEach((popup) => {
+          const match = matchText(popup.textContent ?? '');
+          fire(match?.code, match?.evidence);
+        })
       )
     );
   });

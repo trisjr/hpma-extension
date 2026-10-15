@@ -157,6 +157,8 @@ export type Dispatcher = {
   tick: () => Promise<void>;
   pump: () => Promise<void>;
   view: () => MachineView;
+  // Người dùng gỡ khoá rate-limit/checkpoint đã ghi nhận: xoá lịch sự cố và cho job đang giữ chờ khoá chạy lại.
+  clearIncidents: () => Promise<void>;
 };
 
 const surfaceOf = (flow: RemoteJob['flow']): Surface =>
@@ -871,9 +873,28 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     await pump();
   }
 
+  async function clearIncidents(): Promise<void> {
+    await ensureReconciled();
+    await persist((m) => ({
+      ...m,
+      incidents: [],
+      // Job giữ chờ khoá do sự cố: đến hạn ngay để lần pump kế start lại (cổng cuối vẫn kiểm lại mọi khoá còn lại).
+      held:
+        m.held &&
+        (m.held.block.reason === 'rate-limited' ||
+          m.held.block.reason === 'checkpoint')
+          ? { ...m.held, block: { ...m.held.block, until: deps.now() } }
+          : m.held,
+    }));
+    lastGateBlock = undefined;
+    if (!current) await setView(idleView());
+    await pump();
+  }
+
   return {
     setPending,
     setKill,
+    clearIncidents,
     killLost,
     onRunEvent,
     tick,

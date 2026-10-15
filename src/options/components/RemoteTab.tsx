@@ -6,6 +6,7 @@ import useRemote from '@/shared/hooks/useRemote';
 import { translate } from '@/shared/i18n';
 
 import FullCapSection from './FullCapSection';
+import RateLimitSection from './RateLimitSection';
 
 type RemoteTabProps = { lang: Lang };
 
@@ -138,6 +139,12 @@ export default function RemoteTab({ lang }: RemoteTabProps): JSX.Element {
       )}
 
       <FullCapSection lang={lang} />
+
+      <RateLimitSection
+        lang={lang}
+        busy={remote.busy}
+        onUnlock={remote.unlockRateLimit}
+      />
 
       {signedIn ? (
         <div className='flex flex-wrap items-center gap-3'>

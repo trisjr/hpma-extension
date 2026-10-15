@@ -460,6 +460,31 @@ describe('jobDispatcher: cổng an toàn trước claim', () => {
     );
     expect(ctx.statusOf('j2')).toBeUndefined();
   });
+
+  it('clearIncidents xoá lịch sự cố: máy hết blocked và nhặt job kế tiếp', async () => {
+    const ctx = setup();
+    ctx.dispatcher.setPending([mkJob('j1', { createdAt: 1 })]);
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('running'));
+    ctx.dispatcher.onRunEvent(
+      run({
+        status: 'failed',
+        error: { code: 'ERR_RATE_LIMITED', stepIndex: 2 },
+      }),
+      7
+    );
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('error'));
+    ctx.dispatcher.setPending([mkJob('j2', { createdAt: 2 })]);
+    await vi.waitFor(() =>
+      expect(ctx.dispatcher.view()).toMatchObject({
+        status: 'blocked',
+        block: { reason: 'rate-limited' },
+      })
+    );
+    await ctx.dispatcher.clearIncidents();
+    expect(ctx.memory().incidents).toEqual([]);
+    ctx.dispatcher.setPending([mkJob('j2', { createdAt: 2 })]);
+    await vi.waitFor(() => expect(ctx.statusOf('j2')).toBe('running'));
+  });
 });
 
 describe('jobDispatcher: lỗi khi start (§5.2)', () => {

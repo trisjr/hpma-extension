@@ -20,7 +20,7 @@ import type { RunConfig } from '@/shared/runConfig';
 import type { PacingConfig } from '@/shared/settings';
 import type { PauseKind } from './delay';
 import type { ActionContext } from './primitives';
-import type { DangerCode } from './signals';
+import type { DangerCode, DangerEvidence } from './signals';
 
 import { rowsFromRun } from '@/shared/audit';
 import { appendLog, finish, patchStep } from '@/shared/run';
@@ -122,6 +122,18 @@ function toError(
     stepIndex,
     ...(logDetail === 'off' ? {} : { detail: parts.join(' ') }),
   };
+}
+
+// Bằng chứng của tín hiệu nguy hiểm: từ khoá khớp luôn ghi (không có dữ liệu người dùng), đoạn dialog chỉ
+// ghi khi logDetail ≠ off, để biết khoá 24 giờ do Meta thật hay do nhận diện nhầm.
+function dangerDetail(
+  evidence: DangerEvidence | undefined,
+  logDetail: AuditDetail
+): string | undefined {
+  if (!evidence) return undefined;
+  const snippet =
+    logDetail !== 'off' && evidence.snippet ? ` "${evidence.snippet}"` : '';
+  return `matched=${evidence.keyword}${snippet}`;
 }
 
 // `lastRun` nằm trong storage tới khi user bấm "Xong": ở mức log `off` không lưu tên/ID TKQC
@@ -387,8 +399,10 @@ function launch<C>(
   };
 
   const execute = async (): Promise<RunState> => {
-    const stopWatching = startWatchers(businessId, (code) => {
+    let dangerEvidence: DangerEvidence | undefined;
+    const stopWatching = startWatchers(businessId, (code, evidence) => {
       danger = code;
+      dangerEvidence = evidence;
       abort.abort();
     });
     let error: RunError | undefined;
@@ -397,7 +411,12 @@ function launch<C>(
       await flow(ctx);
     } catch (thrown) {
       if (danger !== undefined) {
-        error = { code: danger, stepIndex: state.stepIndex };
+        const detail = dangerDetail(dangerEvidence, logDetail);
+        error = {
+          code: danger,
+          stepIndex: state.stepIndex,
+          ...(detail ? { detail } : {}),
+        };
       } else if (thrown instanceof RunStopped) {
         stopped = true;
       } else {
