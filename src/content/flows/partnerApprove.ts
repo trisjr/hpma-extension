@@ -472,7 +472,17 @@ async function clickAction(
   if (activeDialog() && !leftNeedsReview(ctx, request, before)) {
     // Meta hỏi xác nhận cho cả Approve lẫn Decline: bấm đúng nút cùng quyết định trong hộp thoại đó.
     await confirmInDialog(ctx, index, spec.key);
-    await sleep(SETTLE_MS, ctx.signal);
+    // Meta xử lý duyệt/từ chối mất vài giây (hộp thoại còn quay, danh sách chưa cập nhật): chờ tới khi
+    // hộp thoại đóng hoặc request rời danh sách, chỉ dừng khi hết hạn mà cả hai vẫn chưa xảy ra.
+    await orUndefined(
+      waitFor(
+        () =>
+          !activeDialog() || leftNeedsReview(ctx, request, before)
+            ? true
+            : undefined,
+        { signal: ctx.signal, timeoutMs: VERIFY_WAIT_MS }
+      )
+    );
     if (activeDialog() && !leftNeedsReview(ctx, request, before)) {
       throw new EngineError('ERR_UNEXPECTED_DIALOG', spec.key);
     }
