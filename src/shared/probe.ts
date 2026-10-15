@@ -151,17 +151,28 @@ export type ApproveGate =
       stale: ProbeStage[];
     };
 
-// Cổng cho job duyệt `full` (Q4): hai màn của flow duyệt đều có báo cáo mới và đạt ngưỡng ≥ 95%.
-// Hẹp hơn `gateStatus` (đòi mọi màn của cả hai flow) vì job duyệt không đụng các màn Gán partner.
-export function approveGate(
+// Màn mà flow Gán partner đứng trên đó: trang Partners, menu, ba bước của hộp thoại Assign và khung chi tiết đọc lại.
+export const ASSIGN_STAGES: readonly ProbeStage[] = [
+  'page',
+  'menu',
+  'dialog-bm',
+  'dialog-assets',
+  'dialog-access',
+  'detail',
+];
+
+// Cổng cho job `full`: mọi màn của flow đều có báo cáo mới và đạt ngưỡng ≥ 95%. Hẹp hơn `gateStatus`
+// (đòi mọi màn của cả hai flow) vì mỗi flow không đụng màn của flow kia.
+function stageGate(
+  stages: readonly ProbeStage[],
   reports: ProbeReports,
   now: number,
-  maxAgeMs: number = PROBE_MAX_AGE_MS
+  maxAgeMs: number
 ): ApproveGate {
   const missing: ProbeStage[] = [];
   const below: ProbeStage[] = [];
   const stale: ProbeStage[] = [];
-  APPROVE_STAGES.forEach((stage) => {
+  stages.forEach((stage) => {
     const report = reports[stage];
     if (!report) missing.push(stage);
     // Mốc ở tương lai (đồng hồ lệch/dữ liệu bị sửa) hoặc quá hạn đều coi là hết hạn; rate phải là số trong [ngưỡng, 1].
@@ -174,6 +185,22 @@ export function approveGate(
   });
   if (missing.length + below.length + stale.length === 0) return { ok: true };
   return { ok: false, missing, below, stale };
+}
+
+export function approveGate(
+  reports: ProbeReports,
+  now: number,
+  maxAgeMs: number = PROBE_MAX_AGE_MS
+): ApproveGate {
+  return stageGate(APPROVE_STAGES, reports, now, maxAgeMs);
+}
+
+export function assignGate(
+  reports: ProbeReports,
+  now: number,
+  maxAgeMs: number = PROBE_MAX_AGE_MS
+): ApproveGate {
+  return stageGate(ASSIGN_STAGES, reports, now, maxAgeMs);
 }
 
 export function latestReport(reports: ProbeReports): ProbeReport | undefined {

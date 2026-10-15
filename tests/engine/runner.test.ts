@@ -98,6 +98,40 @@ describe('kết thúc bình thường', () => {
     expect(auditRows().map((row) => row.result)).toEqual(['done', 'done']);
   });
 
+  it('Full (Gán partner): mỗi mẻ có target đã ghi là một lượt ghi (mỗi mẻ một cú bấm Assign)', async () => {
+    const queries = Array.from({ length: 12 }, (_, index) => `q${index}`);
+    const { handle } = start(
+      async (ctx) => {
+        queries.forEach((_, index) => {
+          // Mẻ 2 (index 10–11) không ghi được gì.
+          if (index < 10) ctx.setTarget(index, 'done');
+          else ctx.setTarget(index, 'failed', 'ERR_TARGET_NOT_FOUND');
+        });
+      },
+      { mode: 'full', config: configOf({ queries }) }
+    );
+    await handle.done;
+    expect(storageState.data[WRITE_BUDGET_KEY]).toEqual({
+      day: localDay(NOON_VN),
+      used: 1,
+    });
+  });
+
+  it('Full (Gán partner): hai mẻ đều đã ghi thì tính hai lượt', async () => {
+    const queries = Array.from({ length: 12 }, (_, index) => `q${index}`);
+    const { handle } = start(
+      async (ctx) => {
+        queries.forEach((_, index) => ctx.setTarget(index, 'done'));
+      },
+      { mode: 'full', config: configOf({ queries }) }
+    );
+    await handle.done;
+    expect(storageState.data[WRITE_BUDGET_KEY]).toEqual({
+      day: localDay(NOON_VN),
+      used: 2,
+    });
+  });
+
   it('Assist: không có target nào đã ghi thì không tính ngân sách', async () => {
     const { handle } = start(
       async (ctx) => {

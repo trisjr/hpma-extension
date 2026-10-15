@@ -124,7 +124,8 @@ export function claimGate(input: GateInput): Gate {
     };
   const incident = incidentBlock(input.incidents, input.now);
   if (incident) return { open: false, why: 'blocked', block: incident };
-  if (input.job.flow === 'partner-approve' && input.job.mode === 'full') {
+  // Mỗi máy chỉ chạy một flow nên trần 3/ngày tính trên đúng flow của máy đó.
+  if (input.job.mode === 'full') {
     const cap = fullCapBlock(input.fullStarts, input.now);
     if (cap) return { open: false, why: 'blocked', block: cap };
   }
@@ -163,8 +164,8 @@ export type ReplyContext = {
   rateLimitedUntil?: number;
   curfew: CurfewConfig;
   writesPerDay: number;
-  // Chỉ job duyệt: số request trong config.
-  approveRequests?: number;
+  // Số lần ghi một job `full` cần (duyệt: số request; gán: số mẻ, cận dưới theo cỡ mẻ 10). Chỉ job ghi mới có.
+  writesNeeded?: number;
 };
 
 export type ReplyAction =
@@ -236,11 +237,8 @@ export function mapStartReply(code: string, ctx: ReplyContext): ReplyAction {
         code
       );
     case 'ERR_BUDGET':
-      // Job duyệt lớn hơn trần ngày thì không bao giờ vừa: chờ ngày sau cũng vô ích.
-      if (
-        ctx.approveRequests !== undefined &&
-        ctx.approveRequests > ctx.writesPerDay
-      )
+      // Job cần nhiều lần ghi hơn trần ngày thì không bao giờ vừa: chờ ngày sau cũng vô ích.
+      if (ctx.writesNeeded !== undefined && ctx.writesNeeded > ctx.writesPerDay)
         return { kind: 'error', code };
       return holdOrExpire(
         ctx,

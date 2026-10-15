@@ -24,7 +24,8 @@ import { isBusinessId } from '@/shared/surfaces';
 import partnerApproveFlow from '../flows/partnerApprove';
 import partnerAssignFlow from '../flows/partnerAssign';
 import { uiTaskKeys } from '../flows/partnerTasks';
-import { RunHandle, startApproveRun, startRun } from './runner';
+import { batchSizeFor, RunHandle, startApproveRun, startRun } from './runner';
+import { chunkIndexes } from './runState';
 import { clearLastRun, loadGates, loadLogDetail, loadPacing } from './store';
 
 let active: RunHandle | undefined;
@@ -73,10 +74,8 @@ function parseStart(command: RunStartCommand): ParsedStart | undefined {
 async function start(command: RunStartCommand): Promise<StartReply> {
   const parsed = parseStart(command);
   if (!parsed) return reject('ERR_INVALID_CONFIG');
-  // Full chỉ có ở flow duyệt/từ chối request; flow Gán partner coi mọi mode khác Dry là Assist.
-  if (command.mode === 'full' && parsed.flow !== 'partner-approve') {
-    return reject('ERR_INVALID_CONFIG');
-  }
+  // Full có ở cả hai flow: duyệt/từ chối request và Gán partner (engine tự bấm Assign mỗi mẻ). Cổng probe, người
+  // duyệt và trần ngày do dispatcher/Rules cưỡng chế (SPEC-AUTO-001 D8); ở đây vẫn qua mọi cổng an toàn như Assist.
   if (active || starting) return reject('ERR_BUSY');
   // Tab phải đang ở đúng BM mà panel đã chọn TKQC: BM khác thì danh sách TKQC không còn khớp.
   const urlBusinessId =
@@ -98,9 +97,16 @@ async function start(command: RunStartCommand): Promise<StartReply> {
       if (gates.rateLimited) return reject('ERR_RATE_LIMITED');
       if (isCurfew(new Date(now), pacing.curfew)) return reject('ERR_CURFEW');
       // Flow duyệt: mỗi request là một lần ghi, nên cả danh sách phải nằm gọn trong ngân sách còn lại
-      // (không cắt bớt âm thầm). Flow Gán partner: một run tính một lần ghi.
-      const needed =
-        parsed.flow === 'partner-approve' ? parsed.config.requests.length : 1;
+      // (không cắt bớt âm thầm). Gán partner: Assist một run tính một lần ghi; Full bấm Assign mỗi mẻ nên cần
+      // đủ ngân sách cho mọi mẻ.
+      let needed = 1;
+      if (parsed.flow === 'partner-approve')
+        needed = parsed.config.requests.length;
+      else if (command.mode === 'full')
+        needed = chunkIndexes(
+          parsed.config.queries.length,
+          batchSizeFor(pacing)
+        ).length;
       if (gates.writesToday + needed > pacing.limits.standard.writesPerDay) {
         return reject('ERR_BUDGET');
       }

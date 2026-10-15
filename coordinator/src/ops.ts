@@ -3,7 +3,7 @@
  * Đăng nhập bằng tài khoản có claim `ops` (HPMA_OPS_EMAIL mặc định ops@hpma.com, HPMA_OPS_PASSWORD).
  *
  *   pnpm ops status
- *   pnpm ops assign <bm> --file job.json
+ *   pnpm ops assign <bm> --file job.json [--mode dry|full]   (full: gõ xác nhận, không nhận --yes)
  *   pnpm ops scan <bm> --partner "TÊN BM ĐỐI TÁC"
  *   pnpm ops approve <bm> <scanJobId> [--action approve|decline] [--select 1,3-5|all] [--mode dry|full] [--yes]
  *   pnpm ops cancel <bm> <jobId>
@@ -193,10 +193,32 @@ const main = async (): Promise<void> => {
       const config = parseAssignConfig(
         JSON.parse(readFileSync(values.file as string, 'utf8'))
       );
+      const mode = values.mode ?? 'dry';
+      if (mode !== 'dry' && mode !== 'full') fail('mode phải là dry hoặc full');
+      if (mode === 'full') {
+        // Full ghi thật lên Meta: in đủ những gì sẽ được gán và bắt người gõ xác nhận, `--yes` không bỏ qua được.
+        if (values.yes)
+          fail(
+            'mode full không nhận --yes: phải tự gõ xác nhận sau khi xem cấu hình'
+          );
+        console.log(`Sẽ GÁN THẬT (full) ở BM ${businessId}:`);
+        console.log(`  BM đối tác: ${config.partnerBmId}`);
+        console.log(`  Quyền: ${config.tasks.join(', ')}`);
+        console.log(`  TKQC (${config.queries.length}):`);
+        config.queries.forEach((query) => console.log(`    - ${query}`));
+        if (
+          (await ask(undefined, 'Xác nhận đã xem cấu hình? (gõ "yes"): ')) !==
+          'yes'
+        )
+          fail('đã huỷ, không tạo job');
+      }
       const jobRef = push(ref(db, `ext/jobs/${businessId}`));
-      await set(jobRef, buildAssignJob(config, args(businessId)));
+      await set(
+        jobRef,
+        buildAssignJob(config, args(businessId), mode as 'dry' | 'full')
+      );
       console.log(
-        `Đã tạo job partner-assign ${jobRef.key} (dry) ở BM ${businessId}`
+        `Đã tạo job partner-assign ${jobRef.key} (${mode}) ở BM ${businessId}`
       );
       break;
     }

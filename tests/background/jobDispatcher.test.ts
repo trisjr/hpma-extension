@@ -265,6 +265,43 @@ describe('jobDispatcher: chạy job', () => {
     expect(ctx.tabs.prepare).not.toHaveBeenCalled();
   });
 
+  const assignFull = (id: string): RemoteJob =>
+    mkJob(id, {
+      mode: 'full',
+      approval: 'human',
+      approvedBy: 'uid-ops',
+      createdBy: 'uid-ops',
+    });
+  const ASSIGN_PROBE = {
+    page: { stage: 'page', at: T0 - 1000, rate: 1 },
+    menu: { stage: 'menu', at: T0 - 1000, rate: 1 },
+    'dialog-bm': { stage: 'dialog-bm', at: T0 - 1000, rate: 0.97 },
+    'dialog-assets': { stage: 'dialog-assets', at: T0 - 1000, rate: 1 },
+    'dialog-access': { stage: 'dialog-access', at: T0 - 1000, rate: 1 },
+    detail: { stage: 'detail', at: T0 - 1000, rate: 1 },
+  } as unknown as ProbeReports;
+
+  it('job gán full chạy khi probe sáu màn của flow gán đạt, tính vào trần ngày và gửi mode full', async () => {
+    const ctx = setup({ probe: ASSIGN_PROBE });
+    ctx.dispatcher.setPending([assignFull('af')]);
+    await vi.waitFor(() => expect(ctx.statusOf('af')).toBe('running'));
+    expect(ctx.tabs.start.mock.calls[0][1]).toMatchObject({
+      flow: 'partner-assign',
+      mode: 'full',
+    });
+    expect(ctx.memory().fullStarts).toHaveLength(1);
+  });
+
+  it('job gán full: probe của flow duyệt không thay được probe của flow gán (ERR_PROBE_GATE)', async () => {
+    const ctx = setup(); // PASSING_PROBE chỉ có hai màn duyệt
+    ctx.dispatcher.setPending([assignFull('af')]);
+    await vi.waitFor(() => expect(ctx.statusOf('af')).toBe('error'));
+    expect(ctx.last('af')).toMatchObject({
+      error: { code: 'ERR_PROBE_GATE' },
+    });
+    expect(ctx.tabs.start).not.toHaveBeenCalled();
+  });
+
   it('job duyệt dry không cần probe', async () => {
     const ctx = setup({ flow: 'partner-approve', probe: {} });
     ctx.dispatcher.setPending([
@@ -304,13 +341,14 @@ describe('jobDispatcher: chạy job', () => {
     expect(ctx.memory().fullStarts).toEqual([]);
   });
 
-  it('assign/scan không có full: job full của flow khác bị chốt ERR_JOB_INVALID', async () => {
+  it('job gán full không có dấu vết người duyệt bị chốt ERR_JOB_INVALID; requests.scan không có full', async () => {
     const assign = setup();
     assign.dispatcher.setPending([mkJob('a', { mode: 'full' })]);
     await vi.waitFor(() => expect(assign.statusOf('a')).toBe('error'));
     expect(assign.last('a')).toMatchObject({
-      error: { code: 'ERR_JOB_INVALID', message: 'mode' },
+      error: { code: 'ERR_JOB_INVALID', message: 'provenance' },
     });
+    expect(assign.tabs.start).not.toHaveBeenCalled();
     const scan = setup({ flow: 'partner-approve' });
     scan.dispatcher.setPending([
       mkJob('s', {

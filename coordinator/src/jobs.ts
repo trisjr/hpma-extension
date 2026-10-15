@@ -19,10 +19,12 @@ import { isBusinessId } from '@/shared/surfaces';
 
 export type NewJob = {
   flow: 'partner-assign' | 'requests.scan';
-  // Pha 1–2: chỉ 'dry' (D8); Rules cũng từ chối mode khác.
-  mode: 'dry';
+  // `full` chỉ có ở partner-assign và phải kèm dấu vết người duyệt (D8); Rules cũng cưỡng chế.
+  mode: 'dry' | 'full';
   businessId: string;
   config: RunConfig | { partnerName: string };
+  approval?: 'human';
+  approvedBy?: string;
   createdAt: unknown;
   createdBy: string;
   cancelRequested: false;
@@ -63,12 +65,20 @@ type BuildArgs = {
   createdAt: unknown;
 };
 
-export function buildAssignJob(config: RunConfig, args: BuildArgs): NewJob {
+export function buildAssignJob(
+  config: RunConfig,
+  args: BuildArgs,
+  mode: 'dry' | 'full' = 'dry'
+): NewJob {
   return {
     flow: 'partner-assign',
-    mode: 'dry',
+    mode,
     businessId: args.businessId,
     config,
+    // Job ghi thật do người duyệt: `approvedBy` = người tạo (Rules kiểm khớp `auth.uid`).
+    ...(mode === 'full'
+      ? { approval: 'human' as const, approvedBy: args.uid }
+      : {}),
     createdAt: args.createdAt,
     createdBy: args.uid,
     cancelRequested: false,

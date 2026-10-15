@@ -19,7 +19,7 @@ import type { DispatchMemory } from './dispatchMemory';
 
 import { parseApproveConfig } from '@/shared/approve';
 import { SERVER_TIMESTAMP } from '@/shared/jobClaim';
-import { approveGate } from '@/shared/probe';
+import { approveGate, assignGate } from '@/shared/probe';
 import {
   acceptsFlow,
   jobDispatchIssue,
@@ -368,10 +368,14 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     renavigated: boolean
   ): Promise<ReplyContext> {
     const [locks, m] = await Promise.all([deps.readLocks(), mem()]);
-    const approve =
-      job.flow === 'partner-approve'
-        ? parseApproveConfig(job.config)
-        : undefined;
+    let writesNeeded: number | undefined;
+    if (job.flow === 'partner-approve')
+      writesNeeded = parseApproveConfig(job.config)?.requests.length;
+    else if (job.flow === 'partner-assign' && job.mode === 'full') {
+      const queries = parseRunConfig(job.config)?.queries.length;
+      writesNeeded =
+        queries === undefined ? undefined : Math.ceil(queries / 10);
+    }
     return {
       now: deps.now(),
       claimedAt,
@@ -383,7 +387,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
           : undefined,
       curfew: locks.curfew,
       writesPerDay: locks.writesPerDay,
-      approveRequests: approve?.requests.length,
+      writesNeeded,
     };
   }
 
@@ -509,9 +513,10 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       await cancelJob(job);
       return;
     }
-    // Job duyệt `full` ghi thật lên Meta: chỉ chạy khi selector của hai màn duyệt vừa được đo và đạt ≥ 95% (Q4).
-    if (job.flow === 'partner-approve' && job.mode === 'full') {
-      const gate = approveGate(await deps.readProbe(), deps.now());
+    // Job `full` ghi thật lên Meta: chỉ chạy khi selector các màn của flow đó vừa được đo và đạt ≥ 95% (Q4).
+    if (job.mode === 'full') {
+      const check = job.flow === 'partner-assign' ? assignGate : approveGate;
+      const gate = check(await deps.readProbe(), deps.now());
       if (!gate.ok) {
         const detail = (['missing', 'below', 'stale'] as const)
           .filter((kind) => gate[kind].length > 0)
@@ -581,7 +586,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     // đã chạm BM dù lần ghi `running` chưa tới server.
     await deps.writeState(job.id, { dispatchingAt: SERVER_TIMESTAMP });
     // Đếm vào trần ngày TRƯỚC khi gửi lệnh: SW chết giữa chừng vẫn không làm hụt đếm.
-    const countsFull = job.flow === 'partner-approve' && job.mode === 'full';
+    const countsFull = job.mode === 'full';
     if (countsFull)
       await persist((m) => ({
         ...m,

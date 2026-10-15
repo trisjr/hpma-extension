@@ -30,6 +30,7 @@ import { computeDelayMs } from './delay';
 import EngineError from './errors';
 import { sleep } from './primitives';
 import {
+  chunkIndexes,
   createApproveRun,
   createEngineRun,
   newEngineRunId,
@@ -140,6 +141,10 @@ function redactForStorage(run: RunState, logDetail: AuditDetail): RunState {
   };
 }
 
+// Cỡ mẻ của flow Gán partner: mỗi mẻ là một hộp thoại Assign (ở Full là một cú bấm ghi thật).
+export const batchSizeFor = (pacing: PacingConfig): number =>
+  Math.min(10, pacing.limits.standard.maxBatch);
+
 function launch<C>(
   params: StartParams<C>,
   initialState: InitialState
@@ -150,7 +155,7 @@ function launch<C>(
   // `lang` do trang kiểm soát: chỉ nhận dạng mã ngôn ngữ ngắn, còn lại coi như không biết.
   const rawLang = document.documentElement.lang ?? '';
   const lang = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(rawLang) ? rawLang : '';
-  const batchSize = Math.min(10, pacing.limits.standard.maxBatch);
+  const batchSize = batchSizeFor(pacing);
   let state = initialState({
     mode,
     batchSize,
@@ -426,17 +431,18 @@ function launch<C>(
     // `done`, `pending-approval` và `unverified` đều có thể đã gửi yêu cầu tới Meta.
     // Flow duyệt: mỗi request là một lần ghi riêng lên Meta nên tính theo từng target; user bấm nút
     // ngược quyết định đã chọn (`ERR_WRONG_ACTION`) vẫn là một lần ghi thật. Full tính như Assist.
-    const written =
-      mode !== 'dry'
-        ? final.targets.filter(
-            (item) =>
-              ['done', 'pending-approval', 'unverified'].includes(
-                item.outcome
-              ) ||
-              (item.outcome === 'failed' && item.code === 'ERR_WRONG_ACTION')
+    const isWritten = (item: (typeof final.targets)[number]): boolean =>
+      ['done', 'pending-approval', 'unverified'].includes(item.outcome) ||
+      (item.outcome === 'failed' && item.code === 'ERR_WRONG_ACTION');
+    const written = mode !== 'dry' ? final.targets.filter(isWritten).length : 0;
+    // Gán partner: Assist tính cả run một lần; Full bấm Assign mỗi mẻ nên tính số mẻ có target đã ghi.
+    const assignWrites =
+      mode === 'full'
+        ? chunkIndexes(final.targets.length, batchSize).filter((group) =>
+            group.some((index) => isWritten(final.targets[index]))
           ).length
-        : 0;
-    const writes = final.flow === 'partner-approve' ? written : +(written > 0);
+        : +(written > 0);
+    const writes = final.flow === 'partner-approve' ? written : assignWrites;
     const auditOk = await appendAudit(rowsFromRun(final, logDetail), now);
     if (!auditOk) final = { ...final, auditFailed: true };
     if (writes > 0) await bumpWriteBudget(now, writes);

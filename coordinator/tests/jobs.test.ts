@@ -177,18 +177,47 @@ describe('job do ops CLI dựng ra phải qua Rules thật', () => {
     await assertSucceeds(
       set(ref(db, `ext/jobs/${BM}/a2`), approve([0, 1], 'uid-ops', 'full'))
     );
+    // Gán partner full: cũng cần dấu vết người duyệt; job full không kèm approval/approvedBy bị từ chối.
+    const assignConfig = parseAssignConfig({
+      partnerBmId: '1234567890123456',
+      queries: ['A'],
+      tasks: ['ANALYZE'],
+    });
     await assertFails(
       set(ref(db, `ext/jobs/${BM}/a3`), {
-        ...buildAssignJob(
-          parseAssignConfig({
-            partnerBmId: '1234567890123456',
-            queries: ['A'],
-            tasks: ['ANALYZE'],
-          }),
-          args
-        ),
+        ...buildAssignJob(assignConfig, args),
         mode: 'full',
       })
+    );
+    await assertSucceeds(
+      set(
+        ref(db, `ext/jobs/${BM}/a6`),
+        buildAssignJob(assignConfig, args, 'full')
+      )
+    );
+    // approvedBy khác người tạo, hoặc coordinator tạo job gán full: bị từ chối.
+    await assertFails(
+      set(ref(db, `ext/jobs/${BM}/a7`), {
+        ...buildAssignJob(assignConfig, args, 'full'),
+        approvedBy: 'uid-khac',
+      })
+    );
+    await assertFails(
+      set(
+        ref(
+          env
+            .authenticatedContext('uid-coordinator', { coordinator: true })
+            .database(),
+          `ext/jobs/${BM}/a8`
+        ),
+        {
+          ...buildAssignJob(
+            assignConfig,
+            { ...args, uid: 'uid-coordinator' },
+            'full'
+          ),
+        }
+      )
     );
     await assertFails(
       set(ref(db, `ext/jobs/${BM}/a4`), {

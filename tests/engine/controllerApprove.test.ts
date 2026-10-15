@@ -100,21 +100,30 @@ describe('controller: flow partner-approve', () => {
       )
     ).toEqual({ ok: false, code: 'ERR_BUDGET' });
     expect(approveFlow).not.toHaveBeenCalled();
-    // Flow Gán partner không có đường Full: controller từ chối dù lệnh đã lọt qua type guard.
+  });
+
+  it('Full của Gán partner: ngân sách tính theo số mẻ (mỗi mẻ một cú bấm Assign), không phải một lần cho cả run', async () => {
+    storageState.data[WRITE_BUDGET_KEY] = { day: localDay(NOON_VN), used: 19 };
+    const handle = await load();
+    const assign = (queries: string[]) =>
+      command({
+        flow: 'partner-assign',
+        mode: 'full',
+        config: {
+          partnerBmId: '1451597353550362',
+          queries,
+          tasks: ['ANALYZE'],
+        },
+      });
+    // 11 TKQC = 2 mẻ: 19 + 2 > 20 → bị từ chối, không chạy flow.
     expect(
       await handle(
-        command({
-          flow: 'partner-assign',
-          mode: 'full',
-          config: {
-            partnerBmId: '1451597353550362',
-            queries: ['x'],
-            tasks: ['ANALYZE'],
-          },
-        })
+        assign(Array.from({ length: 11 }, (_, index) => `TK${index}`))
       )
-    ).toEqual({ ok: false, code: 'ERR_INVALID_CONFIG' });
+    ).toEqual({ ok: false, code: 'ERR_BUDGET' });
     expect(assignFlow).not.toHaveBeenCalled();
+    // 1 mẻ: 19 + 1 ≤ 20 → chạy.
+    expect(await handle(assign(['TK1']))).toMatchObject({ ok: true });
   });
 
   it('config của Gán partner gửi kèm flow duyệt không được chấp nhận', async () => {

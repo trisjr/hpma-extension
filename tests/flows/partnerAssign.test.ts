@@ -260,6 +260,117 @@ describe('Assist: engine không chạm nút Assign', () => {
   });
 });
 
+describe('Full: engine tự bấm Assign đúng một lần mỗi mẻ', () => {
+  const closeDialog = (page: PartnerPage): void => {
+    page.root.querySelector('[role="dialog"]')?.remove();
+  };
+  // markWriteStarted ghi lại để kiểm "gọi trước cú bấm".
+  const withWriteSpy = (
+    page: PartnerPage,
+    marks: number[]
+  ): Partial<FlowContext> => ({
+    markWriteStarted: () => {
+      marks.push(page.counters.writes);
+    },
+  });
+
+  it('bấm Assign một lần sau markWriteStarted, hộp thoại đóng, đọc lại thấy -> done', async () => {
+    const marks: number[] = [];
+    const run = await runFlow(
+      {
+        mode: 'new',
+        onAssign: (page) => {
+          closeDialog(page);
+          page.root.insertAdjacentHTML(
+            'beforeend',
+            detailsPanel(
+              assetRow('New Account', PERMISSIONS_TEXT),
+              BM_ID,
+              false
+            )
+          );
+        },
+      },
+      {
+        mode: 'full',
+        queries: [NEXT_ASSET_ID],
+        overrides: (page) => withWriteSpy(page, marks),
+      }
+    );
+    expect(run.error).toBeUndefined();
+    expect(run.targets[0].outcome).toBe('done');
+    expect(engineAssignClicks(run.pressed)).toHaveLength(1);
+    expect(run.page.counters.writes).toBe(1);
+    // markWriteStarted chạy khi chưa có lần ghi nào (tức trước cú bấm).
+    expect(marks).toEqual([0]);
+  });
+
+  it('toast báo cần duyệt sau Assign -> pending-approval và dừng run, không bấm lại', async () => {
+    const run = await runFlow(
+      {
+        mode: 'new',
+        onAssign: (page) => {
+          closeDialog(page);
+          page.root.insertAdjacentHTML(
+            'beforeend',
+            '<div role="status">Yêu cầu của bạn cần được phê duyệt bởi quản trị viên khác</div>'
+          );
+        },
+      },
+      { mode: 'full', queries: [NEXT_ASSET_ID] }
+    );
+    expect(run.error).toBeUndefined();
+    expect(run.targets[0].outcome).toBe('pending-approval');
+    expect(engineAssignClicks(run.pressed)).toHaveLength(1);
+    expect(run.steps).not.toContain(7);
+  });
+
+  it('đã bấm mà không đọc lại được -> unverified, không bao giờ done', async () => {
+    const run = await runFlow(
+      { mode: 'new', onAssign: closeDialog },
+      { mode: 'full', queries: [NEXT_ASSET_ID] }
+    );
+    expect(run.targets[0].outcome).toBe('unverified');
+    expect(engineAssignClicks(run.pressed)).toHaveLength(1);
+  });
+
+  it('hộp thoại không đóng sau khi bấm: dừng bằng ERR_STEP_TIMEOUT, không bấm thêm, không huỷ wizard', async () => {
+    const run = await runFlow(
+      { mode: 'new', onAssign: () => undefined },
+      { mode: 'full', queries: [NEXT_ASSET_ID] }
+    );
+    expect(run.error?.code).toBe('ERR_STEP_TIMEOUT');
+    expect(engineAssignClicks(run.pressed)).toHaveLength(1);
+    expect(run.page.counters.cancelled).toBe(0);
+  });
+
+  it('lỗi trước khi bấm Assign: huỷ wizard đã cấu hình sẵn và không ghi gì', async () => {
+    const run = await runFlow(
+      { mode: 'new' },
+      {
+        mode: 'full',
+        queries: [NEXT_ASSET_ID],
+        overrides: () => ({
+          pause: async () => {
+            const creative = Array.from(
+              document.querySelectorAll<HTMLInputElement>('[role="switch"]')
+            ).find(
+              (input) =>
+                input.getAttribute('aria-label') ===
+                'Quản lý mẫu mô phỏng trong Creative Hub'
+            );
+            if (creative) creative.checked = true;
+          },
+        }),
+      }
+    );
+    expect(run.error?.code).toBe('ERR_PERMISSION_MISMATCH');
+    expect(run.page.counters.writes).toBe(0);
+    expect(run.page.counters.cancelled).toBe(1);
+    expect(engineAssignClicks(run.pressed)).toEqual([]);
+  });
+});
+
 describe('Chặn khi có hộp chọn TKQC (checkbox picker) mở', () => {
   // Meta tự mở hộp thoại ngay khi ô tìm TKQC của partner bị xoá (trước khi engine bấm Assign).
   const pickerDialog = (withCheckbox: boolean): string =>

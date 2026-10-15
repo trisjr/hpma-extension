@@ -1,8 +1,9 @@
 /**
  * partnerAssign.ts — flow "Gán partner vào TKQC" theo đường Partners (SPEC-ENG-001
  * §5; file 18 §3): Đối tác → Thêm → "Cấp cho đối tác quyền truy cập" → nhập BM ID →
- * Tiếp → chọn TKQC + quyền → (Assign: chỉ user bấm) → verify. Mỗi mẻ ≤ 10 TKQC.
- * Chỉ Dry-run/Assist: không có đường nào tự bấm Assign.
+ * Tiếp → chọn TKQC + quyền → Assign → verify. Mỗi mẻ ≤ 10 TKQC.
+ * Dry-run không bao giờ bấm Assign; Assist chờ user bấm; Full (chỉ job từ xa đã qua cổng probe và
+ * người duyệt, SPEC-AUTO-001 D8) để engine bấm đúng một lần mỗi mẻ.
  */
 import type { PartnerTask } from '@/shared/partnerAssign';
 import type { FlowContext } from '../engine/runner';
@@ -36,6 +37,10 @@ import { matchKey, normalizeText } from '../engine/text';
 import { uiTaskKeys } from './partnerTasks';
 
 const ASSIST_WAIT_MS = 10 * 60 * 1000;
+// Full: sau khi engine bấm Assign, hộp thoại phải đóng trong từng này (người bấm ở Assist có tới 10 phút).
+const FULL_CLOSE_MS = 30_000;
+// Mẻ mà engine đã bấm Assign (Full): từ đó wizard không còn là "một cú bấm nữa mới ghi" nên không được huỷ/chạm.
+const clickedBatches = new WeakSet<FlowContext>();
 const AFTER_CLOSE_MS = 15_000;
 const NOTICE_SETTLE_MS = 2500;
 const SHORT_WAIT_MS = 5000;
@@ -603,7 +608,10 @@ export function approvalAppeared(
     .some((phrase) => notice.includes(phrase) && !baseline.includes(phrase));
 }
 
-async function waitDialogClosedOrDone(ctx: FlowContext): Promise<void> {
+async function waitDialogClosedOrDone(
+  ctx: FlowContext,
+  timeoutMs: number = ASSIST_WAIT_MS
+): Promise<void> {
   const local = new AbortController();
   const onAbort = (): void => local.abort();
   ctx.signal.addEventListener('abort', onAbort, { once: true });
@@ -611,7 +619,7 @@ async function waitDialogClosedOrDone(ctx: FlowContext): Promise<void> {
     await Promise.race([
       waitGone(() => activeDialog() !== null, {
         signal: local.signal,
-        timeoutMs: ASSIST_WAIT_MS,
+        timeoutMs,
       }),
       ctx.waitForAssistDone(),
     ]);
@@ -766,17 +774,28 @@ async function runBatchSteps(
   }
 
   // Assist: engine không chạm nút Assign; chờ user bấm và hộp thoại đóng.
+  // Full: engine tự bấm Assign đúng một lần cho mẻ này rồi chờ hộp thoại đóng; từ sau cú bấm không chạm wizard nữa.
   const tracker = trackNotices();
   const baseline = tracker.read();
   try {
     await ctx.step(6, async (h) => {
-      await locate(SELECTORS.assign, ctx);
+      const assignButton = await locate(SELECTORS.assign, ctx);
       h.acted();
-      ctx.setWaiting(true);
-      try {
-        await waitDialogClosedOrDone(ctx);
-      } finally {
-        ctx.setWaiting(false);
+      if (ctx.mode === 'full') {
+        clickedBatches.add(ctx);
+        ctx.markWriteStarted();
+        await click(assignButton, ctx);
+        await orUndefined(waitDialogClosedOrDone(ctx, FULL_CLOSE_MS));
+        // Hộp thoại còn mở sau thời hạn: không đoán, không bấm thêm; run dừng, target chưa rõ thành unverified.
+        if (activeDialog())
+          throw new EngineError('ERR_STEP_TIMEOUT', 'assign.close');
+      } else {
+        ctx.setWaiting(true);
+        try {
+          await waitDialogClosedOrDone(ctx);
+        } finally {
+          ctx.setWaiting(false);
+        }
       }
       // Toast báo cần duyệt có thể tới ngay sau khi hộp thoại đóng.
       await sleep(NOTICE_SETTLE_MS, ctx.signal);
@@ -807,10 +826,14 @@ async function runBatch(
   ctx: FlowContext,
   indexes: number[]
 ): Promise<BatchResult> {
+  clickedBatches.delete(ctx);
   try {
     return await runBatchSteps(ctx, indexes);
   } catch (error) {
-    if (ctx.mode === 'dry' && activeDialog()) {
+    // Dry, và Full trước khi bấm Assign: wizard đã cấu hình sẵn chỉ còn một cú bấm là ghi thật nên phải huỷ.
+    const beforeAssign =
+      ctx.mode === 'dry' || (ctx.mode === 'full' && !clickedBatches.has(ctx));
+    if (beforeAssign && activeDialog()) {
       await cancelWizard(ctx).catch(() => undefined);
     }
     throw error;

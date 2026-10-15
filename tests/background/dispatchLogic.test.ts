@@ -240,9 +240,9 @@ describe('mapStartReply', () => {
   });
 
   it('job duyệt lớn hơn trần ngày thì ERR_BUDGET ngay, không chờ', () => {
-    expect(
-      mapStartReply('ERR_BUDGET', replyCtx({ approveRequests: 21 }))
-    ).toEqual({ kind: 'error', code: 'ERR_BUDGET' });
+    expect(mapStartReply('ERR_BUDGET', replyCtx({ writesNeeded: 21 }))).toEqual(
+      { kind: 'error', code: 'ERR_BUDGET' }
+    );
   });
 
   it('ERR_EMERGENCY là error và khoá không hạn', () => {

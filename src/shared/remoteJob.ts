@@ -36,9 +36,9 @@ const ACCEPTED_FLOWS: Record<MachineFlow, readonly RemoteFlow[]> = {
 
 // Mode job được phép chạy từ xa, theo flow (D8, Q4). Rules cưỡng chế độc lập; mở mode mới phải sửa cả hai.
 export const REMOTE_ALLOWED_MODES: Record<RemoteFlow, readonly RemoteMode[]> = {
-  'partner-assign': ['dry'],
-  // Q4: chỉ flow duyệt được `full` (engine không có `full` cho assign/scan, controller.ts:77). Dispatcher còn ép cổng
-  // probe ≥ 95% và trần 3 job/ngày trước khi chạy.
+  // Anh đã mở `full` cho cả gán partner (engine tự bấm Assign mỗi mẻ). `requests.scan` không ghi nên chỉ `dry`.
+  // Dispatcher còn ép cổng probe ≥ 95% theo flow, dấu vết người duyệt và trần 3 job/ngày trước khi chạy.
+  'partner-assign': ['dry', 'full'],
   'partner-approve': ['dry', 'full'],
   'requests.scan': ['dry'],
 };
@@ -165,12 +165,13 @@ export function jobDispatchIssue(
   job: RemoteJob
 ): 'mode' | 'config' | 'provenance' | undefined {
   if (!isModeAllowed(job.flow, job.mode)) return 'mode';
-  // `full` ghi thật: bắt buộc do người duyệt từ một lần quét (D6, §8.1). Rules cũng kiểm, đây là lớp thứ hai.
+  // `full` ghi thật: bắt buộc do người duyệt (§8.1); job duyệt còn phải trỏ tới một lần quét (D6). Rules cũng kiểm,
+  // đây là lớp thứ hai.
   if (
     job.mode === 'full' &&
     !(
       job.approval === 'human' &&
-      job.scanJobId !== undefined &&
+      (job.flow !== 'partner-approve' || job.scanJobId !== undefined) &&
       job.approvedBy !== undefined &&
       job.approvedBy === job.createdBy
     )
