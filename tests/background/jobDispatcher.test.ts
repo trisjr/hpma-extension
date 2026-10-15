@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DispatchMemory, EMPTY_MEMORY } from '@/background/dispatchMemory';
 import createDispatcher, {
+  ActiveJob,
   DispatcherDeps,
   Locks,
   MachinePatch,
@@ -71,6 +72,7 @@ function setup(
   let memory: DispatchMemory = { ...EMPTY_MEMORY, ...options.memory };
   const cancelCallbacks = new Map<string, (cancelRequested: boolean) => void>();
   const errors: unknown[] = [];
+  const published: (string | undefined)[] = [];
 
   const tabs = {
     find: vi.fn<TabDriver['find']>(async () => 7),
@@ -103,6 +105,9 @@ function setup(
     writeState: vi.fn(async (id: string, patch: Record<string, unknown>) => {
       writes.push({ id, patch });
       if (typeof patch.status === 'string') status.set(id, patch.status);
+    }),
+    publishActive: vi.fn(async (active: ActiveJob | undefined) => {
+      published.push(active?.job.id);
     }),
     writeMachine: vi.fn(async (patch: MachinePatch) => {
       machine.push(patch);
@@ -148,6 +153,7 @@ function setup(
     status,
     clock,
     errors,
+    published,
     memory: () => memory,
     cancel: (jobId: string) => cancelCallbacks.get(jobId)?.(true),
     last: (id: string) =>
@@ -791,6 +797,16 @@ describe('jobDispatcher: sửa theo review bảo mật pha 2', () => {
     ctx.dispatcher.setPending([mkJob('j1')]);
     await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('cancelled'));
     expect(ctx.tabs.start).not.toHaveBeenCalled();
+  });
+
+  it('popup: job đang giữ máy được công bố khi claim và gỡ khi kết thúc', async () => {
+    const ctx = setup();
+    ctx.dispatcher.setPending([mkJob('j1')]);
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('running'));
+    expect(ctx.published).toContain('j1');
+    ctx.dispatcher.onRunEvent(run({ status: 'done' }), 7);
+    await vi.waitFor(() => expect(ctx.statusOf('j1')).toBe('done'));
+    await vi.waitFor(() => expect(ctx.published.at(-1)).toBeUndefined());
   });
 
   it('M1: pump và tick chồng nhau chỉ reconcile một lần', async () => {

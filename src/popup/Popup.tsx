@@ -1,10 +1,12 @@
 import { JSX, useEffect, useState } from 'react';
 import type { ConnectionState } from '@/shared/hooks/useConnection';
 import type { MessageKey } from '@/shared/i18n';
+import type { RunStatus } from '@/shared/run';
 import openSidePanel from '@utils/openSidePanel';
 import browser from 'webextension-polyfill';
 
 import curfewLabel from '@/shared/curfewLabel';
+import useActiveRemoteJob from '@/shared/hooks/useActiveRemoteJob';
 import useConnection from '@/shared/hooks/useConnection';
 import useKillSwitch from '@/shared/hooks/useKillSwitch';
 import useLanguage from '@/shared/hooks/useLanguage';
@@ -28,6 +30,13 @@ const STATUS_VIEW: Record<
   checking: { statusKey: 'header.checking', dotClass: 'bg-base-content/30' },
 };
 
+const activeLabel = (status: RunStatus | undefined): MessageKey => {
+  if (status === undefined) return 'remote.active.preparing';
+  if (status === 'paused') return 'remote.active.paused';
+  if (status === 'waiting-user') return 'remote.active.waiting';
+  return 'remote.active.running';
+};
+
 export default function Popup(): JSX.Element {
   const theme = useTheme();
   const { lang } = useLanguage();
@@ -36,6 +45,7 @@ export default function Popup(): JSX.Element {
   const { value: pacing } = usePacingConfig();
   const { engaged: killEngaged, failed: killFailed, engage } = useKillSwitch();
   const remoteJobs = useRemoteJobs();
+  const activeJob = useActiveRemoteJob();
   // Resolve windowId trước: open side panel đòi user gesture, không được await
   // trong onClick (docs/050-Research/21 §5.1).
   const [windowId, setWindowId] = useState<number>();
@@ -114,6 +124,49 @@ export default function Popup(): JSX.Element {
           <div role='alert' className='alert alert-error text-xs'>
             {translate(lang, 'popup.openFailed')}
           </div>
+        )}
+
+        {activeJob && (
+          <section
+            aria-label={translate(lang, 'remote.active.title')}
+            className='border-base-content/12 flex flex-col gap-1.5 rounded-md border bg-base-100 p-2.5'
+          >
+            <button
+              type='button'
+              disabled={windowId === undefined}
+              onClick={() => openPanel()}
+              className='flex w-full flex-col gap-1 rounded-md p-1 text-left text-xs hover:bg-base-200'
+            >
+              <span className='flex items-center justify-between gap-2'>
+                <span className='font-medium'>
+                  {translate(lang, FLOW_KEYS[activeJob.job.flow])}
+                </span>
+                <span className='text-base-content/70'>
+                  {translate(lang, activeLabel(activeJob.progress?.status))}
+                </span>
+              </span>
+              <span className='text-base-content/70 break-words'>
+                {summarizeJob(lang, activeJob.job)}
+              </span>
+              {activeJob.progress ? (
+                <>
+                  <progress
+                    className='progress progress-primary w-full'
+                    value={activeJob.progress.done}
+                    max={Math.max(activeJob.progress.total, 1)}
+                  />
+                  <span className='text-base-content/70'>
+                    {translate(lang, 'remote.active.progress', {
+                      done: activeJob.progress.done,
+                      total: activeJob.progress.total,
+                    })}
+                  </span>
+                </>
+              ) : (
+                <progress className='progress progress-primary w-full' />
+              )}
+            </button>
+          </section>
         )}
 
         {remoteJobs.length > 0 && (

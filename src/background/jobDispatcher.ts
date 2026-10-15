@@ -70,6 +70,9 @@ export type OwnJob = {
   dispatching?: boolean;
 };
 
+// Job đang giữ máy (claimed/running), để popup hiển thị kèm tiến độ.
+export type ActiveJob = { job: RemoteJob; runId?: string };
+
 export type SyncOutcome = { reachable: boolean; run?: RunState };
 
 export type TabDriver = {
@@ -113,6 +116,8 @@ export type DispatcherDeps = {
   claim: (jobId: string) => Promise<boolean>;
   writeState: (jobId: string, patch: Record<string, unknown>) => Promise<void>;
   writeMachine: (patch: MachinePatch) => Promise<void>;
+  // Cục bộ: công bố job đang chạy cho popup (undefined = không có).
+  publishActive: (active: ActiveJob | undefined) => Promise<void>;
   readOwnJobs: () => Promise<OwnJob[]>;
   watchCancel: (
     jobId: string,
@@ -167,6 +172,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
   let lastGateBlock: Block | undefined;
   let view: MachineView = { status: 'idle' };
   let lastWritten = '';
+  let lastActive = '';
 
   const guard = (work: Promise<unknown>): void => {
     work.catch(deps.onError);
@@ -191,9 +197,22 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     return next;
   }
 
+  // Công bố job đang giữ máy cho popup; chỉ ghi khi id/runId đổi.
+  function syncActive(): void {
+    const key = current ? `${current.job.id}/${current.runId ?? ''}` : '';
+    if (key === lastActive) return;
+    lastActive = key;
+    guard(
+      deps.publishActive(
+        current ? { job: current.job, runId: current.runId } : undefined
+      )
+    );
+  }
+
   // Ghi máy lên RTDB khi view đổi (idle/busy/blocked + lý do + job đang giữ).
   async function setView(next: MachineView): Promise<void> {
     view = next;
+    syncActive();
     const patch = machinePatchOf(next);
     const key = JSON.stringify(patch);
     if (key === lastWritten) return;
@@ -437,6 +456,7 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       lastProgressAt: deps.now(),
       lastRunStatus: 'running',
     });
+    syncActive();
     await deps.writeState(cur.job.id, {
       status: 'running',
       startedAt: SERVER_TIMESTAMP,

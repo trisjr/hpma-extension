@@ -58,6 +58,8 @@ import {
 const HEARTBEAT_ALARM = 'firebase-heartbeat';
 const HEARTBEAT_PERIOD_MIN = 1;
 const JOBS_KEY = 'remote:jobs';
+// Job đang chạy của máy này, popup đọc để hiện kèm tiến độ (khoá trùng với useActiveRemoteJob).
+const ACTIVE_KEY = 'remote:active';
 const STATUS_KEY = 'remote:status';
 
 type Persisted = { lastHeartbeatAt?: number; lastError?: string };
@@ -119,6 +121,7 @@ function disposeDispatcher(): void {
   unwatchKill = undefined;
   dispatcher = undefined;
   dispatcherKey = undefined;
+  browser.storage.session.remove(ACTIVE_KEY).catch(() => undefined);
 }
 
 // Khoá an toàn cục bộ do engine giữ (emergency/rate-limit) cùng cấu hình pacing: dispatcher đọc trước mỗi lần claim.
@@ -154,6 +157,10 @@ function ensureDispatcher(claims: MachineClaims): Dispatcher {
     businessId: claims.bm,
     flow: claims.flow,
     ...store,
+    publishActive: async (active) => {
+      if (active) await browser.storage.session.set({ [ACTIVE_KEY]: active });
+      else await browser.storage.session.remove(ACTIVE_KEY);
+    },
     readLocks,
     readProbe: async () => {
       const stored = await browser.storage.local
