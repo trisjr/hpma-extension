@@ -13,7 +13,10 @@
       },
       "killSwitch": {
         ".read": "auth.token.ops === true || auth.token.coordinator === true || auth.token.machineId != null",
-        ".write": "auth.token.ops === true"
+        ".write": "auth.token.ops === true",
+        "$scope": {
+          ".write": "auth.token.coordinator === true && $scope !== 'global' && newData.val() === true"
+        }
       },
       "chains": {
         ".read": "auth.token.ops === true || auth.token.coordinator === true",
