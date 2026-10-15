@@ -1,8 +1,9 @@
 /**
  * coordinator — vòng lặp nền của SPEC-AUTO-001 (D14, pha 2): janitor (reclaim job mồ côi, xoá PII 24 giờ, xoá job
  * cuối 30 ngày) và tự dừng BM khi có sự cố (N = 1). Chạy bằng CLI trên máy anh; máy tắt thì dừng, dữ liệu không mất.
- * Khởi tạo Admin SDK với `databaseAuthVariableOverride` mang claim `coordinator`: Database Rules vẫn áp dụng, nên
- * khoá service account không cho coordinator quyền nào ngoài những gì Rules cấp cho vai trò này.
+ * Khởi tạo Admin SDK với `databaseAuthVariableOverride` mang claim `coordinator`: Database Rules vẫn áp dụng cho
+ * tiến trình này. LƯU Ý: bản thân khoá service account vẫn là quyền admin toàn phần (kể cả `purge-jobs`, vốn khởi tạo
+ * không override); hãy dùng service account riêng chỉ có role Realtime Database và giữ khoá ngoài repo.
  *
  *   GOOGLE_APPLICATION_CREDENTIALS=~/.config/hpma/firebase-admin.json pnpm coordinator once
  *   GOOGLE_APPLICATION_CREDENTIALS=… pnpm coordinator watch [--interval 60]

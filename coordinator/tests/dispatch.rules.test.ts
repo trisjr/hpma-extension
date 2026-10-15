@@ -210,6 +210,96 @@ describe('vòng đời do máy giữ job ghi (§4.2)', () => {
     );
   });
 
+  it('M4: sau khi job kết thúc, máy từng giữ nó không đưa lại về pending được', async () => {
+    await seed();
+    const m1 = machine('m1', 'partner-assign');
+    expect(await claim(m1, 'm1')).toBe(true);
+    const state = ref(m1.database(), `${JOB}/state`);
+    await assertSucceeds(
+      update(state, { status: 'done', finishedAt: serverTimestamp() })
+    );
+    await assertFails(update(state, { status: 'pending', claimedBy: null }));
+    await assertFails(update(state, { status: 'running' }));
+  });
+
+  it('H1: janitor không reclaim job claimed đã có dispatchingAt, chỉ chốt ERR_MACHINE_LOST', async () => {
+    const old = Date.now() - 3600_000;
+    await seed({
+      state: {
+        status: 'claimed',
+        claimedBy: 'm1',
+        claimedAt: old,
+        dispatchingAt: old,
+      },
+    });
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'ext/machines/m1'), {
+        businessId: BM,
+        flow: 'partner-assign',
+        status: 'idle',
+        lastHeartbeatAt: old,
+      });
+    });
+    const db = env
+      .authenticatedContext('uid-coordinator', { coordinator: true })
+      .database();
+    await assertFails(
+      update(ref(db, `${JOB}/state`), {
+        status: 'pending',
+        claimedBy: null,
+        claimedAt: null,
+      })
+    );
+    await assertSucceeds(
+      update(ref(db, `${JOB}/state`), {
+        status: 'error',
+        error: { code: 'ERR_MACHINE_LOST' },
+        finishedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it('M5: scanJobId của job duyệt không được chứa ký tự đường dẫn', async () => {
+    await seed(
+      { flow: 'requests.scan', state: { status: 'done' } },
+      `ext/jobs/${BM}/scan1`
+    );
+    const approve = {
+      flow: 'partner-approve',
+      mode: 'dry',
+      businessId: BM,
+      config: {
+        partnerName: 'BM',
+        action: 'approve',
+        requests: [{ requester: 'R', account: 'A' }],
+      },
+      approval: 'human',
+      approvedBy: 'uid-ops',
+      createdAt: serverTimestamp(),
+      createdBy: 'uid-ops',
+      cancelRequested: false,
+      state: { status: 'pending' },
+    };
+    const db = opsCtx().database();
+    await assertFails(
+      set(ref(db, `ext/jobs/${BM}/ok1`), {
+        ...approve,
+        scanJobId: 'scan1/state',
+      })
+    );
+    await assertSucceeds(
+      set(ref(db, `ext/jobs/${BM}/ok2`), { ...approve, scanJobId: 'scan1' })
+    );
+  });
+
+  it('L3: killSwitch chỉ nhận boolean', async () => {
+    const db = env
+      .authenticatedContext('uid-coordinator', { coordinator: true })
+      .database();
+    await assertFails(set(ref(db, `ext/killSwitch/${BM}`), 'true'));
+    await assertSucceeds(set(ref(db, `ext/killSwitch/${BM}`), true));
+  });
+
   it('máy không sửa được trường bất biến (flow/mode/config/cancelRequested) của job mình giữ', async () => {
     await seed();
     const m1 = machine('m1', 'partner-assign');

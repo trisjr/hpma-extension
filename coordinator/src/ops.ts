@@ -23,6 +23,7 @@ import {
   push,
   ref,
   remove,
+  runTransaction,
   serverTimestamp,
   set,
   update,
@@ -250,8 +251,13 @@ const main = async (): Promise<void> => {
       console.log(
         `\nSẽ tạo job ${action} (${mode}) cho ${selection.length} request: ${selection.map((i) => i + 1).join(', ')}`
       );
+      // Job `full` ghi thật lên Meta: luôn phải có người gõ xác nhận, `--yes` chỉ bỏ qua bước này ở chế độ dry.
+      if (mode === 'full' && values.yes)
+        fail(
+          'mode full không nhận --yes: phải tự gõ xác nhận sau khi xem danh sách'
+        );
       if (
-        !values.yes &&
+        (mode === 'full' || !values.yes) &&
         (await ask(undefined, 'Xác nhận đã xem danh sách? (gõ "yes"): ')) !==
           'yes'
       )
@@ -286,16 +292,20 @@ const main = async (): Promise<void> => {
         ref(db, `ext/jobs/${businessId}/${jobId}/cancelRequested`),
         true
       );
-      // Job còn pending thì chưa máy nào giữ nên không máy nào ghi được `state`: tự chốt cancelled (§5.3).
-      if (node?.state?.status === 'pending')
-        await update(ref(db, `ext/jobs/${businessId}/${jobId}/state`), {
-          status: 'cancelled',
-          finishedAt: serverTimestamp(),
-        });
+      // Job còn pending thì chưa máy nào giữ nên không máy nào ghi được `state`: tự chốt cancelled (§5.3). Dùng
+      // transaction để không ghi đè một job máy vừa claim giữa lúc đọc và ghi (khi đó máy tự dừng nhờ cancelRequested).
+      const stateRef = ref(db, `ext/jobs/${businessId}/${jobId}/state`);
+      const settled = await runTransaction(stateRef, (state) =>
+        (state as { status?: string } | null)?.status === 'pending'
+          ? { ...(state as object), status: 'cancelled' }
+          : undefined
+      );
+      if (settled.committed)
+        await update(stateRef, { finishedAt: serverTimestamp() });
       console.log(
-        node?.state?.status === 'pending'
+        settled.committed
           ? `Đã huỷ job ${jobId} (chưa máy nào giữ)`
-          : `Đã yêu cầu huỷ job ${jobId} (đang ${node?.state?.status}): máy giữ job sẽ dừng ≤ 1 bước`
+          : `Đã yêu cầu huỷ job ${jobId} (đang ${(settled.snapshot.val() as { status?: string } | null)?.status}): máy giữ job sẽ dừng ≤ 1 bước`
       );
       break;
     }

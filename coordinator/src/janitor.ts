@@ -12,7 +12,7 @@ export const PII_TTL_MS = 24 * 60 * 60 * 1000;
 export const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type JanitorAction =
-  // claimed → pending, bỏ claimedBy: máy chết trước khi chạm BM nên an toàn (§5.4).
+  // claimed → pending, bỏ claimedBy: máy chết trước khi gửi lệnh (chưa có dispatchingAt) nên an toàn (§5.4).
   | { kind: 'reclaim'; bm: string; jobId: string }
   // running → error ERR_MACHINE_LOST, KHÔNG về pending (D9: không tự chạy lại).
   | { kind: 'lost'; bm: string; jobId: string }
@@ -68,9 +68,13 @@ export function planJanitor({
         last !== undefined &&
         now - last > ORPHAN_TTL_MS &&
         (heartbeat === undefined || now - heartbeat > HEARTBEAT_STALE_MS);
+      // `claimed` mà máy đã bắt đầu gửi lệnh (dispatchingAt): run có thể đã chạm BM nên chốt lỗi, không về pending (D9).
       if (orphan)
         actions.push({
-          kind: status === 'claimed' ? 'reclaim' : 'lost',
+          kind:
+            status === 'claimed' && state.dispatchingAt == null
+              ? 'reclaim'
+              : 'lost',
           bm,
           jobId,
         });

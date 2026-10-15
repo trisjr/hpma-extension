@@ -33,6 +33,20 @@ describe('planJanitor (thuần)', () => {
   ) => planJanitor({ bm: BM, jobs, heartbeats, now });
   const job = (state: Record<string, unknown>) => ({ state });
 
+  it('claimed mồ côi đã có dispatchingAt: chốt lỗi (lost), không reclaim về pending (D9)', () => {
+    const jobs = {
+      a: job({
+        status: 'claimed',
+        claimedBy: 'm1',
+        claimedAt: now - ORPHAN_TTL_MS - 1,
+        dispatchingAt: now - ORPHAN_TTL_MS - 1,
+      }),
+    };
+    expect(plan(jobs, { m1: stale })).toEqual([
+      { kind: 'lost', bm: BM, jobId: 'a' },
+    ]);
+  });
+
   it('reclaim claimed mồ côi: mốc claimedAt cũ VÀ heartbeat cũ', () => {
     const jobs = {
       a: job({
