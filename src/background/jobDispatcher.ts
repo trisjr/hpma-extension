@@ -32,6 +32,7 @@ import { approveGate, assignGate } from '@/shared/probe';
 import {
   acceptsFlow,
   BRIDGE_APPROVAL,
+  isBridgeApprove,
   jobDispatchIssue,
   jobPartnerName,
 } from '@/shared/remoteJob';
@@ -601,7 +602,9 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       return;
     }
     // Job `full` ghi thật lên Meta: chỉ chạy khi selector các màn của flow đó vừa được đo và đạt ≥ 95% (Q4).
-    if (job.mode === 'full') {
+    // TEMP(D12-bridge): job approve của đường tạm không qua cổng probe (anh quyết 15/10/2026: không cần probe);
+    // `jobDispatchIssue` ở trên đã bảo đảm job `machine-chain` đúng dạng bridge. Gỡ cùng đường tạm.
+    if (job.mode === 'full' && !isBridgeApprove(job)) {
       const check = job.flow === 'partner-assign' ? assignGate : approveGate;
       const gate = check(await deps.readProbe(), deps.now());
       if (!gate.ok) {

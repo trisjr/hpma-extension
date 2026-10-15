@@ -292,6 +292,37 @@ describe('jobDispatcher: chạy job', () => {
       expect(ctx.createdJobs[0].job.config).not.toHaveProperty('requests');
     });
 
+    it('D12-bridge: job approve của đường tạm không qua cổng probe (probe trống vẫn chạy)', async () => {
+      const ctx = setup({ flow: 'partner-approve', probe: {} });
+      ctx.tabs.scan.mockResolvedValue({
+        ok: true,
+        businessId: BM,
+        requests: [{ requester: 'Ai Do', account: 'SHOP A' }],
+      });
+      ctx.dispatcher.setPending([
+        mkJob('chain-np-approve', {
+          flow: 'partner-approve',
+          mode: 'full',
+          approval: 'machine-chain',
+          approvedBy: 'uid-m1',
+          createdBy: 'uid-m1',
+          chain: { assignJobId: 'np' },
+          config: {
+            partnerName: 'BM Đối Tác',
+            partnerBmId: '1234567890123456',
+            action: 'approve',
+            approveAll: true,
+          },
+        }),
+      ]);
+      await vi.waitFor(() =>
+        expect(ctx.statusOf('chain-np-approve')).toBe('running')
+      );
+      expect(ctx.last('chain-np-approve')).not.toMatchObject({
+        error: { code: 'ERR_PROBE_GATE' },
+      });
+    });
+
     it('D12-bridge: máy approve nhận job approveAll, quét Needs review rồi chạy với danh sách vừa quét', async () => {
       const ctx = setup({ flow: 'partner-approve' });
       ctx.tabs.scan.mockResolvedValue({

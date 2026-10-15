@@ -593,6 +593,82 @@ describe('Full: engine tự bấm đúng nút đã chọn', () => {
     expect(approveOrDecline(pressed)).toEqual(['approve|Approve']);
   });
 
+  // Meta hỏi xác nhận sau cú bấm Approve/Decline: hộp thoại có Cancel và nút cùng nhãn quyết định.
+  function mountConfirmDialog(
+    dialogHtml: string
+  ): ReturnType<typeof mountRequestsPage> {
+    const page = mountRequestsPage([SEED], { approveDelayMs: 120_000 });
+    document.addEventListener(
+      'pointerdown',
+      (event) => {
+        if ((event.target as HTMLElement).id !== 'approve') return;
+        page.root.insertAdjacentHTML('beforeend', dialogHtml);
+        const confirm = page.root.querySelector<HTMLElement>('#confirm');
+        confirm?.addEventListener('click', () => {
+          page.counters.approves += 1;
+          page.root.querySelector('[role="dialog"]')?.remove();
+          (page.root.querySelector('#list') as HTMLElement).innerHTML = '';
+          (page.root.querySelector('#pane') as HTMLElement).innerHTML = '';
+        });
+      },
+      true
+    );
+    return page;
+  }
+
+  it('hộp thoại xác nhận (Cancel + Approve): engine bấm đúng nút Approve trong hộp, không bấm Cancel -> done', async () => {
+    const page = mountConfirmDialog(
+      `<div role="dialog"><h2>Are you sure you want to give ${PARTNER_NAME} access to your ad account?</h2><button id="cancel">Cancel</button><button id="confirm">Approve</button></div>`
+    );
+    const pressed = recordEnginePresses();
+    const fake = makeApproveContext(CONFIG, { mode: 'full' });
+    await drive(partnerApproveFlow(fake.ctx));
+    expect(pressed.filter((entry) => entry.startsWith('cancel'))).toEqual([]);
+    expect(pressed).toContain('confirm|Approve');
+    expect(page.counters.approves).toBe(2);
+    expect(fake.writeMarks()).toBe(1);
+  });
+
+  it('hộp thoại lạ có nút Approve nhưng câu hỏi không phải xác nhận: dừng ERR_UNEXPECTED_DIALOG, không bấm', async () => {
+    mountConfirmDialog(
+      '<div role="dialog"><h2>Approval needed</h2><button id="cancel">Cancel</button><button id="confirm">Approve</button></div>'
+    );
+    const pressed = recordEnginePresses();
+    const fake = makeApproveContext(CONFIG, { mode: 'full' });
+    await expect(drive(partnerApproveFlow(fake.ctx))).rejects.toMatchObject({
+      code: 'ERR_UNEXPECTED_DIALOG',
+    });
+    expect(
+      pressed.filter((entry) => /^(confirm|cancel)\|/.test(entry))
+    ).toEqual([]);
+  });
+
+  it('hộp xác nhận nêu BM khác với BM đối tác: dừng ERR_UNEXPECTED_DIALOG, không bấm', async () => {
+    mountConfirmDialog(
+      '<div role="dialog"><h2>Are you sure you want to give Other Network access to your ad account?</h2><button id="cancel">Cancel</button><button id="confirm">Approve</button></div>'
+    );
+    const pressed = recordEnginePresses();
+    const fake = makeApproveContext(CONFIG, { mode: 'full' });
+    await expect(drive(partnerApproveFlow(fake.ctx))).rejects.toMatchObject({
+      code: 'ERR_UNEXPECTED_DIALOG',
+    });
+    expect(pressed.filter((entry) => entry.startsWith('confirm'))).toEqual([]);
+  });
+
+  it('hộp thoại có cả nút của quyết định ngược lại: dừng ERR_UNEXPECTED_DIALOG, không bấm gì trong hộp', async () => {
+    mountConfirmDialog(
+      `<div role="dialog"><h2>Are you sure you want to give ${PARTNER_NAME} access to your ad account?</h2><button id="confirm">Approve</button><button id="other">Decline</button></div>`
+    );
+    const pressed = recordEnginePresses();
+    const fake = makeApproveContext(CONFIG, { mode: 'full' });
+    await expect(drive(partnerApproveFlow(fake.ctx))).rejects.toMatchObject({
+      code: 'ERR_UNEXPECTED_DIALOG',
+    });
+    expect(pressed.filter((entry) => /^(confirm|other)\|/.test(entry))).toEqual(
+      []
+    );
+  });
+
   it('khung chi tiết không còn khớp request ngay trước khi bấm: không bấm gì', async () => {
     const result = await run([SEED], {
       mode: 'full',

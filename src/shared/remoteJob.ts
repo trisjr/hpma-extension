@@ -235,7 +235,7 @@ export const BRIDGE_APPROVAL = 'machine-chain';
 
 // Job approve của đường tạm: config `approveAll` (luôn approve, bắt buộc partnerBmId — M3), do chính máy tạo
 // (createdBy = approvedBy), trỏ về job assign của chuỗi, không có scan.
-function isBridgeApprove(job: RemoteJob): boolean {
+export function isBridgeApprove(job: RemoteJob): boolean {
   if (job.flow !== 'partner-approve' || job.approval !== BRIDGE_APPROVAL)
     return false;
   return (

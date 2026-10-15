@@ -363,11 +363,65 @@ async function verifyOutcome(
 
 // ---- Bước 6 (Full): engine tự bấm -------------------------------------------
 
+// Hộp thoại xác nhận sau cú bấm Approve/Decline: chỉ chấp nhận khi trong hộp thoại có đúng một nút mang
+// nhãn của quyết định đã chọn và không có nút của quyết định ngược lại (Cancel/đóng thì không tính).
+// Mọi hộp thoại khác (đăng nhập lại, cảnh báo...) vẫn dừng run bằng `ERR_UNEXPECTED_DIALOG`.
+async function confirmInDialog(
+  ctx: Ctx,
+  index: number,
+  key: string
+): Promise<void> {
+  const dialog = activeDialog();
+  if (!dialog) return;
+  const labelSet = (action: ApproveAction): string[] =>
+    labelsOf(`request.${action}`, ctx.lang).map(normalizeText);
+  const chosen = labelSet(ctx.config.action);
+  const opposite = labelSet(
+    ctx.config.action === 'approve' ? 'decline' : 'approve'
+  );
+  const buttons = Array.from(
+    dialog.querySelectorAll<HTMLElement>('button, [role="button"]')
+  ).filter(isVisible);
+  const textOf = (button: HTMLElement): string =>
+    normalizeText(button.textContent ?? '');
+  const matches = buttons.filter((button) => chosen.includes(textOf(button)));
+  if (
+    matches.length !== 1 ||
+    buttons.some((button) => opposite.includes(textOf(button)))
+  ) {
+    throw new EngineError('ERR_UNEXPECTED_DIALOG', key);
+  }
+  // Câu hỏi của hộp phải đúng hộp xác nhận của quyết định (đã quan sát trên DOM thật, tiếng Anh); với
+  // Approve còn phải nêu đúng BM đối tác. UI ngôn ngữ khác: không khớp thì dừng (fail closed).
+  const text = normalizeText(dialog.textContent ?? '');
+  const asked =
+    ctx.config.action === 'decline'
+      ? text.includes(normalizeText('Go ahead and decline this request?'))
+      : text.includes(normalizeText('Are you sure you want to give')) &&
+        text.includes(normalizeText(ctx.config.partnerName));
+  if (!asked) throw new EngineError('ERR_UNEXPECTED_DIALOG', key);
+  const [button] = matches;
+  await click(button, ctx, () => {
+    if (
+      activeDialog() !== dialog ||
+      !dialog.contains(button) ||
+      !detailMatches(
+        readDetail(),
+        ctx.config.partnerName,
+        ctx.config.requests[index],
+        ctx.config.partnerBmId
+      )
+    ) {
+      throw new EngineError('ERR_UNEXPECTED_DIALOG', key);
+    }
+  });
+}
+
 // Chỉ bấm đúng nút của quyết định đã chọn, không bao giờ nút còn lại. Định vị lại và đối chiếu
-// lại khung chi tiết ngay trước khi bấm (trang có thể đã đổi từ bước 4). Sau cú bấm, nếu một hộp
-// thoại lạ hiện ra (vd. bước xác nhận của Meta, chưa từng được quan sát) mà request chưa rời
-// danh sách thì dừng: engine không bấm xuyên qua hộp thoại nó không nhận ra. Target còn `running`
-// sẽ thành `unverified` (đã tính là một lần ghi).
+// lại khung chi tiết ngay trước khi bấm (trang có thể đã đổi từ bước 4). Sau cú bấm, nếu hộp thoại
+// xác nhận của Meta hiện ra (`confirmInDialog`) thì bấm đúng nút cùng quyết định; hộp thoại nào khác
+// mà request chưa rời danh sách thì dừng: engine không bấm xuyên qua hộp thoại nó không nhận ra.
+// Target còn `running` sẽ thành `unverified` (đã tính là một lần ghi).
 class Superseded extends Error {}
 
 async function clickAction(
@@ -416,7 +470,12 @@ async function clickAction(
   // Trang cần vài giây để cập nhật danh sách sau khi bấm.
   await sleep(SETTLE_MS, ctx.signal);
   if (activeDialog() && !leftNeedsReview(ctx, request, before)) {
-    throw new EngineError('ERR_UNEXPECTED_DIALOG', spec.key);
+    // Meta hỏi xác nhận cho cả Approve lẫn Decline: bấm đúng nút cùng quyết định trong hộp thoại đó.
+    await confirmInDialog(ctx, index, spec.key);
+    await sleep(SETTLE_MS, ctx.signal);
+    if (activeDialog() && !leftNeedsReview(ctx, request, before)) {
+      throw new EngineError('ERR_UNEXPECTED_DIALOG', spec.key);
+    }
   }
 }
 
