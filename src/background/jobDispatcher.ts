@@ -118,6 +118,8 @@ export type DispatcherDeps = {
   writeMachine: (patch: MachinePatch) => Promise<void>;
   // Cục bộ: công bố job đang chạy cho popup (undefined = không có).
   publishActive: (active: ActiveJob | undefined) => Promise<void>;
+  // Cục bộ: công bố trạng thái máy (idle/busy/blocked + lý do) để popup giải thích vì sao job chưa chạy.
+  publishMachine?: (patch: MachinePatch) => Promise<void>;
   readOwnJobs: () => Promise<OwnJob[]>;
   watchCancel: (
     jobId: string,
@@ -216,6 +218,8 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
     const patch = machinePatchOf(next);
     const key = JSON.stringify(patch);
     if (key === lastWritten) return;
+    // Công bố cục bộ trước khi ghi RTDB: ghi RTDB có thể treo khi mất mạng, popup vẫn phải thấy lý do khoá.
+    if (deps.publishMachine) guard(deps.publishMachine(patch));
     lastWritten = key;
     await deps.writeMachine(patch).catch((error: unknown) => {
       lastWritten = '';

@@ -485,6 +485,15 @@ const vi = {
   'remote.active.progress': '{done}/{total} mục',
   'remote.card.bmMismatch':
     'Job dành cho BM {job} nhưng tab đang mở BM {tab}. Kiểm tra lại trước khi chạy.',
+  'remote.blocked.title': 'Máy đang bị khoá, job chưa chạy',
+  'remote.blocked.budget': 'Đã đủ 3 job full trong 24 giờ.',
+  'remote.blocked.rate-limited': 'Meta đang giới hạn tần suất (rate-limit).',
+  'remote.blocked.checkpoint': 'Có sự cố checkpoint/CAPTCHA gần đây.',
+  'remote.blocked.emergency': 'Đang ở chế độ khẩn cấp, cần gỡ tại profile.',
+  'remote.blocked.logged-out': 'Phiên Facebook đã đăng xuất.',
+  'remote.blocked.curfew': 'Đang trong khung curfew.',
+  'remote.blocked.until': 'Tự mở lại lúc {time}.',
+  'remote.blocked.manual': 'Không có hạn, cần người gỡ khoá.',
   'opt.loading': 'Đang tải cài đặt…',
   'opt.pacing.delayTitle': 'Độ trễ giữa các bước',
   'opt.pacing.delaySub':
@@ -1209,6 +1218,16 @@ const en: Record<MessageKey, string> = {
   'remote.active.progress': '{done}/{total} items',
   'remote.card.bmMismatch':
     'This job is for BM {job} but the open tab is BM {tab}. Check before running.',
+  'remote.blocked.title': 'Machine is blocked, job has not started',
+  'remote.blocked.budget': 'Already ran 3 full jobs in the last 24 hours.',
+  'remote.blocked.rate-limited': 'Meta is rate-limiting this profile.',
+  'remote.blocked.checkpoint':
+    'A checkpoint/CAPTCHA incident happened recently.',
+  'remote.blocked.emergency': 'Emergency stop is on, clear it at the profile.',
+  'remote.blocked.logged-out': 'Facebook session is logged out.',
+  'remote.blocked.curfew': 'Inside the curfew window.',
+  'remote.blocked.until': 'Reopens automatically at {time}.',
+  'remote.blocked.manual': 'No expiry, someone must clear the block.',
   'opt.loading': 'Loading settings…',
   'opt.pacing.delayTitle': 'Delay between steps',
   'opt.pacing.delaySub':

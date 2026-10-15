@@ -10,6 +10,7 @@ import useActiveRemoteJob from '@/shared/hooks/useActiveRemoteJob';
 import useConnection from '@/shared/hooks/useConnection';
 import useKillSwitch from '@/shared/hooks/useKillSwitch';
 import useLanguage from '@/shared/hooks/useLanguage';
+import useMachineBlock from '@/shared/hooks/useMachineBlock';
 import { requestJobFocus } from '@/shared/hooks/useRemoteFocus';
 import useRemoteJobs from '@/shared/hooks/useRemoteJobs';
 import { usePacingConfig } from '@/shared/hooks/useSettings';
@@ -37,6 +38,18 @@ const activeLabel = (status: RunStatus | undefined): MessageKey => {
   return 'remote.active.running';
 };
 
+const BLOCK_KEYS: Record<string, MessageKey> = {
+  budget: 'remote.blocked.budget',
+  'rate-limited': 'remote.blocked.rate-limited',
+  checkpoint: 'remote.blocked.checkpoint',
+  emergency: 'remote.blocked.emergency',
+  'logged-out': 'remote.blocked.logged-out',
+  curfew: 'remote.blocked.curfew',
+};
+
+const blockReasonKey = (reason: string): MessageKey =>
+  BLOCK_KEYS[reason] ?? 'remote.blocked.title';
+
 export default function Popup(): JSX.Element {
   const theme = useTheme();
   const { lang } = useLanguage();
@@ -46,6 +59,7 @@ export default function Popup(): JSX.Element {
   const { engaged: killEngaged, failed: killFailed, engage } = useKillSwitch();
   const remoteJobs = useRemoteJobs();
   const activeJob = useActiveRemoteJob();
+  const machineBlock = useMachineBlock();
   // Resolve windowId trước: open side panel đòi user gesture, không được await
   // trong onClick (docs/050-Research/21 §5.1).
   const [windowId, setWindowId] = useState<number>();
@@ -167,6 +181,25 @@ export default function Popup(): JSX.Element {
               )}
             </button>
           </section>
+        )}
+
+        {machineBlock && (
+          <div
+            role='status'
+            className='alert alert-warning flex-col items-start gap-0.5 text-xs'
+          >
+            <span className='font-medium'>
+              {translate(lang, 'remote.blocked.title')}
+            </span>
+            <span>{translate(lang, blockReasonKey(machineBlock.reason))}</span>
+            <span>
+              {machineBlock.until === null
+                ? translate(lang, 'remote.blocked.manual')
+                : translate(lang, 'remote.blocked.until', {
+                    time: new Date(machineBlock.until).toLocaleString(lang),
+                  })}
+            </span>
+          </div>
         )}
 
         {remoteJobs.length > 0 && (
