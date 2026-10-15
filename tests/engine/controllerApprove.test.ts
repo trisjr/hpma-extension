@@ -3,6 +3,7 @@ import type { RunCommand, StartReply } from '@/shared/messaging';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { localDay, WRITE_BUDGET_KEY } from '@/shared/budget';
+import { isRunCommand } from '@/shared/messaging';
 
 import { storageState } from '../helpers/browserMock';
 import { NOON_VN } from '../helpers/timers';
@@ -105,8 +106,9 @@ describe('controller: flow partner-approve', () => {
   it('Full của Gán partner: ngân sách tính theo số mẻ (mỗi mẻ một cú bấm Assign), không phải một lần cho cả run', async () => {
     storageState.data[WRITE_BUDGET_KEY] = { day: localDay(NOON_VN), used: 19 };
     const handle = await load();
-    const assign = (queries: string[]) =>
-      command({
+    const assign = (queries: string[]) => {
+      const built = command({
+        requestId: 'r1',
         flow: 'partner-assign',
         mode: 'full',
         config: {
@@ -115,6 +117,10 @@ describe('controller: flow partner-approve', () => {
           tasks: ['ANALYZE'],
         },
       });
+      // Đúng đường thật: content script bỏ lệnh không qua `isRunCommand` trước khi tới controller.
+      expect(isRunCommand(built)).toBe(true);
+      return built;
+    };
     // 11 TKQC = 2 mẻ: 19 + 2 > 20 → bị từ chối, không chạy flow.
     expect(
       await handle(

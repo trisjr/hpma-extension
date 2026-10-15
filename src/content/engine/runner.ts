@@ -252,8 +252,10 @@ function launch<C>(
       await gate();
     },
     beginBatch: (index, total, targets) => {
-      // Mỗi mẻ là một hộp thoại Assign riêng: mẻ trước đã bấm không làm target mẻ này thành `unverified`.
-      reachedAssign = false;
+      // Mỗi mẻ là một hộp thoại Assign riêng: mẻ trước đã bấm xong (mọi target đã có kết quả) thì không làm target mẻ
+      // này thành `unverified`. Còn target `running` dở thì giữ cờ (bảo thủ: không bao giờ báo thiếu một lần ghi).
+      if (!state.targets.some((item) => item.outcome === 'running'))
+        reachedAssign = false;
       update((run) => ({
         ...run,
         batch: { index, total },

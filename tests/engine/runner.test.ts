@@ -117,6 +117,39 @@ describe('kết thúc bình thường', () => {
     });
   });
 
+  it('Full (Gán partner): mẻ 1 đã bấm xong thì lỗi ở mẻ 2 trước khi bấm không biến target mẻ 2 thành unverified; target mẻ 1 dở thì vẫn unverified', async () => {
+    const queries = Array.from({ length: 12 }, (_, index) => `q${index}`);
+    // Mẻ 1 bấm rồi xong; mẻ 2 lỗi trước khi bấm.
+    const { handle } = start(
+      async (ctx) => {
+        ctx.beginBatch(1, 2, [0]);
+        ctx.markWriteStarted();
+        for (let index = 0; index < 10; index += 1)
+          ctx.setTarget(index, 'done');
+        ctx.beginBatch(2, 2, [10]);
+        ctx.setTarget(10, 'running');
+        throw new EngineError('ERR_LOCATE_TIMEOUT');
+      },
+      { mode: 'full', config: configOf({ queries }) }
+    );
+    const final = await handle.done;
+    expect(final.targets[10].outcome).not.toBe('unverified');
+    expect(final.targets[0].outcome).toBe('done');
+
+    // Mẻ 1 bấm nhưng còn một target running khi mẻ 2 bắt đầu: giữ cờ, target đó là unverified.
+    const second = start(
+      async (ctx) => {
+        ctx.beginBatch(1, 2, [0]);
+        ctx.markWriteStarted();
+        ctx.setTarget(0, 'running');
+        ctx.beginBatch(2, 2, [10]);
+        throw new EngineError('ERR_LOCATE_TIMEOUT');
+      },
+      { mode: 'full', config: configOf({ queries }) }
+    );
+    expect((await second.handle.done).targets[0].outcome).toBe('unverified');
+  });
+
   it('Full (Gán partner): hai mẻ đều đã ghi thì tính hai lượt', async () => {
     const queries = Array.from({ length: 12 }, (_, index) => `q${index}`);
     const { handle } = start(
