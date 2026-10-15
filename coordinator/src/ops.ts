@@ -4,6 +4,7 @@
  *
  *   pnpm ops status
  *   pnpm ops assign <bm> --file job.json [--mode dry|full]   (full: gõ xác nhận, không nhận --yes)
+ *       [--chain-partner "TÊN BM ĐỐI TÁC" --chain-requester "TÊN ADMIN 1"]   (chuỗi D12, chỉ với full)
  *   pnpm ops scan <bm> --partner "TÊN BM ĐỐI TÁC"
  *   pnpm ops approve <bm> <scanJobId> [--action approve|decline] [--select 1,3-5|all] [--mode dry|full] [--yes]
  *   pnpm ops cancel <bm> <jobId>
@@ -13,6 +14,7 @@
 import { readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
+import type { ChainDecl } from '@/shared/remoteJob';
 import { deleteApp, initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import {
@@ -37,6 +39,7 @@ import { clientIo } from './janitorIo';
 import {
   buildApproveJob,
   buildAssignJob,
+  buildChain,
   buildScanJob,
   parseAssignConfig,
   parseScanPartner,
@@ -159,6 +162,8 @@ const main = async (): Promise<void> => {
       select: { type: 'string' },
       action: { type: 'string' },
       mode: { type: 'string' },
+      'chain-partner': { type: 'string' },
+      'chain-requester': { type: 'string' },
       yes: { type: 'boolean' },
     },
   });
@@ -195,6 +200,19 @@ const main = async (): Promise<void> => {
       );
       const mode = values.mode ?? 'dry';
       if (mode !== 'dry' && mode !== 'full') fail('mode phải là dry hoặc full');
+      // Chuỗi D12: khai ngay từ đầu, trước mọi xác nhận, để sai tham số thì dừng sớm.
+      let chain: ChainDecl | undefined;
+      if (values['chain-partner'] !== undefined) {
+        try {
+          chain = buildChain(
+            values['chain-partner'],
+            values['chain-requester'],
+            mode as 'dry' | 'full'
+          );
+        } catch (error) {
+          fail((error as Error).message);
+        }
+      }
       if (mode === 'full') {
         // Full ghi thật lên Meta: in đủ những gì sẽ được gán và bắt người gõ xác nhận, `--yes` không bỏ qua được.
         if (values.yes)
@@ -202,6 +220,10 @@ const main = async (): Promise<void> => {
             'mode full không nhận --yes: phải tự gõ xác nhận sau khi xem cấu hình'
           );
         console.log(`Sẽ GÁN THẬT (full) ở BM ${businessId}:`);
+        if (chain)
+          console.log(
+            `  Chuỗi auto-approve: BM "${chain.partnerName}", người yêu cầu "${chain.requesterName}" → máy admin 2 sẽ DUYỆT THẬT (${chain.mode})`
+          );
         console.log(`  BM đối tác: ${config.partnerBmId}`);
         console.log(`  Quyền: ${config.tasks.join(', ')}`);
         console.log(`  TKQC (${config.queries.length}):`);
@@ -215,10 +237,10 @@ const main = async (): Promise<void> => {
       const jobRef = push(ref(db, `ext/jobs/${businessId}`));
       await set(
         jobRef,
-        buildAssignJob(config, args(businessId), mode as 'dry' | 'full')
+        buildAssignJob(config, args(businessId), mode as 'dry' | 'full', chain)
       );
       console.log(
-        `Đã tạo job partner-assign ${jobRef.key} (${mode}) ở BM ${businessId}`
+        `Đã tạo job partner-assign ${jobRef.key} (${mode}${chain ? ', chain.auto' : ''}) ở BM ${businessId}`
       );
       break;
     }

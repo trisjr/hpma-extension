@@ -29,6 +29,7 @@ import { isRunActive, isRunFinished } from '@/shared/run';
 import { parseRunConfig } from '@/shared/runConfig';
 
 import {
+  awaitingOf,
   claimGate,
   MachineStatus,
   mapPrepareError,
@@ -311,13 +312,20 @@ export default function createDispatcher(deps: DispatcherDeps): Dispatcher {
       now,
       limitedUntil
     );
+    // Chuỗi D12: job assign khai chain.auto và run dừng chờ duyệt thì ghi E cho coordinator đối chiếu.
+    const awaiting =
+      cur.job.chain?.auto && run.status === 'pending-approval'
+        ? awaitingOf(run)
+        : undefined;
     // Giải phóng trước khi ghi: sự kiện/tick đến trùng không chốt job hai lần.
     current = undefined;
     cur.unwatch?.();
     await deps.writeState(cur.job.id, {
       status: end.status,
       finishedAt: SERVER_TIMESTAMP,
-      result: end.result,
+      result: awaiting
+        ? { ...end.result, awaitingApproval: awaiting }
+        : end.result,
       error: end.error ?? null,
       runStatus: null,
       pauseReason: null,

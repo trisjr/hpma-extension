@@ -461,14 +461,14 @@ Ops tạo job assign (có chain.auto) ─▶ nhánh BM X ─▶ [admin 1] chạy
 ```jsonc
 {
   "flow": "partner-assign",
-  "mode": "assist", // chuỗi chỉ có nghĩa khi assign ghi thật (pha 3); dry không bao giờ sinh pending-approval
+  "mode": "full", // chuỗi chỉ có nghĩa khi assign ghi thật; dry không bao giờ sinh pending-approval, và assign từ xa không có assist. Rules + `ops assign` bắt buộc full khi có chain.auto
   "businessId": "<BM X>",
   "config": { "partnerBmId": "…", "queries": ["…"], "tasks": ["ADVERTISE"] },
   "chain": {
     "auto": true, // opt-in tường minh theo từng job; vắng = không chuỗi
     "partnerName": "TÊN BM P", // tên BM đối tác như hiện trong request; dùng làm RequestsRead/ApproveConfig.partnerName
-    "requesterName": "Tên admin 1", // tuỳ chọn, khuyến nghị: tên người yêu cầu như hiện trong request; có thì lọc thêm theo `requester`
-    "mode": "dry", // mode của scan + approve; rules giới hạn theo pha (D8)
+    "requesterName": "Tên admin 1", // BẮT BUỘC (anh chốt 15/10/2026, giảm request mơ hồ): tên người yêu cầu như hiện trong request; lọc thêm theo `requester`
+    "mode": "full", // mode của job APPROVE (anh chốt 15/10/2026: engine tự bấm Approve). Scan của chuỗi luôn dry; rules: approve full chỉ coordinator, approval auto-match, khoá job `chain-<assignJobId>-approve`, scan trỏ về đúng chuỗi, còn trong ttlSec
     "scanDelaysSec": [120, 300, 600], // độ trễ trước lần scan thứ 1, 2, 3 (tham số, đo thực địa — Q10)
     "ttlSec": 86400,
   },

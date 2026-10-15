@@ -143,6 +143,92 @@ describe('flow và mode', () => {
     expect(ok && jobDispatchIssue(ok)).toBeUndefined();
   });
 
+  describe('chuỗi assign → approve (D12)', () => {
+    const chain = {
+      auto: true,
+      partnerName: 'BM Đối Tác',
+      requesterName: 'Admin 1',
+      mode: 'full',
+      scanDelaysSec: [120, 300],
+      ttlSec: 86400,
+    };
+    const approveJob = {
+      flow: 'partner-approve',
+      mode: 'full',
+      businessId: BM,
+      config: {
+        partnerName: 'BM Đối Tác',
+        action: 'approve',
+        requests: [{ requester: 'Admin 1', account: 'SHOP A' }],
+      },
+      scanJobId: 'scan-1',
+      approval: 'auto-match',
+      approvedBy: 'coordinator',
+      createdBy: 'coordinator',
+      createdAt: 1760432400000,
+      chain: { assignJobId: 'assign-1' },
+      state: { status: 'pending' },
+    };
+    const issueOf = (value: unknown): string | undefined => {
+      const job = parseJobEnvelope('j', value, BM);
+      return job && jobDispatchIssue(job);
+    };
+
+    it('đọc chain trên job assign; chain hỏng thì coi như không có', () => {
+      expect(
+        parseJobEnvelope('a', { ...assignJob, chain }, BM)?.chain
+      ).toMatchObject({ auto: true, partnerName: 'BM Đối Tác', mode: 'full' });
+      [
+        { ...chain, auto: false },
+        { ...chain, partnerName: '   ' },
+        { ...chain, mode: 'assist' },
+        { ...chain, scanDelaysSec: ['x'] },
+        { ...chain, ttlSec: 'x' },
+      ].forEach((bad) =>
+        expect(
+          parseJobEnvelope('a', { ...assignJob, chain: bad }, BM)?.chain
+        ).toBeUndefined()
+      );
+    });
+
+    it('job approve auto-match full do coordinator tạo được chạy', () => {
+      expect(issueOf(approveJob)).toBeUndefined();
+      expect(parseJobEnvelope('j', approveJob, BM)?.chainAssignJobId).toBe(
+        'assign-1'
+      );
+    });
+
+    it('auto-match full bị từ chối khi decline, thiếu scan hoặc chain, hoặc không do coordinator', () => {
+      const decline = {
+        ...approveJob,
+        config: { ...approveJob.config, action: 'decline' },
+      };
+      expect(issueOf(decline)).toBe('provenance');
+      expect(issueOf({ ...approveJob, scanJobId: undefined })).toBe(
+        'provenance'
+      );
+      expect(issueOf({ ...approveJob, chain: {} })).toBe('provenance');
+      expect(issueOf({ ...approveJob, createdBy: 'uid-ops' })).toBe(
+        'provenance'
+      );
+      expect(issueOf({ ...approveJob, approvedBy: 'uid-ops' })).toBe(
+        'provenance'
+      );
+    });
+
+    it('auto-match chỉ mở full cho approve: assign full auto-match vẫn bị từ chối', () => {
+      expect(
+        issueOf({
+          ...assignJob,
+          mode: 'full',
+          approval: 'auto-match',
+          approvedBy: 'coordinator',
+          createdBy: 'coordinator',
+        })
+      ).toBe('provenance');
+    });
+  });
+
   it('isMachineFlow loại requests.scan', () => {
     expect(isMachineFlow('partner-assign')).toBe(true);
     expect(isMachineFlow('requests.scan')).toBe(false);

@@ -276,7 +276,25 @@ export type JobResult = {
   counts: JobCounts;
   partial?: boolean;
   detail?: { code?: string; stepIndex?: number; lang?: string };
+  // Chỉ job assign có chain.auto: TKQC đang chờ admin 2 duyệt (PII, janitor xoá sau 24 giờ).
+  awaitingApproval?: { accountId: string; name: string }[];
 };
+
+const MAX_AWAITING = 200;
+const MAX_AWAITING_NAME = 200;
+
+// E của chuỗi D12: target dừng ở `pending-approval`. Rỗng thì không ghi trường này.
+export function awaitingOf(run: RunState): JobResult['awaitingApproval'] {
+  // Tên TKQC lấy từ DOM Meta: chặn số phần tử và độ dài trước khi ghi lên RTDB.
+  const awaiting = run.targets
+    .filter((target) => target.outcome === 'pending-approval')
+    .slice(0, MAX_AWAITING)
+    .map(({ accountId, name }) => ({
+      accountId,
+      name: name.slice(0, MAX_AWAITING_NAME),
+    }));
+  return awaiting.length > 0 ? awaiting : undefined;
+}
 
 export type JobError = { code: string; message?: string; stepIndex?: number };
 

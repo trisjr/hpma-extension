@@ -225,7 +225,7 @@ describe('job do ops CLI dựng ra phải qua Rules thật', () => {
         mode: 'full',
       })
     );
-    // Không có approval: human thì không được full (đường auto-match của coordinator vẫn chỉ dry).
+    // Ops không được tự đặt approval auto-match (chỉ coordinator, xem chain.rules.test.ts).
     await assertFails(
       set(ref(db, `ext/jobs/${BM}/a5`), {
         ...approve([0], 'uid-ops', 'full'),

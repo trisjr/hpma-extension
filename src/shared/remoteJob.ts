@@ -70,6 +70,17 @@ export function isModeAllowed(flow: RemoteFlow, mode: RemoteMode): boolean {
   return REMOTE_ALLOWED_MODES[flow].includes(mode);
 }
 
+// Khai chuỗi assign → approve (D12) trên job assign; chỉ ops đặt, bất biến sau khi tạo.
+export type ChainDecl = {
+  auto: true;
+  partnerName: string;
+  requesterName?: string;
+  // Mode của job approve; scan của chuỗi luôn `dry`.
+  mode: 'dry' | 'full';
+  scanDelaysSec: number[];
+  ttlSec: number;
+};
+
 export type RemoteJob = {
   id: string;
   flow: RemoteFlow;
@@ -85,6 +96,10 @@ export type RemoteJob = {
   approvedBy?: string;
   createdBy?: string;
   scanJobId?: string;
+  // Job assign có khai chuỗi: finishRun ghi `result.awaitingApproval` để coordinator đối chiếu.
+  chain?: ChainDecl;
+  // Job scan/approve do coordinator tạo: trỏ về job assign của chuỗi.
+  chainAssignJobId?: string;
 };
 
 const str = (value: unknown): string | undefined =>
@@ -111,6 +126,33 @@ function isValidConfig(flow: RemoteFlow, config: unknown): boolean {
     default:
       return false;
   }
+}
+
+const isDelay = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0;
+
+// `chain` trên job assign: dữ liệu RTDB không đáng tin nên kiểm từng trường; sai dạng thì coi như không có chuỗi.
+export function parseChainDecl(value: unknown): ChainDecl | undefined {
+  if (!isRecord(value) || value.auto !== true) return undefined;
+  const { partnerName, requesterName, mode, scanDelaysSec, ttlSec } = value;
+  if (typeof partnerName !== 'string' || validatePartnerName(partnerName))
+    return undefined;
+  if (mode !== 'dry' && mode !== 'full') return undefined;
+  if (!Array.isArray(scanDelaysSec) || !scanDelaysSec.every(isDelay))
+    return undefined;
+  if (!isDelay(ttlSec)) return undefined;
+  if (requesterName !== undefined && typeof requesterName !== 'string')
+    return undefined;
+  return {
+    auto: true,
+    partnerName: cleanPartnerName(partnerName),
+    ...(requesterName === undefined
+      ? {}
+      : { requesterName: cleanPartnerName(requesterName) }),
+    mode,
+    scanDelaysSec,
+    ttlSec,
+  };
 }
 
 // Vỏ job: kiểm flow/mode/BM/thời gian/trạng thái nhưng CHƯA kiểm `config`. Dispatcher dùng để claim cả job
@@ -143,6 +185,10 @@ export function parseJobEnvelope(
     approvedBy: str(value.approvedBy),
     createdBy: str(value.createdBy),
     scanJobId: str(value.scanJobId),
+    chain: parseChainDecl(value.chain),
+    chainAssignJobId: isRecord(value.chain)
+      ? str(value.chain.assignJobId)
+      : undefined,
   };
 }
 
@@ -160,13 +206,29 @@ export function parseRemoteJob(
   return job && hasValidConfig(job) ? job : undefined;
 }
 
+export const COORDINATOR_UID = 'coordinator';
+
+// Job approve auto-match hợp lệ: chỉ approve, do coordinator tạo, trỏ tới scan và job assign của chuỗi.
+function isAutoMatchApprove(job: RemoteJob): boolean {
+  if (job.flow !== 'partner-approve' || job.approval !== 'auto-match')
+    return false;
+  const config = parseApproveConfig(job.config);
+  return (
+    config?.action === 'approve' &&
+    job.scanJobId !== undefined &&
+    job.chainAssignJobId !== undefined &&
+    job.createdBy === COORDINATOR_UID &&
+    job.approvedBy === COORDINATOR_UID
+  );
+}
+
 // Vì sao dispatcher không được chạy job này (→ `ERR_JOB_INVALID`, không gửi lệnh, không retry).
 export function jobDispatchIssue(
   job: RemoteJob
 ): 'mode' | 'config' | 'provenance' | undefined {
   if (!isModeAllowed(job.flow, job.mode)) return 'mode';
   // `full` ghi thật: bắt buộc do người duyệt (§8.1); job duyệt còn phải trỏ tới một lần quét (D6). Rules cũng kiểm,
-  // đây là lớp thứ hai.
+  // đây là lớp thứ hai. Ngoại lệ duy nhất: job approve của chuỗi auto-match (D12) do coordinator tạo.
   if (
     job.mode === 'full' &&
     !(
@@ -174,7 +236,8 @@ export function jobDispatchIssue(
       (job.flow !== 'partner-approve' || job.scanJobId !== undefined) &&
       job.approvedBy !== undefined &&
       job.approvedBy === job.createdBy
-    )
+    ) &&
+    !isAutoMatchApprove(job)
   )
     return 'provenance';
   return hasValidConfig(job) ? undefined : 'config';

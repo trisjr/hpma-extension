@@ -6,10 +6,12 @@
  * config sai bị chặn ngay tại đây thay vì để máy claim rồi báo ERR_JOB_INVALID.
  */
 import type { ApproveConfig } from '@/shared/approve';
+import type { ChainDecl } from '@/shared/remoteJob';
 import type { RunConfig } from '@/shared/runConfig';
 
 import { uiTaskKeys } from '@/content/flows/partnerTasks';
 import {
+  cleanPartnerName,
   MAX_APPROVE_REQUESTS,
   parseApproveConfig,
   validatePartnerName,
@@ -25,11 +27,46 @@ export type NewJob = {
   config: RunConfig | { partnerName: string };
   approval?: 'human';
   approvedBy?: string;
+  // Khai chuỗi D12: chỉ trên job assign `full` (dry không bao giờ dừng ở pending-approval).
+  chain?: ChainDecl;
   createdAt: unknown;
   createdBy: string;
   cancelRequested: false;
   state: { status: 'pending' };
 };
+
+export const DEFAULT_SCAN_DELAYS_SEC = [120, 300, 600];
+export const DEFAULT_CHAIN_TTL_SEC = 86_400;
+
+// Khai chuỗi của `ops assign --chain-partner`: tên người yêu cầu bắt buộc (quyết định D12: ít request mơ hồ).
+export function buildChain(
+  partnerName: string | undefined,
+  requesterName: string | undefined,
+  mode: 'dry' | 'full'
+): ChainDecl {
+  if (mode !== 'full')
+    throw new Error(
+      'chuỗi chỉ có nghĩa với job assign full (dry không ghi gì)'
+    );
+  if (partnerName === undefined)
+    throw new Error('thiếu --chain-partner "<tên BM đối tác>"');
+  const partnerIssue = validatePartnerName(partnerName);
+  if (partnerIssue)
+    throw new Error(`--chain-partner không hợp lệ (${partnerIssue})`);
+  if (requesterName === undefined)
+    throw new Error('thiếu --chain-requester "<tên admin yêu cầu>"');
+  const requesterIssue = validatePartnerName(requesterName);
+  if (requesterIssue)
+    throw new Error(`--chain-requester không hợp lệ (${requesterIssue})`);
+  return {
+    auto: true,
+    partnerName: cleanPartnerName(partnerName),
+    requesterName: cleanPartnerName(requesterName),
+    mode: 'full',
+    scanDelaysSec: DEFAULT_SCAN_DELAYS_SEC,
+    ttlSec: DEFAULT_CHAIN_TTL_SEC,
+  };
+}
 
 export function requireBusinessId(value: string | undefined): string {
   if (!isBusinessId(value))
@@ -68,7 +105,8 @@ type BuildArgs = {
 export function buildAssignJob(
   config: RunConfig,
   args: BuildArgs,
-  mode: 'dry' | 'full' = 'dry'
+  mode: 'dry' | 'full' = 'dry',
+  chain?: ChainDecl
 ): NewJob {
   return {
     flow: 'partner-assign',
@@ -79,6 +117,7 @@ export function buildAssignJob(
     ...(mode === 'full'
       ? { approval: 'human' as const, approvedBy: args.uid }
       : {}),
+    ...(chain ? { chain } : {}),
     createdAt: args.createdAt,
     createdBy: args.uid,
     cancelRequested: false,

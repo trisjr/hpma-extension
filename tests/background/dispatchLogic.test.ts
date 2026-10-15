@@ -3,6 +3,7 @@ import type { CurfewConfig } from '@/shared/settings';
 import { describe, expect, it } from 'vitest';
 
 import {
+  awaitingOf,
   claimGate,
   countTargets,
   curfewEndsAt,
@@ -299,6 +300,26 @@ const target = (outcome: string): Record<string, unknown> => ({
   name: 'A',
   plan: 'run',
   outcome,
+});
+
+describe('awaitingOf (E của chuỗi D12)', () => {
+  it('chỉ lấy target pending-approval, kèm accountId và name', () => {
+    const awaiting = awaitingOf(
+      run({
+        status: 'pending-approval',
+        targets: [
+          { ...target('done'), accountId: '1', name: 'DONE' },
+          { ...target('pending-approval'), accountId: '2', name: 'SHOP A' },
+          { ...target('queued'), accountId: '3', name: 'SHOP B' },
+        ],
+      })
+    );
+    expect(awaiting).toEqual([{ accountId: '2', name: 'SHOP A' }]);
+  });
+
+  it('không có target chờ duyệt thì undefined (không ghi trường rỗng)', () => {
+    expect(awaitingOf(run({ targets: [target('done')] }))).toBeUndefined();
+  });
 });
 
 describe('mapRunEnd', () => {

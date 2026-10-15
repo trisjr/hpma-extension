@@ -201,6 +201,76 @@ describe('jobDispatcher: chạy job', () => {
     );
   });
 
+  describe('chuỗi assign → approve (D12): result.awaitingApproval', () => {
+    const pendingRun = run({
+      status: 'pending-approval',
+      targets: [
+        { accountId: 'a', name: 'SHOP A', plan: 'run', outcome: 'done' },
+        {
+          accountId: 'b',
+          name: 'SHOP B',
+          plan: 'run',
+          outcome: 'pending-approval',
+        },
+      ],
+    });
+    const chain = {
+      auto: true,
+      partnerName: 'BM Đối Tác',
+      requesterName: 'Admin 1',
+      mode: 'full',
+      scanDelaysSec: [120],
+      ttlSec: 86400,
+    };
+
+    it('job có chain.auto dừng ở pending-approval: ghi E vào result', async () => {
+      const ctx = setup();
+      ctx.dispatcher.setPending([mkJob('c1', { chain })]);
+      await vi.waitFor(() => expect(ctx.statusOf('c1')).toBe('running'));
+      ctx.dispatcher.onRunEvent(pendingRun, 7);
+      await vi.waitFor(() => expect(ctx.statusOf('c1')).toBe('done'));
+      expect(ctx.last('c1')).toMatchObject({
+        result: {
+          runStatus: 'pending-approval',
+          awaitingApproval: [{ accountId: 'b', name: 'SHOP B' }],
+        },
+      });
+    });
+
+    it('job không có chain, hoặc run không chờ duyệt: không ghi awaitingApproval', async () => {
+      const ctx = setup();
+      ctx.dispatcher.setPending([mkJob('n1')]);
+      await vi.waitFor(() => expect(ctx.statusOf('n1')).toBe('running'));
+      ctx.dispatcher.onRunEvent(pendingRun, 7);
+      await vi.waitFor(() => expect(ctx.statusOf('n1')).toBe('done'));
+      expect(ctx.last('n1')?.result).not.toHaveProperty('awaitingApproval');
+
+      const chained = setup();
+      chained.dispatcher.setPending([mkJob('n2', { chain })]);
+      await vi.waitFor(() => expect(chained.statusOf('n2')).toBe('running'));
+      chained.dispatcher.onRunEvent(run({ status: 'done' }), 7);
+      await vi.waitFor(() => expect(chained.statusOf('n2')).toBe('done'));
+      expect(chained.last('n2')?.result).not.toHaveProperty('awaitingApproval');
+    });
+
+    it('SW chết giữa run: job nối lại qua reconcile vẫn giữ chain và ghi E', async () => {
+      const ctx = setup({
+        owned: [
+          {
+            job: mkJob('r1', { chain, state: { status: 'running' } }),
+            runId: 'run1',
+          },
+        ],
+      });
+      ctx.tabs.sync.mockResolvedValue({ reachable: true, run: pendingRun });
+      ctx.dispatcher.setPending([]);
+      await vi.waitFor(() => expect(ctx.statusOf('r1')).toBe('done'));
+      expect(ctx.last('r1')).toMatchObject({
+        result: { awaitingApproval: [{ accountId: 'b', name: 'SHOP B' }] },
+      });
+    });
+  });
+
   it('chỉ chạy một job mỗi lúc, job sau chờ job trước xong', async () => {
     const ctx = setup();
     ctx.dispatcher.setPending([
