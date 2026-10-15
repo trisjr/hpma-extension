@@ -23,6 +23,7 @@ import {
 import {
   Database,
   equalTo,
+  forceWebSockets,
   getDatabase,
   onValue,
   orderByChild,
@@ -65,6 +66,8 @@ function sdk(): { auth: Auth; db: Database } {
     app = initializeApp(firebaseConfig);
     // getAuth() mặc định dùng localStorage — không có trong SW; web-extension + IndexedDB giữ phiên qua các lần SW chết.
     auth = initializeAuth(app, { persistence: indexedDBLocalPersistence });
+    // SW không có DOM: ép WebSocket để transport long-poll (JSONP, tạo thẻ script) không bao giờ được dùng.
+    forceWebSockets();
     db = getDatabase(app);
   }
   return { auth, db };
