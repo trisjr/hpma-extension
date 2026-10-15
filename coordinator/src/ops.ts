@@ -4,7 +4,8 @@
  *
  *   pnpm ops status
  *   pnpm ops assign <bm> --file job.json [--mode dry|full]   (full: gõ xác nhận, không nhận --yes)
- *       [--chain-partner "TÊN BM ĐỐI TÁC" --chain-requester "TÊN ADMIN 1"]   (chuỗi D12, chỉ với full)
+ *       full luôn nối chuỗi D12 sang approve: tên đối tác lấy từ --chain-partner hoặc `partnerName` trong job.json,
+ *       tên admin yêu cầu từ --chain-requester hoặc HPMA_CHAIN_REQUESTER; thiếu thì hỏi. Tắt bằng --no-chain.
  *   pnpm ops scan <bm> --partner "TÊN BM ĐỐI TÁC"
  *   pnpm ops approve <bm> <scanJobId> [--action approve|decline] [--select 1,3-5|all] [--mode dry|full] [--yes]
  *   pnpm ops cancel <bm> <jobId>
@@ -164,6 +165,7 @@ const main = async (): Promise<void> => {
       mode: { type: 'string' },
       'chain-partner': { type: 'string' },
       'chain-requester': { type: 'string' },
+      'no-chain': { type: 'boolean' },
       yes: { type: 'boolean' },
     },
   });
@@ -195,23 +197,40 @@ const main = async (): Promise<void> => {
     case 'assign': {
       const businessId = requireBusinessId(arg);
       if (!values.file) fail('thiếu --file job.json');
-      const config = parseAssignConfig(
-        JSON.parse(readFileSync(values.file as string, 'utf8'))
+      const raw: unknown = JSON.parse(
+        readFileSync(values.file as string, 'utf8')
       );
+      const config = parseAssignConfig(raw);
       const mode = values.mode ?? 'dry';
       if (mode !== 'dry' && mode !== 'full') fail('mode phải là dry hoặc full');
-      // Chuỗi D12: khai ngay từ đầu, trước mọi xác nhận, để sai tham số thì dừng sớm.
+      // Chuỗi D12: mọi job assign full đều nối sang approve (tắt bằng --no-chain). Khai ngay từ đầu, trước mọi
+      // xác nhận, để sai tham số thì dừng sớm. Thiếu tên thì hỏi tại chỗ: tên BM đối tác lấy từ cờ hoặc `partnerName`
+      // trong job.json, tên admin yêu cầu lấy từ cờ hoặc HPMA_CHAIN_REQUESTER.
       let chain: ChainDecl | undefined;
-      if (values['chain-partner'] !== undefined) {
+      if (mode === 'full' && !values['no-chain']) {
+        const fileName =
+          typeof raw === 'object' &&
+          raw !== null &&
+          typeof (raw as { partnerName?: unknown }).partnerName === 'string'
+            ? (raw as { partnerName: string }).partnerName
+            : undefined;
+        const partner = await ask(
+          values['chain-partner'] ?? fileName,
+          'Tên BM đối tác (đúng như hiện ở Needs review): '
+        );
+        const requester = await ask(
+          values['chain-requester'] ?? process.env.HPMA_CHAIN_REQUESTER,
+          'Tên admin 1 gửi yêu cầu (đúng như hiện ở Needs review): '
+        );
         try {
-          chain = buildChain(
-            values['chain-partner'],
-            values['chain-requester'],
-            mode as 'dry' | 'full'
-          );
+          chain = buildChain(partner, requester, 'full');
         } catch (error) {
           fail((error as Error).message);
         }
+      } else if (values['chain-partner'] !== undefined) {
+        fail(
+          '--chain-partner chỉ dùng với --mode full (và không kèm --no-chain)'
+        );
       }
       if (mode === 'full') {
         // Full ghi thật lên Meta: in đủ những gì sẽ được gán và bắt người gõ xác nhận, `--yes` không bỏ qua được.
